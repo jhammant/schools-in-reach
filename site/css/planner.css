@@ -1,0 +1,79 @@
+/* "My plan" — a calm application planner. Reuses the tokens in app.css.
+   No red anywhere for a child's chances: greens, ambers and neutrals only. */
+
+.plan-title { font-size: 20px; line-height: 1.25; margin: 0 0 4px; }
+.plan-intro { color: var(--text-secondary); margin: 0 0 8px; }
+
+/* ranked list */
+.plan-list { list-style: none; margin: 0; padding: 0; }
+.plan-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: start;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.rank {
+  width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); color: var(--text-primary);
+  display: grid; place-items: center; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 1px;
+}
+.plan-main { min-width: 0; display: grid; gap: 3px; }
+.plan-name { border: 0; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text-primary); text-align: left; cursor: pointer; }
+.plan-name:hover, .plan-name:focus-visible { color: var(--accent); outline: none; }
+.plan-meta { font-size: 12px; color: var(--text-secondary); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.plan-sib { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.plan-sib input { margin: 0; accent-color: var(--accent); }
+.plan-tools { display: flex; gap: 4px; align-items: center; }
+.plan-move, .plan-remove {
+  border: 1px solid var(--border); background: var(--surface-1); border-radius: 8px; width: 28px; height: 28px;
+  cursor: pointer; display: grid; place-items: center; font-size: 14px; color: var(--text-secondary); padding: 0; line-height: 1;
+}
+.plan-move:disabled { opacity: .35; cursor: default; }
+.plan-move:hover:not(:disabled), .plan-remove:hover, .plan-move:focus-visible, .plan-remove:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+
+/* add a school */
+.plan-chips { margin: 6px 0 10px; }
+#plan-search { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-0); }
+.plan-search-results { margin-top: 6px; }
+.plan-match { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+
+/* compare table */
+.plan-compare { min-width: 520px; }
+
+/* what-if panel */
+.whatif { display: grid; gap: 14px; margin-top: 4px; }
+.whatif label { display: grid; gap: 4px; font-size: 13px; color: var(--text-secondary); }
+.whatif label strong { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.whatif select, .whatif input[type="range"] { width: 100%; }
+.whatif input[type="range"] { accent-color: var(--accent); }
+.plan-dist-note { margin-top: 2px; }
+
+/* outcome bar */
+.plan-bar { display: flex; height: 30px; border-radius: 8px; overflow: hidden; background: var(--surface-3); gap: 1px; margin: 6px 0; }
+.plan-seg {
+  display: flex; align-items: center; justify-content: center; min-width: 0; overflow: hidden; white-space: nowrap;
+  font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .35);
+}
+.plan-most-likely { font-size: 14px; margin: 8px 0 4px; }
+.plan-outcome-list, .plan-waiting { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 5px; }
+.plan-outcome-list li, .plan-waiting li { font-size: 13px; line-height: 1.45; }
+
+/* timeline */
+.tl-phase { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-secondary); margin: 20px 0 10px; }
+.tl { list-style: none; margin: 0 0 24px; padding: 0; position: relative; }
+.tl::before { content: ""; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--border); }
+.tl-step { position: relative; padding: 0 0 18px 24px; }
+.tl-step:last-child { padding-bottom: 0; }
+.tl-dot { position: absolute; left: 0; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface-1); border: 2px solid var(--border); }
+.tl-body { font-size: 13px; }
+.tl-body strong { display: block; font-weight: 600; }
+.tl-when { font-size: 12px; color: var(--text-muted); }
+.tl-body p { margin: 4px 0 0; color: var(--text-secondary); }
+.tl-body p em { font-style: normal; font-weight: 600; color: var(--text-primary); }
+.tl-past .tl-body { opacity: .65; }
+.tl-past .tl-dot { background: var(--border); border-color: var(--border); }
+.tl-now .tl-dot { background: var(--accent); border-color: var(--accent); }
+.tl-now .tl-body { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
+.tl-here { display: inline-block; margin-top: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+
+@media (max-width: 480px) {
+  .plan-row { grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; }
+  .rank { width: 22px; height: 22px; font-size: 12px; }
+}

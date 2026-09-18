@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="google-adsense-account" content="ca-pub-5764635530350909">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — Schools in Reach</title>
+<meta name="description" content="How Schools in Reach handles your information, in plain English: no accounts, what stays in your browser, which third parties see what, and your rights.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%232a78d6' stroke-width='10'/><circle cx='50' cy='50' r='14' fill='%232a78d6'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  body { display: block; }
+  .page { max-width: 760px; margin: 0 auto; padding: 24px 16px 60px; }
+  .page h1 { font-size: 26px; line-height: 1.2; margin: 8px 0; }
+  .page h2 { font-size: 18px; margin: 32px 0 8px; }
+  .page p, .page li { color: var(--text-secondary); }
+  .page table { font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./">
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg>
+    <span class="brand-name">Schools in Reach</span><span class="beta">England beta</span>
+  </a>
+  <nav class="toplinks"><a href="./">← Back to the map</a></nav>
+</header>
+<main class="page">
+  <h1>Privacy</h1>
+  <p>Schools in Reach is a free guide for families choosing schools in England. This page explains, in plain English, what we do with your information and what we don't. Children may use this site, so we keep things deliberately simple and private.</p>
+
+  <h2>No accounts, no sign-up</h2>
+  <p>There are no user accounts and no login. We never ask for your name, your email address, your child's name, or your date of birth.</p>
+
+  <h2>What stays in your browser</h2>
+  <p>Three small things are saved on your own device, in your browser's local storage, and never leave it:</p>
+  <ul>
+    <li><strong>Your shortlist</strong> — the schools you've starred.</li>
+    <li><strong>Your plan</strong> — anything you put in the "My plan" page.</li>
+    <li><strong>Your last search</strong> — so the map opens where you left off.</li>
+  </ul>
+  <p>You can clear all of it at any time by clearing this site's data in your browser.</p>
+
+  <h2>Which third parties see what</h2>
+  <p>To show you schools, distances and the neighbourhood, a few requests go to other services:</p>
+  <table>
+    <thead><tr><th>What you do</th><th>Who we ask</th><th>What they see</th></tr></thead>
+    <tbody>
+      <tr><td>Search a postcode</td><td>postcodes.io (ONS Postcode Directory)</td><td>The postcode you typed, to find its location</td></tr>
+      <tr><td>Decline precise location</td><td>ipwho.is</td><td>Your internet connection's rough location, to make a broad guess at where you are</td></tr>
+      <tr><td>Open the Area tab</td><td>data.police.uk</td><td>Approximate coordinates near your pin, to fetch local crime figures</td></tr>
+      <tr><td>View the map</td><td>Our own tile server</td><td>Which map tiles you load; no third-party map company sees your activity</td></tr>
+    </tbody>
+  </table>
+  <p>If you search a postcode and decline precise location, we make a rough guess from your internet connection using ipwho.is. It's approximate — not your exact address.</p>
+
+  <h2>Advertising and analytics (only if enabled)</h2>
+  <p>By default this site shows no ads and runs no analytics. If the people who run this site later enable them, here's what that means:</p>
+  <ul>
+    <li><strong>Google AdSense</strong> may show small, clearly-labelled adverts, using <strong>non-personalised ads only</strong>. Non-personalised ads are chosen from the page's content rather than from any profile about you, and no personalised ad tracking is used.</li>
+    <li><strong>PostHog analytics</strong> may count visits in the background, set to run <strong>without cookies</strong> and with <strong>no personal data</strong>. It records only coarse things like the council area, school phase and roughly how a school is grouped — never your postcode, your coordinates, your child's details, or anything that identifies you.</li>
+  </ul>
+  <p>If either is switched on, it will also be covered by a consent message before it loads for UK and EEA visitors.</p>
+
+  <h2>Children using the site</h2>
+  <p>This site is a guide for parents and carers, but children may look around it too. There is nothing here to message them, no social features, and nothing that identifies who they are. We keep the data collected to an absolute minimum for everyone, children included.</p>
+
+  <h2>Your rights under UK GDPR</h2>
+  <p>Because we hold no personal data about you, there is normally nothing to access, correct or delete. If you ever think we've collected something that identifies you, you have the right to ask about it and to ask us to delete it. You can contact us below.</p>
+
+  <h2>Contact</h2>
+  <p>Questions about privacy? Email <span id="contact-email">coming soon</span> and we'll get back to you.</p>
+</main>
+<script type="module">
+  import { CONFIG } from "./js/config.js";
+  const el = document.getElementById("contact-email");
+  if (el) el.textContent = CONFIG.contactEmail || "coming soon";
+</script>
+</body>
+</html>

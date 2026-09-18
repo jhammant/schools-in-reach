@@ -1,0 +1,11 @@
+name: schoolsinreach-tiles
+runtime: docker
+port: 80
+access: public
+
+manifest_version: 2
+metadata:
+  description: Protomaps UK basemap (PMTiles) for Schools in Reach, served with CORS and range requests.
+  tags: [schools, maps, tiles]
+health:
+  path: /health

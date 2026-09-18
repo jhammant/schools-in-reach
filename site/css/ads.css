@@ -1,0 +1,31 @@
+/* Small, clearly-labelled ad slots. Uses the design tokens from app.css, so
+   light and dark mode (and data-theme) come for free. */
+
+.ad-slot {
+  margin-top: 12px;
+  padding: 8px 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.ad-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ad-slot .adsbygoogle {
+  display: block;
+}
+
+/* The list-footer placement stays compact and never crowds the list. */
+#ad-list-footer .ad-slot {
+  max-height: 120px;
+  overflow: hidden;
+}

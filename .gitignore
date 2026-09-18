@@ -1,0 +1,20 @@
+# Generated open-data bundles (rebuild with the pipelines in pipeline/; see README)
+site/data/
+deploy/railway/site/
+
+# Source PDFs, spreadsheets and scratch downloads (gigabytes; re-fetchable)
+pipeline/.cache/
+__pycache__/
+*.pyc
+.venv/
+
+# Map tiles (3 GB PMTiles build; see pipeline/tiles/build.sh)
+tiles-host/tiles/
+*.pmtiles
+
+# Personal, never publish
+clapton-catchment-map.html
+foi-request-*.md
+
+.DS_Store
+node_modules/

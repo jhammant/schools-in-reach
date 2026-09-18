@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="google-adsense-account" content="ca-pub-5764635530350909">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schools in Reach · England</title>
+<meta name="description" content="Schools in Reach — a free, friendly guide to schools in England. See which schools could work for your family, how far places reached in past years, Ofsted reports, results and neighbourhoods, from any postcode.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%232a78d6' stroke-width='10'/><circle cx='50' cy='50' r='14' fill='%232a78d6'/></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./">
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg>
+    <span class="brand-name" data-site-name>Schools in Reach</span>
+    <span class="beta" data-site-area>England beta</span>
+  </a>
+  <form id="search" class="search" role="search" autocomplete="off">
+    <label class="sr-only" for="postcode">Postcode</label>
+    <input id="postcode" name="postcode" inputmode="text" placeholder="Enter a postcode, for example E8 1DY" autocapitalize="characters">
+    <button type="submit">Search</button>
+    <button type="button" id="locate" class="icon-btn" title="Use my location" aria-label="Use my location">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+    </button>
+  </form>
+  <nav class="toplinks"><button type="button" id="open-welcome" class="start-btn">Start here</button><a href="about.html">About &amp; data</a></nav>
+</header>
+
+<main class="layout">
+  <aside id="panel" class="panel">
+    <div id="search-status" class="search-status" role="status" aria-live="polite"></div>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-view="schools" aria-selected="true">Schools</button>
+      <button role="tab" data-view="league" aria-selected="false">League tables</button>
+      <button role="tab" data-view="area" aria-selected="false">Area</button>
+      <button role="tab" data-view="shortlist" aria-selected="false">Shortlist <span id="shortlist-count" class="count"></span></button>
+    </nav>
+
+    <section id="view-schools" class="view" role="tabpanel">
+      <button type="button" id="plan-cta" class="plan-cta">
+        <span class="plan-cta-main">Help me make a plan</span>
+        <span class="plan-cta-note">Six short steps: your dates, how to apply, and the schools worth putting down</span>
+      </button>
+      <div class="filters">
+        <input id="filter-text" type="search" placeholder="Filter by school name" aria-label="Filter by school name">
+        <div class="filter-row">
+          <select id="filter-phase" aria-label="Phase">
+            <option value="">All phases</option>
+            <option value="primary">Primary</option>
+            <option value="secondary">Secondary</option>
+            <option value="nursery">Nursery schools</option>
+            <option value="post16">Sixth form / 16+</option>
+            <option value="special">Special schools</option>
+          </select>
+          <select id="filter-sector" aria-label="Sector">
+            <option value="">State &amp; independent</option>
+            <option value="state">State-funded</option>
+            <option value="independent">Independent</option>
+          </select>
+          <select id="filter-gender" aria-label="Gender">
+            <option value="">Boys, girls &amp; mixed</option>
+            <option value="Mixed">Mixed</option>
+            <option value="Girls">Girls</option>
+            <option value="Boys">Boys</option>
+          </select>
+          <select id="filter-faith" aria-label="Religious character">
+            <option value="">Any faith status</option>
+            <option value="none">No religious character</option>
+            <option value="faith">Faith schools</option>
+          </select>
+          <select id="filter-reach" aria-label="Chances" class="span-2">
+            <option value="">All schools, whatever your chances</option>
+            <option value="reach">Only schools that reached your postcode</option>
+          </select>
+        </div>
+      </div>
+      <p id="welcome">This map shows the schools near you, how far a place reached in past years, and how they compare — everything a family needs to make a calm, well-informed choice. To begin, type your postcode in the search box above, or tap the location button to use where you are right now.</p>
+      <p id="list-summary" class="muted small"></p>
+      <ol id="school-list" class="school-list"></ol>
+    </section>
+
+    <section id="view-league" class="view" role="tabpanel" hidden></section>
+    <section id="view-area" class="view" role="tabpanel" hidden></section>
+    <section id="view-shortlist" class="view" role="tabpanel" hidden></section>
+    <section id="view-school" class="view" hidden></section>
+  </aside>
+
+  <div id="map" class="map" role="region" aria-label="Map of schools"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/protomaps-leaflet@5.1.0/dist/protomaps-leaflet.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

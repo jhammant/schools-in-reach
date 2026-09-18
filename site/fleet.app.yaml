@@ -1,0 +1,12 @@
+name: schoolsinreach
+runtime: static
+port: 80
+access: public
+hostname: schoolsinreach.hammantlabs.com
+
+manifest_version: 2
+metadata:
+  description: Free school finder for England (now live at www.schoolsinreach.com) — admissions cut-offs by band, your chances from any postcode, Ofsted, results, nurseries and neighbourhood data.
+  tags: [schools, admissions, maps, open-data]
+health:
+  path: /health
