@@ -1,5 +1,6 @@
 import { $, $$, esc, fmt, cssVar, SERIES } from "./util.js";
-import { state, isFaithSchool, hasAdmissionsData, laName } from "./state.js";
+import { state, isFaithSchool, isSelectiveSchool, hasAdmissionsData, laName } from "./state.js";
+import { elevenPlusNote } from "./eleven_plus.js";
 
 const years = (rec) => Object.keys(rec?.years || {}).map(Number).sort((a, b) => a - b);
 export const latestYear = (rec) => years(rec).at(-1);
@@ -166,7 +167,7 @@ export function renderAdmissions(root, school, rec, mapApi, sources) {
     else if (!hasAdmissionsData(school)) msg = `We haven't added ${council} council's admissions figures yet. We're working through councils one at a time, starting with London.`;
     else if (group === "secondary" || group === "allthrough") msg = `This school isn't in ${council}'s published list of oversubscribed secondary schools, which usually means every child who applied and didn't get a higher preference was offered a place.`;
     else if (group === "primary") msg = "No reception figures were found for this school. It may well have had a place for every child who applied.";
-    root.innerHTML = `<div class="callout">${esc(msg)}</div>`;
+    root.innerHTML = `${isSelectiveSchool(school) ? elevenPlusNote(school, council) : ""}<div class="callout">${esc(msg)}</div>`;
     return;
   }
 
@@ -219,6 +220,7 @@ export function renderAdmissions(root, school, rec, mapApi, sources) {
     }
 
     root.innerHTML = `
+      ${isSelectiveSchool(school) ? elevenPlusNote(school, laName(school._la)) : ""}
       ${verdict}
       <div class="stats">
         <div class="stat"><b>${fmt.num(y.applications)}</b><span>applied in ${ui.year}</span></div>

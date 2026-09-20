@@ -1,5 +1,5 @@
 import { $, $$, esc, fmt } from "./util.js";
-import { state, on, matchesPhase, admissionsFor, laForDistrict, isFaithSchool, laName } from "./state.js";
+import { state, on, matchesPhase, admissionsFor, laForDistrict, isFaithSchool, laName , isSelectiveSchool } from "./state.js";
 import { chanceModel, chanceAt, RULE_CAVEATS } from "./admissions.js";
 import { addToPlan, isInPlan, planFull } from "./planner.js";
 
@@ -213,7 +213,7 @@ export function initHelpMe({ selectSchool, applyPostcode }) {
   function stepFiveHtml() {
     const cands = phaseSchools();
     const models = cands.map((s) => chanceModel(admissionsFor(s.urn))).filter(Boolean);
-    const hasSelective = models.some((m) => m.kind === "rule" && m.rule === RULE_CAVEATS.selective);
+    const hasSelective = models.some((m) => m.kind === "rule" && m.rule === RULE_CAVEATS.selective) || phaseSchools().some(isSelectiveSchool);
     const hasCatchment = models.some((m) => m.kind === "rule" && (m.rule === RULE_CAVEATS.catchment_then_distance || m.rule === RULE_CAVEATS.nodal_point));
     const hasFaith = cands.some(isFaithSchool);
     const chips = [

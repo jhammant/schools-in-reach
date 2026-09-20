@@ -18,3 +18,9 @@ foi-request-*.md
 
 .DS_Store
 node_modules/
+
+# Session transcripts stay out of this public repo (mirrored to a private store instead)
+.sessions/
+
+# Symlink to the scratchpad's puppeteer install, used by the Greenwich booklet reader
+pipeline/admissions_london/node_modules

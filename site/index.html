@@ -25,7 +25,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" fill="none"/><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="2" fill="none"/></svg>
     </button>
   </form>
-  <nav class="toplinks"><button type="button" id="open-welcome" class="start-btn">Start here</button><a href="about.html">About &amp; data</a></nav>
+  <nav class="toplinks"><button type="button" id="open-welcome" class="start-btn">Start here</button><a href="apply.html">How to apply</a> · <a href="faq.html">Questions</a> · <a href="about.html">About &amp; data</a></nav>
 </header>
 
 <main class="layout">
@@ -39,11 +39,16 @@
     </nav>
 
     <section id="view-schools" class="view" role="tabpanel">
+      <div class="phase-switch" role="group" aria-label="Which schools to show">
+        <button type="button" data-phase="primary" aria-pressed="false"><b>Primary</b><span>Reception · ages 4–11</span></button>
+        <button type="button" data-phase="secondary" aria-pressed="false"><b>Secondary</b><span>Year 7 · ages 11+</span></button>
+      </div>
       <button type="button" id="plan-cta" class="plan-cta">
         <span class="plan-cta-main">Help me make a plan</span>
         <span class="plan-cta-note">Six short steps: your dates, how to apply, and the schools worth putting down</span>
       </button>
-      <div class="filters">
+      <button type="button" id="filters-toggle" class="filters-toggle" aria-expanded="false" aria-controls="filters">Filters<span id="filters-count" class="count"></span></button>
+      <div class="filters" id="filters">
         <input id="filter-text" type="search" placeholder="Filter by school name" aria-label="Filter by school name">
         <div class="filter-row">
           <select id="filter-phase" aria-label="Phase">
@@ -70,6 +75,11 @@
             <option value="none">No religious character</option>
             <option value="faith">Faith schools</option>
           </select>
+          <select id="filter-selective" aria-label="Entrance tests">
+            <option value="">Any admissions type</option>
+            <option value="selective">Grammar (entrance test)</option>
+            <option value="non">No entrance test</option>
+          </select>
           <select id="filter-reach" aria-label="Chances" class="span-2">
             <option value="">All schools, whatever your chances</option>
             <option value="reach">Only schools that reached your postcode</option>
@@ -87,7 +97,9 @@
     <section id="view-school" class="view" hidden></section>
   </aside>
 
-  <div id="map" class="map" role="region" aria-label="Map of schools"></div>
+  <div id="map" class="map" role="region" aria-label="Map of schools">
+    <button type="button" id="map-toggle" class="map-toggle" aria-pressed="false">Bigger map</button>
+  </div>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>

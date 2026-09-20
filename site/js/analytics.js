@@ -42,6 +42,10 @@ function loadPostHog() {
     ip: false,
     respect_dnt: true,
   });
+
+  // Tags every event, including pageviews, so this site's data is separable from
+  // anything else sharing the project.
+  window.posthog.register({ site: "schoolsinreach" });
 }
 
 /** Called once from app.js. Safe to call again; it will not double-initialise. */

@@ -64,9 +64,16 @@ export function initCatchments(selectSchool) {
   control = L.control({ position: "topright" });
   control.onAdd = () => {
     const div = L.DomUtil.create("div", "catch-control");
+    // On a phone the panel would cover the map, so it starts as a chip you tap open.
+    if (window.matchMedia("(max-width: 860px)").matches) div.classList.add("collapsed");
     L.DomEvent.disableClickPropagation(div);
     L.DomEvent.disableScrollPropagation(div);
     div.addEventListener("click", (e) => {
+      if (e.target.closest(".catch-title")) {
+        const open = div.classList.toggle("collapsed");
+        e.target.closest(".catch-title").setAttribute("aria-expanded", String(!open));
+        return;
+      }
       const phase = e.target.closest("[data-catch]");
       const view = e.target.closest("[data-view-mode]");
       const scope = e.target.closest("[data-lines-scope]");
@@ -139,7 +146,7 @@ function updateControl(summary) {
            <div class="catch-note">Each ring is one school: how far its places reached in ${summary.to}. ${summary.hidden ? `Showing ${summary.count} of ${summary.count + summary.hidden}. ` : `Showing ${summary.count}. `}${state.home ? "Bold rings cover your pin." : "Search a postcode to see which cover you."} No ring means places were usually spare, or decided by a random draw.</div>`;
     body = views + key;
   }
-  div.innerHTML = `<div class="catch-title">Catchment areas</div><div class="seg">${seg("data-catch", "secondary", "Secondary", ui.phase === "secondary")}${seg("data-catch", "primary", "Primary", ui.phase === "primary")}${seg("data-catch", "off", "Off", ui.phase === "off")}</div>${body}`;
+  div.innerHTML = `<button type="button" class="catch-title" aria-expanded="${div.classList.contains("collapsed") ? "false" : "true"}">Catchment areas</button><div class="seg">${seg("data-catch", "secondary", "Secondary", ui.phase === "secondary")}${seg("data-catch", "primary", "Primary", ui.phase === "primary")}${seg("data-catch", "off", "Off", ui.phase === "off")}</div>${body}`;
 }
 
 function showReadout(point, heading) {

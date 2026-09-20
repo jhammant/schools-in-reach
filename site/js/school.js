@@ -1,5 +1,6 @@
 import { $, $$, esc, fmt, humanize } from "./util.js";
-import { state, load, laFile, admissionsFor, toggleShortlist, GROUP_META, on, laName } from "./state.js";
+import { state, load, laFile, admissionsFor, toggleShortlist, GROUP_META, on, laName, laForDistrict, isSelectiveSchool } from "./state.js";
+import { elevenPlusNote } from "./eleven_plus.js";
 import { renderAdmissions, reachPill } from "./admissions.js";
 import { ofstedHeadline } from "./ofsted.js";
 import * as mapApi from "./map.js";
@@ -15,6 +16,10 @@ const TABS = [
 ];
 
 let current = null;
+// Comparing schools means reading the same section again and again, so the chosen
+// tab carries over to the next school you open.
+let lastTab = null;
+export const preferredTab = () => lastTab;
 
 on("shortlist", () => {
   const btn = $("#view-school [data-action=shortlist]");
@@ -57,6 +62,7 @@ export async function renderSchool(urn, { tab = "overview", onBack } = {}) {
   $("[data-action=shortlist]", root).onclick = () => toggleShortlist(s.urn);
   $$("[data-tab]", root).forEach((b) =>
     b.addEventListener("click", () => {
+      lastTab = b.dataset.tab;
       $$("[data-tab]", root).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
       showTab(s, b.dataset.tab);
       history.replaceState(null, "", `#school=${s.urn}${s._la ? `&la=${s._la}` : ""}&tab=${b.dataset.tab}`);
@@ -90,6 +96,9 @@ async function showTab(s, tab) {
   };
   if (tab === "admissions") {
     renderAdmissions(body, s, admissionsFor(s.urn), mapApi, admissions?.sources);
+    // "How do I even apply for this one?" belongs above the figures, not below them.
+    const cross = crossCouncilNote(s);
+    if (cross) body.insertAdjacentHTML("afterbegin", cross);
     return;
   }
   body.innerHTML = renderers[tab]();
@@ -139,6 +148,22 @@ function formatValue(key, label, v, parent = "") {
   return Number.isInteger(v) ? fmt.num(v) : v.toFixed(2);
 }
 
+// Rows whose raw names read like a spreadsheet export.
+const FRIENDLY_ROWS = {
+  banding: "How it compares",
+  pupils: "Pupils in this year group",
+  pupils_included: "Pupils counted",
+  score: "Score",
+};
+
+/** A plain-English line under the tables that use a school-performance measure. */
+function measureNote(parent) {
+  const p = parent.toLowerCase();
+  if (/progress\s*8|progress_8/.test(p)) return "Progress 8 compares pupils here with pupils who had the same results at primary school. 0 is the national average, so a plus score means they did better than that, and a minus score means less well. Small differences are normal: the likely range shows how sure the figure is.";
+  if (/attainment\s*8|attainment_8/.test(p)) return "Attainment 8 is the average grade a pupil achieved across eight GCSE subjects, scored out of 90. It reflects the intake as well as the teaching.";
+  return "";
+}
+
 function measureTable(obj, bench, parent = "") {
   if (!obj || typeof obj !== "object") return "";
   const labels = { ...(bench?.labels && typeof bench.labels === "object" ? bench.labels : {}), ...(obj.labels || {}) };
@@ -148,12 +173,22 @@ function measureTable(obj, bench, parent = "") {
   const rows = [];
   const nested = [];
   const notes = [];
+  // "Ci lower" and "Ci upper" are database column names. Families read one range, in words.
+  const hasRange = obj.ci_lower != null && obj.ci_upper != null;
+  const rangeCell = (src) => (src && src.ci_lower != null && src.ci_upper != null
+    ? `${formatValue("ci_lower", "range", src.ci_lower, parent)} to ${formatValue("ci_upper", "range", src.ci_upper, parent)}`
+    : "–");
   Object.entries(obj).forEach(([key, v]) => {
     if (/_note$/.test(key) && typeof v === "string") { notes.push(v); return; }
     if (SKIP.has(key) || key.startsWith("_")) return;
+    if (hasRange && (key === "ci_lower" || key === "ci_upper")) {
+      if (key === "ci_upper") return; // the pair is drawn once, in place of the first
+      rows.push(`<tr><td>Likely range<span class="muted small"> (statistical confidence)</span></td><td class="num"><strong>${rangeCell(obj)}</strong></td>${hasBench ? `<td class="num">${rangeCell(hack)}</td><td class="num">${rangeCell(eng)}</td>` : ""}</tr>`);
+      return;
+    }
     if (v && typeof v === "object" && !Array.isArray(v)) { nested.push([key, v]); return; }
     if (Array.isArray(v)) return;
-    const label = typeof labels[key] === "string" ? labels[key] : humanize(key);
+    const label = typeof labels[key] === "string" ? labels[key] : (FRIENDLY_ROWS[key] || humanize(key));
     const suppressed = (obj._suppressed || []).includes(key);
     const bh = hack && typeof hack[key] !== "object" ? hack[key] : undefined;
     const be = eng && typeof eng[key] !== "object" ? eng[key] : undefined;
@@ -162,6 +197,8 @@ function measureTable(obj, bench, parent = "") {
   let html = rows.length
     ? `<table><thead><tr><th>Measure</th><th class="num">School</th>${hasBench ? `<th class="num">${esc(bench.localLabel || "Council")}</th><th class="num">England</th>` : ""}</tr></thead><tbody>${rows.join("")}</tbody></table>`
     : "";
+  const explain = rows.length ? measureNote(parent) : "";
+  if (explain) html += `<p class="note">${esc(explain)}</p>`;
   if (notes.length) html += `<p class="note">${notes.map(esc).join(" ")}</p>`;
   nested.forEach(([key, v]) => {
     let childBench = null;
@@ -193,7 +230,29 @@ function sectionHtml(title, obj, bench) {
 
 /* ---------- tabs ---------- */
 
+/**
+ * The question families ask most: this school is run by a different council from mine,
+ * so how do I apply? Shown only when the two councils actually differ.
+ */
+function crossCouncilNote(s) {
+  const homeLa = (state.home?.districtCode ? laForDistrict(state.home.districtCode) : null)?.la_code;
+  if (!homeLa || !s._la || String(homeLa) === String(s._la) || s._class.independent) return "";
+  const home = laName(homeLa);
+  const theirs = laName(s._la);
+  if (!home || !theirs || home === theirs) return "";
+  const london = /London|Barking|Barnet|Bexley|Brent|Bromley|Camden|Croydon|Ealing|Enfield|Greenwich|Hackney|Hammersmith|Haringey|Harrow|Havering|Hillingdon|Hounslow|Islington|Kensington|Kingston|Lambeth|Lewisham|Merton|Newham|Redbridge|Richmond|Southwark|Sutton|Tower Hamlets|Waltham Forest|Wandsworth|Westminster/i;
+  const viaEadmissions = london.test(home) && london.test(theirs);
+  return `<div class="callout callout-info">
+    <p><strong>This school is run by ${esc(theirs)}, and you live in ${esc(home)}. You can still apply.</strong></p>
+    <p>You apply through <strong>${esc(home)}</strong>, your home council, whatever schools you choose. Put this school on that same form by the deadline: ${esc(home)} passes it to ${esc(theirs)}, they apply their own rules, and you get one offer back from ${esc(home)}.</p>
+    ${viaEadmissions ? `<p>On eAdmissions, when you click <em>Add school</em>, change <em>Select a Local Authority</em> from ${esc(home)} to <strong>${esc(theirs)}</strong>, then pick the school from the list.</p>` : ""}
+    <p>Living in another council's area usually doesn't count against you, because most schools rank by distance from the school rather than by where the boundary falls. Check this school's criteria for a catchment area or feeder schools, which some use. <a href="faq.html#other-council">More on applying across a boundary</a>.</p>
+  </div>`;
+}
+
 function overviewHtml(s) {
+  const eleven = isSelectiveSchool(s) ? elevenPlusNote(s, laName(s._la)) : "";
+  const cross = crossCouncilNote(s);
   const address = [s.street, s.locality, s.town, s.postcode].filter(Boolean).join(", ");
   const fill = s.capacity && s.pupils ? Math.round((100 * s.pupils) / s.capacity) : null;
   const yesNo = (v) => (typeof v === "boolean" ? (v ? "Yes" : "No") : v);
@@ -214,6 +273,8 @@ function overviewHtml(s) {
     ["Opened", esc(s.open_date ? fmt.date(s.open_date) : "")],
   ].filter(([, v]) => v);
   return `
+    ${cross}
+    ${eleven}
     <div class="stats">
       <div class="stat"><b>${fmt.num(s.pupils)}</b><span>pupils${s.capacity ? ` of ${fmt.num(s.capacity)} places` : ""}</span></div>
       <div class="stat"><b>${fill != null ? `${fill}%` : "–"}</b><span>full</span></div>

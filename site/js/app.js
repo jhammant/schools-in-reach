@@ -2,7 +2,7 @@ import { SITE, $, $$, esc, store } from "./util.js";
 import { state, setHome, on, loadLaIndex, ensureLas, lasAtPoints, ringPoints, laForDistrict, admissionsFor } from "./state.js";
 import * as mapApi from "./map.js";
 import { initList, renderList } from "./list.js";
-import { renderSchool } from "./school.js";
+import { renderSchool, preferredTab } from "./school.js";
 import { renderLeague } from "./league.js";
 import { renderArea } from "./area.js";
 import { renderShortlist } from "./shortlist.js";
@@ -46,6 +46,67 @@ function showView(view, { push = true } = {}) {
   }
 }
 
+/** The big Primary / Secondary switch: it drives the list filter, which drives the map. */
+function initPhaseSwitch() {
+  const select = $("#filter-phase");
+  const buttons = $$(".phase-switch [data-phase]");
+  const sync = () => buttons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.phase === select.value)));
+  buttons.forEach((b) => b.addEventListener("click", () => {
+    // Families look for one phase at a time, so one of the two is always chosen here.
+    // (The filter list below still offers all phases, nurseries and sixth forms.)
+    select.value = b.dataset.phase;
+    store.set("phase", select.value);
+    select.dispatchEvent(new Event("input", { bubbles: true }));
+    sync();
+  }));
+  select.addEventListener("input", sync);
+  const start = store.get("phase", "") || "secondary";
+  if (select.value !== start) {
+    select.value = start;
+    select.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  sync();
+}
+
+/**
+ * Phones only: filters start collapsed behind a button (they cost 150px of a 844px screen),
+ * and the map can be swapped between a strip and most of the screen.
+ */
+function initMobileChrome() {
+  const filters = $("#filters");
+  const toggle = $("#filters-toggle");
+  const phone = () => window.matchMedia("(max-width: 860px)").matches;
+  const countActive = () => {
+    const ids = ["#filter-text", "#filter-phase", "#filter-sector", "#filter-gender", "#filter-faith", "#filter-reach"];
+    return ids.filter((id) => ($(id)?.value || "").trim() !== "").length;
+  };
+  const refreshCount = () => { $("#filters-count").textContent = countActive() || ""; };
+  const applyLayout = () => { filters.hidden = phone() && toggle.getAttribute("aria-expanded") !== "true"; };
+  toggle.addEventListener("click", () => {
+    const open = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!open));
+    applyLayout();
+  });
+  filters.addEventListener("input", refreshCount);
+  window.addEventListener("resize", applyLayout);
+  refreshCount();
+  applyLayout();
+
+  // Leaflet sizes itself once; phone chrome (address bar, rotation) keeps changing the box.
+  window.addEventListener("resize", () => mapApi.invalidateSize?.());
+  window.addEventListener("orientationchange", () => setTimeout(() => mapApi.invalidateSize?.(), 200));
+  setTimeout(() => mapApi.invalidateSize?.(), 300);
+
+  const mapToggle = $("#map-toggle");
+  mapToggle.addEventListener("click", () => {
+    const big = document.body.classList.toggle("map-full");
+    mapToggle.setAttribute("aria-pressed", String(big));
+    mapToggle.textContent = big ? "Smaller map" : "Bigger map";
+    if (big) window.scrollTo({ top: 0, behavior: "instant" });
+    setTimeout(() => mapApi.invalidateSize?.(), 60);
+  });
+}
+
 /** On phones the window scrolls, not the panel, so a new page has to be brought into view itself. */
 function scrollPanelIntoView() {
   const panel = $("#panel");
@@ -60,7 +121,7 @@ function selectSchool(urn, tab, { push = true } = {}) {
   listScroll = window.scrollY;
   showView("school", { push: false });
   scrollPanelIntoView();
-  const initialTab = tab || (admissionsFor(urn) ? "admissions" : "overview");
+  const initialTab = tab || preferredTab() || (admissionsFor(urn) ? "admissions" : "overview");
   setCatchmentsVisible(false);
   go(`school=${urn}${s?._la ? `&la=${s._la}` : ""}&tab=${initialTab}`, push);
   renderSchool(urn, { tab: initialTab, onBack: () => history.back() });
@@ -85,12 +146,13 @@ async function lookupPostcode(raw) {
 }
 
 async function applyHome(home, { pan = true } = {}) {
-  if (home.country && home.country !== "England") {
+  const UK = ["England", "Wales", "Scotland", "Northern Ireland"];
+  if (home.country && !UK.includes(home.country)) {
     if (pan) mapApi.panTo(home.lat, home.lon, 12);
     setHome(null);
     mapApi.setHome(null);
     store.set("home", null);
-    status(`<strong>${esc(home.label)}</strong> is in ${esc(home.country)}. Schools in Reach covers England for now.`);
+    status(`<strong>${esc(home.label)}</strong> is in ${esc(home.country)}. Schools in Reach covers England, Wales, Scotland and Northern Ireland.`);
     return;
   }
   setHome(home);
@@ -201,6 +263,8 @@ async function main() {
   planner = initPlanner({ selectSchool });
   $("#shortlist-count").textContent = state.shortlist.size || "";
   $$(".tabs [data-view]").forEach((b) => b.addEventListener("click", () => showView(b.dataset.view)));
+  initMobileChrome();
+  initPhaseSwitch();
 
   // Back and forward: rebuild the view the address bar now describes, without adding more history.
   window.addEventListener("popstate", async () => {
@@ -239,7 +303,13 @@ async function main() {
   });
   map.on("moveend", () => {
     loadForView();
-    if (!state.home && activeView === "schools") renderList(selectSchool);
+    if (activeView === "schools") renderList(selectSchool);
+  });
+
+  // "Back to <postcode>" in the list summary returns the map to the pin.
+  document.addEventListener("click", (e) => {
+    if (!e.target?.closest?.('[data-action="home-view"]') || !state.home) return;
+    mapApi.panTo(state.home.lat, state.home.lon, 14);
   });
 
   $("#search").addEventListener("submit", (e) => {

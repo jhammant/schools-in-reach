@@ -42,13 +42,26 @@ export function emit(event, payload) {
 }
 
 export async function loadLaIndex() {
-  const [index, geometry] = await Promise.all([load("england/las.json"), load("england/la_geometry.json")]);
-  state.las = index?.las || [];
+  const [index, geometry, ...nations] = await Promise.all([
+    load("england/las.json"),
+    load("england/la_geometry.json"),
+    // Each nation ships its own council index; a missing one just means it isn't built yet.
+    load("uk/wales_las.json"),
+    load("uk/scotland_las.json"),
+    load("uk/northern_ireland_las.json"),
+  ]);
+  state.las = [...(index?.las || [])];
+  nations.forEach((n) => (n?.las || []).forEach((la) => state.las.push({ ...la, nation: la.nation || la.region })));
   state.las.forEach((la) => state.laByCode.set(String(la.la_code), la));
   // School-derived district lists include schools a council runs outside its own borders, so prefer the ONS mapping.
   Object.entries(geometry?.las || {}).forEach(([code, g]) => (g.lad_codes || []).forEach((lad) => state.laByDistrict.set(lad, code)));
+  // Outside England a council's own ONS code is the district code.
+  state.las.forEach((la) => (la.lad_codes || []).forEach((lad) => { if (!state.laByDistrict.has(lad)) state.laByDistrict.set(lad, String(la.la_code)); }));
   return state.las;
 }
+
+/** "England", "Wales", "Scotland" or "Northern Ireland" for a council code. */
+export const nationOf = (code) => state.laByCode.get(String(code))?.nation || "England";
 
 /** Local authorities whose school bounding box overlaps a lat/lon box, nearest first. */
 export function lasInBounds(south, west, north, east, centre) {
@@ -71,14 +84,16 @@ let boundaries = null;
 /** Simplified council boundaries with a bounding box per feature, for point-in-council lookups. */
 async function loadBoundaries() {
   if (!boundaries) {
-    boundaries = load("england/la_boundaries_lite.geojson").then((fc) =>
+    boundaries = load("uk/la_boundaries_lite.geojson")
+      .then((fc) => fc || load("england/la_boundaries_lite.geojson"))
+      .then((fc) =>
       (fc?.features || []).map((f) => {
         let w = 180, s = 90, e = -180, n = -90;
         const walk = (c) => (typeof c[0] === "number" ? ((w = Math.min(w, c[0])), (e = Math.max(e, c[0])), (s = Math.min(s, c[1])), (n = Math.max(n, c[1]))) : c.forEach(walk));
         walk(f.geometry.coordinates);
         return { code: String(f.properties.la_code), geometry: f.geometry, bbox: [w, s, e, n] };
       }),
-    );
+      );
   }
   return boundaries;
 }
@@ -227,6 +242,16 @@ export const GROUP_META = {
 };
 
 /** Faith schools usually rank faith criteria before distance, so a distance-only chance can mislead. */
+/**
+ * State grammar schools: they admit on an entrance test (the 11+), per the DfE register.
+ * Independent schools also test, but they charge fees and run their own process, so they
+ * are left out here and described on their own pages instead.
+ */
+export const isSelectiveSchool = (s) =>
+  /selective/i.test(s?.admissions_policy || "") &&
+  !/non.selective/i.test(s?.admissions_policy || "") &&
+  !s?._class?.independent;
+
 export const isFaithSchool = (s) => Boolean(s?.religious_character) && !/does not apply|^none$|not applicable/i.test(s.religious_character);
 
 export function matchesPhase(s, wanted) {

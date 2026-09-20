@@ -205,8 +205,8 @@ svg.chart text { fill: var(--text-muted); font-size: 10px; }
 .leaflet-tooltip { background: var(--surface-1); color: var(--text-primary); border-color: var(--border); }
 
 @media (max-width: 860px) {
-  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: 45vh auto; }
-  .map { order: -1; height: 45vh; }
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; }
+  .map { order: -1; }
   .panel { border-right: 0; overflow: visible; }
   body { display: block; height: auto; }
   .toplinks { margin-left: 0; }
@@ -227,3 +227,68 @@ svg.chart text { fill: var(--text-muted); font-size: 10px; }
 .plan-cta-main { display: block; font-weight: 700; color: var(--accent); }
 .plan-cta-main::before { content: "→ "; }
 .plan-cta-note { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ---- phones: give the screen to the schools, not the chrome ---- */
+.filters-toggle { display: none; }
+.map-toggle {
+  position: absolute; z-index: 500; left: 10px; bottom: 10px; display: none;
+  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface-1); color: var(--text-primary); font: inherit; font-size: 12px; font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: pointer;
+}
+.map { position: relative; }
+
+@media (max-width: 860px) {
+  .topbar { gap: 8px; padding: 6px 10px; min-height: 0; }
+  .brand { font-size: 15px; gap: 6px; }
+  .beta { display: none; }
+  .search { min-width: 0; flex: 1 1 100%; order: 3; }
+  .search button { padding: 7px 10px; }
+  .toplinks { font-size: 12px; margin-left: auto; }
+  .toplinks .start-btn { padding: 3px 10px; margin-right: 8px; }
+
+  .map { height: 34vh; }
+  .search-status:not(:empty) { padding: 5px 12px; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tabs { padding: 4px 8px 0; }
+  .tabs button { padding: 7px 8px; }
+  .view { padding: 10px 12px 40px; }
+
+  .plan-cta { padding: 8px 12px; margin-bottom: 8px; }
+  .plan-cta-note { display: none; }
+
+  .filters-toggle {
+    display: flex; align-items: center; gap: 6px; width: 100%; margin-bottom: 8px;
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--surface-1); color: var(--text-primary); font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .filters-toggle::after { content: "▾"; margin-left: auto; color: var(--text-secondary); }
+  .filters-toggle[aria-expanded="true"]::after { content: "▴"; }
+  .filters[hidden] { display: none; }
+  .filters { margin-bottom: 8px; }
+
+  .map-toggle { display: block; }
+  body.map-full .map { height: calc(100dvh - 140px); }
+  body.map-full .catch-control { max-height: 60vh; overflow-y: auto; }
+}
+
+/* The catchment panel collapses to a chip where the map is small. */
+.catch-title { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--text-primary); cursor: pointer; text-align: left; width: 100%; }
+.catch-control.collapsed { width: auto !important; }
+.catch-control.collapsed > *:not(.catch-title) { display: none; }
+.catch-control.collapsed .catch-title::after { content: " ▾"; color: var(--text-secondary); }
+
+/* Primary or secondary: the choice that changes everything, so it sits above the rest. */
+.phase-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 10px; }
+.phase-switch button {
+  display: flex; flex-direction: column; gap: 1px; align-items: center; justify-content: center;
+  min-height: 58px; padding: 8px 10px; cursor: pointer; font: inherit;
+  border: 2px solid var(--border); border-radius: 12px; background: var(--surface-1); color: var(--text-primary);
+}
+.phase-switch button b { font-size: 16px; }
+.phase-switch button span { font-size: 11px; color: var(--text-secondary); }
+.phase-switch button:hover { border-color: var(--accent); }
+.phase-switch button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: #fff; }
+.phase-switch button[aria-pressed="true"] span { color: rgba(255, 255, 255, .85); }
+@media (max-width: 860px) {
+  .phase-switch button { min-height: 50px; }
+}

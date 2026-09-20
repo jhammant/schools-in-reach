@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="google-adsense-account" content="ca-pub-5764635530350909">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to apply, step by step · Schools in Reach</title>
+<meta name="description" content="A step-by-step walk through applying for a school place: which council you apply to, adding schools from other boroughs, ranking your choices, the extra forms some schools need, and what happens after you submit.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='44' fill='none' stroke='%232a78d6' stroke-width='10'/><circle cx='50' cy='50' r='14' fill='%232a78d6'/></svg>">
+<link rel="stylesheet" href="css/app.css">
+<style>
+  body { display: block; }
+  .page { max-width: 780px; margin: 0 auto; padding: 24px 16px 60px; }
+  .page h1 { font-size: 26px; line-height: 1.2; margin: 8px 0; }
+  .page p, .page li { color: var(--text-secondary); }
+  .lead { color: var(--text-primary); font-size: 16px; }
+  .yours { background: var(--surface-2); border-radius: 14px; padding: 14px 16px; margin: 18px 0; }
+  .yours h2 { font-size: 16px; margin: 0 0 8px; }
+  .yours p { margin: 4px 0; }
+  .yours strong { color: var(--text-primary); }
+  .steps { list-style: none; padding: 0; margin: 22px 0 0; counter-reset: step; }
+  .steps > li {
+    position: relative; padding: 14px 16px 14px 56px; margin-bottom: 12px;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 14px;
+  }
+  .steps > li::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; left: 14px; top: 14px; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 14px;
+  }
+  .steps h2 { font-size: 17px; margin: 0 0 6px; color: var(--text-primary); }
+  .steps p, .steps li { font-size: 14px; }
+  .tip { border-left: 4px solid var(--accent); background: var(--surface-2); padding: 8px 12px; border-radius: 8px; margin: 10px 0 0; }
+  .tip p { margin: 0; color: var(--text-primary); }
+  .plan-list { margin: 8px 0 0; padding-left: 20px; }
+  .plan-list li { margin: 3px 0; }
+  .muted-note { font-size: 13px; }
+  .check { list-style: none; padding: 0; margin: 8px 0 0; }
+  .check li { position: relative; padding-left: 26px; margin: 6px 0; }
+  .check li::before { content: "☐"; position: absolute; left: 4px; color: var(--accent); font-size: 15px; }
+  @media print {
+    .topbar, .noprint { display: none; }
+    .steps > li { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./">
+    <svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg>
+    <span class="brand-name">Schools in Reach</span>
+  </a>
+  <nav class="toplinks"><a href="faq.html">Questions</a> · <a href="./">← Back to the map</a></nav>
+</header>
+<main class="page">
+  <h1>How to apply, step by step</h1>
+  <p class="lead">One form, through your own council, listing the schools you want in the order you want them. Here's the whole thing, including the bits people trip over.</p>
+
+  <div class="yours" id="yours" hidden>
+    <h2>Your application</h2>
+    <div id="yours-body"></div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <h2>Work out which council you apply to</h2>
+      <p>It's the council you live in, the one you pay council tax to. Not the council the school is in, and not the school itself. If you've just moved, it's where you'll be living when the council checks.</p>
+      <p id="council-line" class="muted-note"></p>
+    </li>
+
+    <li>
+      <h2>Register on your council's system</h2>
+      <p>Most of London uses <a href="https://www.eadmissions.org.uk" target="_blank" rel="noopener">eAdmissions</a>; elsewhere your council has its own portal, reachable from <a href="https://www.gov.uk/apply-for-secondary-school-place" target="_blank" rel="noopener">GOV.UK: apply for a secondary school place</a> or <a href="https://www.gov.uk/apply-for-primary-school-place" target="_blank" rel="noopener">for a primary place</a>. Keep the username and password somewhere you'll find them in March: you'll need them again to accept the offer and to check waiting lists.</p>
+    </li>
+
+    <li>
+      <h2>Enter your child's details</h2>
+      <p>Name, date of birth, your address, your relationship to the child. Save and continue through each page, then check it all once at the end. A wrong date of birth or a flat number missed off is the sort of thing that quietly costs a place, because everything is measured from your address.</p>
+    </li>
+
+    <li>
+      <h2>Add your schools, including ones outside your council</h2>
+      <p>Click <em>Add school</em>. You can pick from a list, from a map, or search by name.</p>
+      <div class="tip"><p>To add a school in another borough or county, change the <em>Local Authority</em> dropdown from your own council to the one that runs that school, then pick it from the list. This is the single most common sticking point, and it catches people whose nearest school is over a boundary.</p></div>
+      <p class="muted-note" style="margin-top:10px">You can list up to six schools in London, and three to six elsewhere. Use all of them.</p>
+    </li>
+
+    <li>
+      <h2>Put them in your true order of preference</h2>
+      <p>Schools are never told where you ranked them. Every school decides who it would admit using its own rules, and you're offered the highest-ranked one that would take you. So rank them the way you actually feel, and don't leave a favourite off because it looks like a long shot.</p>
+      <p>Do make sure at least one is a school you're likely to be offered. If none of your choices can offer a place, the council allocates the nearest school with space, and you don't get to choose it.</p>
+    </li>
+
+    <li>
+      <h2>Do the extra forms some schools need</h2>
+      <p>These are separate from the council form and usually have earlier deadlines:</p>
+      <ul>
+        <li><strong>Faith schools</strong> often need a supplementary form, signed by a minister, sometimes with a required period of attendance.</li>
+        <li><strong>Grammar schools</strong> need you to register for the entrance test, normally in the spring or summer a year before you apply.</li>
+        <li><strong>Banding schools</strong> need your child to sit a test, usually in the autumn of Year 6.</li>
+        <li><strong>Aptitude places</strong> in music, sport or languages need their own audition or assessment.</li>
+      </ul>
+      <p id="extra-forms" class="muted-note"></p>
+    </li>
+
+    <li>
+      <h2>Submit before the deadline</h2>
+      <p>Secondary applications close on <strong>31 October</strong>, Reception on <strong>15 January</strong>. Submitting a day late moves you behind everyone who was on time, at every school on your list.</p>
+      <p id="deadline-line" class="muted-note"></p>
+    </li>
+
+    <li>
+      <h2>Check the confirmation email, and resubmit after any change</h2>
+      <p>You should get a confirmation email each time you submit. No email means it didn't save.</p>
+      <div class="tip"><p>You can change your choices up to the closing date, but each change has to be <strong>submitted again</strong>. An edited but unsubmitted application is not an application.</p></div>
+    </li>
+
+    <li>
+      <h2>Offer day, and what to do that week</h2>
+      <p>Offers arrive on <strong>1 March</strong> for secondary and <strong>16 April</strong> for Reception, through the council you applied to. Whatever you're offered:</p>
+      <ul>
+        <li><strong>Accept it</strong> by the date on the letter, even if you're hoping for somewhere else. Accepting costs you nothing and refusing protects nothing.</li>
+        <li><strong>Stay on the waiting lists</strong> for the schools you ranked higher. You're usually added automatically, and lists move all spring and summer.</li>
+        <li><strong>Appeal if you have a real case</strong>, and note the deadline in the letter.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <p class="noprint" style="margin-top:28px">
+    <button type="button" class="btn secondary" onclick="window.print()">Print this page</button>
+    <a href="./" style="margin-left:10px">← Back to the map</a> ·
+    <a href="faq.html">Questions families ask</a>
+  </p>
+</main>
+
+<script type="module">
+  import { SITE, store, esc } from "./js/util.js";
+  import { load } from "./js/state.js";
+
+  /**
+   * The page works with nothing saved. When there is a saved pin or plan, it fills in
+   * the parts that are specific to this family: their council, their schools, and which
+   * of those sit in another council's area.
+   */
+  const home = store.get("home", null);
+  const plan = store.get("plan", []).map(Number).filter(Number.isFinite);
+  const planLa = store.get("planLa", {});
+  const phase = store.get("phase", "secondary");
+
+  const councilLine = document.getElementById("council-line");
+  const yours = document.getElementById("yours");
+  const yoursBody = document.getElementById("yours-body");
+
+  const deadline = phase === "primary" ? "15 January" : "31 October";
+  const offerDay = phase === "primary" ? "16 April" : "1 March";
+  document.getElementById("deadline-line").textContent =
+    `You're looking at ${phase === "primary" ? "Reception" : "secondary"} places, so your deadline is ${deadline} and offers come on ${offerDay}.`;
+
+  async function laIndex() {
+    const parts = await Promise.all([
+      load("england/las.json"), load("uk/wales_las.json"), load("uk/scotland_las.json"), load("uk/northern_ireland_las.json"),
+    ]);
+    const byCode = new Map();
+    parts.forEach((p) => (p?.las || []).forEach((la) => byCode.set(String(la.la_code), la)));
+    return byCode;
+  }
+
+  async function fill() {
+    if (!home?.lat) {
+      councilLine.textContent = "Search your postcode on the map and this page will name your council for you.";
+      return;
+    }
+    const byCode = await laIndex();
+    const homeCouncil = home.district || null;
+    councilLine.innerHTML = homeCouncil
+      ? `You searched <strong>${esc(home.label || home.postcode || "your postcode")}</strong>, which is in <strong>${esc(homeCouncil)}</strong>. That's the council you apply to.`
+      : "";
+
+    if (!plan.length) {
+      yoursBody.innerHTML = `<p>You haven't ranked any schools yet. Open <strong>My plan</strong> on the map to put your choices in order, and they'll appear here ready to copy onto the form.</p>`;
+      yours.hidden = false;
+      return;
+    }
+
+    // Names live in the per-council school files, so load only the councils this plan uses.
+    const codes = [...new Set(plan.map((urn) => planLa[urn]).filter(Boolean))];
+    const files = await Promise.all(codes.map((c) => load(`la/${c}/schools.json`).then((d) => [c, d])));
+    const byUrn = new Map();
+    files.forEach(([code, d]) => ((d?.schools) || []).forEach((s) => byUrn.set(Number(s.urn), { ...s, _la: code })));
+
+    const rows = plan.map((urn, i) => {
+      const s = byUrn.get(urn);
+      const council = s ? (byCode.get(String(s._la))?.name || "") : "";
+      const elsewhere = council && homeCouncil && council !== homeCouncil;
+      return `<li><strong>${esc(s?.name || `School ${urn}`)}</strong>${council ? ` — ${esc(council)}` : ""}${elsewhere ? ` <span class="muted">(change the Local Authority dropdown to ${esc(council)} when you add it)</span>` : ""}</li>`;
+    }).join("");
+
+    const outside = plan.filter((urn) => {
+      const s = byUrn.get(urn);
+      const council = s ? (byCode.get(String(s._la))?.name || "") : "";
+      return council && homeCouncil && council !== homeCouncil;
+    }).length;
+
+    yoursBody.innerHTML = `
+      <p>You apply through <strong>${esc(homeCouncil || "your council")}</strong> by <strong>${esc(deadline)}</strong>, listing these in this order:</p>
+      <ol class="plan-list">${rows}</ol>
+      ${outside ? `<p class="muted-note">${outside === 1 ? "One of these is" : `${outside} of these are`} run by another council. That's fine: they go on the same form, you just switch the Local Authority dropdown when adding them.</p>` : ""}
+      <ul class="check">
+        <li>Address and date of birth checked</li>
+        <li>Any supplementary forms sent to the schools themselves</li>
+        <li>Test registrations done, if any of these test</li>
+        <li>Application submitted, and the confirmation email arrived</li>
+      </ul>`;
+    yours.hidden = false;
+  }
+
+  fill().catch(() => {
+    councilLine.textContent = "Search your postcode on the map and this page will name your council for you.";
+  });
+</script>
+</body>
+</html>

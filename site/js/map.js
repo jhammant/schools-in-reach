@@ -142,10 +142,8 @@ export function heatShapes(school, heat, { pane = "rings", fillOpacity = 0.55 } 
 
 export function showRings(school, rings, { home, heat = [] } = {}) {
   ringLayer.clearLayers();
-  const bounds = L.latLngBounds([[school.lat, school.lon]]);
   if (heat.length) {
     heatShapes(school, heat).addTo(ringLayer);
-    bounds.extend(L.latLng(school.lat, school.lon).toBounds(2 * Math.max(...heat.map((b) => b.miles)) * MILE));
   }
   if (!heat.length && rings.length) {
     const minR = Math.min(...rings.map((r) => r.miles));
@@ -159,17 +157,22 @@ export function showRings(school, rings, { home, heat = [] } = {}) {
       interactive: false,
       icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="ring-label" style="border-color:${r.color}">${esc(r.label)}</span>` }),
     }).addTo(ringLayer);
-    bounds.extend(L.latLng(school.lat, school.lon).toBounds(2 * r.miles * MILE));
   });
   if (home) {
     L.polyline([[home.lat, home.lon], [school.lat, school.lon]], { pane: "rings", color: cssVar("--text-primary"), weight: 2, dashArray: "6 5", interactive: false }).addTo(ringLayer);
-    bounds.extend([home.lat, home.lon]);
   }
-  map.fitBounds(bounds.pad(0.08), { maxZoom: 16 });
+  // Never change the family's zoom. Only slide the map across if the school they opened
+  // would otherwise be off-screen.
+  if (!map.getBounds().pad(-0.12).contains([school.lat, school.lon])) map.panTo([school.lat, school.lon]);
 }
 
 export function clearRings() {
   ringLayer.clearLayers();
+}
+
+/** After the map's box changes size (the phone "Bigger map" toggle), Leaflet needs telling. */
+export function invalidateSize() {
+  map?.invalidateSize();
 }
 
 export function panTo(lat, lon, zoom = 15) {
