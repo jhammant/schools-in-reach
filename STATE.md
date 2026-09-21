@@ -42,6 +42,23 @@ schools; secondary entry 2026 for 12 of 14, bands included.
   band; partly selective schools aren't modelled as two queues.
 - Heat map and "space for everyone" ignore a school's single-sex status.
 
+**Crawlable pages, estate-agent widget and billing (21 Sep 2026)**
+- SEO: `pipeline/seo/build_pages.py` writes static pages for 30,227 schools and 218
+  councils plus a sitemap index (23,385 indexable; Scotland/Wales/NI noindexed until
+  they have a second data source). `deploy.sh` regenerates them and refuses to ship
+  without them. Search Console domain property verified by a Route53 apex TXT record
+  (don't delete it); sitemap submitted.
+- Widget: `widget.js` + `/embed/` (full tier for agents in `site/agents.json` whose
+  site matches the referrer, 3-school preview otherwise). `/agents/` sells it at £19
+  per branch per month after a 30-day trial via Stripe Payment Link
+  https://buy.stripe.com/6oU28t3tVdSH4QJgS6bQY00 (Hammant Labs account). Customers
+  manage or cancel at https://billing.stripe.com/p/login/6oU28t3tVdSH4QJgS6bQY00.
+- Onboarding an agent is manual: when Stripe emails a new trial, add
+  `{id, name, domains, status: "trial"}` to `site/agents.json`, deploy, and email
+  them the snippet with their id.
+- Follow-up: first widget render makes ~88 small requests (~3 s); a compact
+  per-council widget bundle would cut that to a handful.
+
 ## Next steps
 1. **Scotland catchments.** A national dataset exists (Improvement Service, Spatial Hub:
    data.spatialhub.scot/dataset/school_catchments-is) — real legal boundaries, all councils,
