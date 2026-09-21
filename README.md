@@ -183,7 +183,7 @@ served with the existing no-cache policy; sitemap XML is cached for one hour.
 
 ## Estate-agent widget
 
-`/agents/` describes the £19 per branch/month widget and 30-day free trial.
+`/agents/` describes the £29 per branch/month widget, the 30-day free trial and the founding offer (code FOUNDING: £19 per branch for 12 months, first 20 agencies).
 Set `CONFIG.agents.checkoutUrl` in `site/js/config.js` to your HTTPS checkout URL
 when ready (`contactEmail` is reserved for operator contact). Until then, sign-up
 buttons show “Coming soon”; the page and installation instructions work without JS.

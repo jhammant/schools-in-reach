@@ -49,9 +49,9 @@ schools; secondary entry 2026 for 12 of 14, bands included.
   without them. Search Console domain property verified by a Route53 apex TXT record
   (don't delete it); sitemap submitted.
 - Widget: `widget.js` + `/embed/` (full tier for agents in `site/agents.json` whose
-  site matches the referrer, 3-school preview otherwise). `/agents/` sells it at £19
+  site matches the referrer, 3-school preview otherwise). `/agents/` sells it at £29 (founding code FOUNDING: £19 for 12 months, first 20)
   per branch per month after a 30-day trial via Stripe Payment Link
-  https://buy.stripe.com/6oU28t3tVdSH4QJgS6bQY00 (Hammant Labs account). Customers
+  https://buy.stripe.com/00w7sN8Of3e3dnfgS6bQY01 (Hammant Labs account). Customers
   manage or cancel at https://billing.stripe.com/p/login/6oU28t3tVdSH4QJgS6bQY00.
 - Onboarding an agent is manual: when Stripe emails a new trial, add
   `{id, name, domains, status: "trial"}` to `site/agents.json`, deploy, and email

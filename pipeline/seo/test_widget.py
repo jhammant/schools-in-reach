@@ -73,7 +73,7 @@ class WidgetTest(unittest.TestCase):
         product = next(s for s in page.schemas if s["@type"] == "Product")
         offer = product["offers"]
         self.assertEqual(offer["@type"], "Offer")
-        self.assertEqual(offer["price"], "19.00")
+        self.assertEqual(offer["price"], "29.00")
         self.assertEqual(offer["priceCurrency"], "GBP")
         self.assertEqual(offer["priceSpecification"]["unitText"], "branch per month")
         self.assertIn('href="#pricing"', path.read_text())
