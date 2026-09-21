@@ -11,9 +11,12 @@ server {
   location ~* \.geojson$ { default_type application/geo+json; add_header Cache-Control "public, max-age=3600"; }
   location /data/ { add_header Cache-Control "public, max-age=3600"; }
   location ~* \.(js|css)$ { add_header Cache-Control "public, max-age=300"; }
+  location ~* \.xml$ { add_header Cache-Control "public, max-age=3600"; }
   location = /health { default_type text/plain; }
   # HTML must never be cached by browsers, or people keep seeing yesterday's page after a deploy.
   location ~* \.html$ { add_header Cache-Control "no-cache, must-revalidate"; }
   location = / { add_header Cache-Control "no-cache, must-revalidate"; try_files /index.html =404; }
+  location /school/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
+  location /council/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
   location / { try_files $uri $uri/ =404; }
 }

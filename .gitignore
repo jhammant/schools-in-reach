@@ -24,3 +24,10 @@ node_modules/
 
 # Symlink to the scratchpad's puppeteer install, used by the Greenwich booklet reader
 pipeline/admissions_london/node_modules
+
+# Crawlable HTML and XML rebuilt from the local open-data bundles
+site/school/
+site/council/
+site/sitemaps/
+site/sitemap.xml
+site/.seo-build-*/

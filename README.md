@@ -1,12 +1,12 @@
 # Schools in Reach
 
-**Choosing a school in England means guessing.** Your council publishes how far places
+**Choosing a school means piecing together scattered information.** Your council publishes how far places
 reached last year in a PDF. The DfE publishes results in one spreadsheet, Ofsted in
 another, and none of it is joined to where you actually live. The sites that do join it
 up charge for it.
 
 [www.schoolsinreach.com](https://www.schoolsinreach.com) is free, needs no sign-up, and
-covers every school in England. Type a postcode and you get the schools near you, how
+covers schools across England, Scotland, Wales and Northern Ireland. Type a postcode and you get the schools near you, how
 far places reached at each in past years, and an honest estimate of your chances.
 
 This repository is the whole thing: the data pipelines that build it, and the static
@@ -84,7 +84,7 @@ flowchart LR
   APP --> USER([Postcode in, chances out])
 ```
 
-No build step and no framework: the site is plain ES modules, Leaflet 1.9 and
+The map needs no build step or framework: it uses plain ES modules, Leaflet 1.9 and
 protomaps-leaflet. Data loads per local authority as you pan or search, so a visitor
 downloads a couple of megabytes, not the whole country.
 
@@ -97,7 +97,10 @@ python3 pipeline/ofsted/build.py           # inspections, report cards, Parent V
 python3 pipeline/geo/build_national.py     # LSOA deprivation, stations, LA boundaries
 python3 pipeline/admissions_london/build.py  # London admissions cut-offs
 
-# 2. Serve the site
+# 2. Build crawlable school and council pages (local data only; stdlib Python 3.9+)
+python3 pipeline/seo/build_pages.py
+
+# 3. Serve the site
 cd site && python3 -m http.server 8795
 # open http://127.0.0.1:8795/
 ```
@@ -143,3 +146,37 @@ own licences, and the site credits them on every page that uses them.
 Pupil-level data is restricted, so this cannot show where a school's current pupils live
 or which primaries feed which secondaries. That needs the National Pupil Database, which
 requires a DfE application. Published cut-off distances are the honest substitute.
+
+## Crawlable school and council pages
+
+`pipeline/seo/build_pages.py` creates static HTML in `site/school/` and
+`site/council/`, plus a sitemap index and child sitemaps. These generated paths are
+ignored by Git; `site/robots.txt` and the generated shared `site/css/seo.css` remain
+tracked. Edit the stylesheet's `CSS` constant in the generator, then rebuild.
+The map's hash routes and JavaScript are unchanged; school-page calls to action
+open the existing admissions tab.
+
+A school is indexable only with at least two of admissions figures, substantive
+Ofsted judgements (including report-card areas), headline results, or census pupil
+numbers. Other open schools still have pages and council links but use
+`noindex,follow` and are excluded from sitemaps. Current Scottish, Welsh and
+Northern Irish bundles do not meet that two-dataset threshold. Pages distinguish
+catchments and national admissions systems, and retain individual result years.
+
+The generator reads `site/data/` without changing it. It validates and renders into
+a temporary tree before replacing its generated directories, removing obsolete
+URLs on rebuild. Dates in sitemaps come from dataset timestamps, not the build
+clock. Run it again whenever data changes. Optional missing datasets are allowed;
+a missing council register or malformed input fails the build. A school page above
+26,000 bytes also fails rather than silently growing beyond the size budget.
+
+```bash
+python3 -m unittest pipeline/seo/test_build_pages.py -v
+python3 pipeline/seo/build_pages.py
+```
+
+The fixture tests create their own temporary data. For another local data tree,
+use `--site-dir /path/to/site` (requires `index.html` and `data/england/las.json`).
+`deploy/railway/deploy.sh` builds these pages before staging with rsync and refuses
+to deploy fewer than 10,000 school pages or an absent/incomplete sitemap. HTML is
+served with the existing no-cache policy; sitemap XML is cached for one hour.
