@@ -1,6 +1,9 @@
 server {
   listen ${PORT};
   root /usr/share/nginx/html;
+  # Behind Railway's proxy nginx only sees http on $PORT; an absolute directory redirect
+  # (/school/x -> /school/x/) would send visitors to http://host:8080/. Keep it relative.
+  absolute_redirect off;
 
   # The per-council JSON and GeoJSON files compress very well.
   gzip on;
