@@ -174,7 +174,7 @@ class BuildTest(unittest.TestCase):
             self.assertTrue(all(n.text == "2026-09-17" for n in root.findall("{*}url/{*}lastmod")))
             if "schools-" in url:
                 self.assertEqual(len(root), 1)
-        self.assertEqual(len(urls), 8)
+        self.assertEqual(len(urls), 9)
         self.assertTrue(any("100001-" in u for u in urls))
         self.assertFalse(any("100002-" in u or "100005-" in u for u in urls))
 

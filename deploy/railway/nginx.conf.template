@@ -16,6 +16,8 @@ server {
   location ~* \.(js|css)$ { add_header Cache-Control "public, max-age=300"; }
   location ~* \.xml$ { add_header Cache-Control "public, max-age=3600"; }
   location = /health { default_type text/plain; }
+  # /embed/ intentionally permits framing by estate-agent sites: no X-Frame-Options
+  # or CSP frame-ancestors restriction. widget.js uses the 300-second JS cache above.
   # HTML must never be cached by browsers, or people keep seeing yesterday's page after a deploy.
   location ~* \.html$ { add_header Cache-Control "no-cache, must-revalidate"; }
   location = / { add_header Cache-Control "no-cache, must-revalidate"; try_files /index.html =404; }

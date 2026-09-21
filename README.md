@@ -180,3 +180,43 @@ use `--site-dir /path/to/site` (requires `index.html` and `data/england/las.json
 `deploy/railway/deploy.sh` builds these pages before staging with rsync and refuses
 to deploy fewer than 10,000 school pages or an absent/incomplete sitemap. HTML is
 served with the existing no-cache policy; sitemap XML is cached for one hour.
+
+## Estate-agent widget
+
+`/agents/` describes the £19 per branch/month widget and 30-day free trial.
+Set `CONFIG.agents.checkoutUrl` in `site/js/config.js` to your HTTPS checkout URL
+when ready (`contactEmail` is reserved for operator contact). Until then, sign-up
+buttons show “Coming soon”; the page and installation instructions work without JS.
+After checkout, email the branch its ID and snippet within one working day.
+
+To enable a branch, add an entry to `site/agents.json`: a unique lowercase slug
+`id`, a `name`, bare hostnames in `domains` (no scheme, port or path), and `status`
+`trial` or `active`. Then deploy through the normal pipeline. Subdomains of listed
+hosts are allowed. Use `cancelled` to return a branch to preview. The `demo` entry
+allows the live sales-page demo and localhost testing.
+
+```html
+<div data-schools-in-reach data-postcode="E8 1DY" data-agent="your-agent-id"></div>
+<script src="https://www.schoolsinreach.com/widget.js" async></script>
+```
+
+Use each property's postcode; optionally set `data-phase="primary"` or
+`data-phase="secondary"` (default: both). Active/trial IDs on approved referring
+hosts get up to five schools per phase, with admissions lines where available.
+Other visitors get three schools total, Ofsted information and a trial link.
+Absent referrers fail to preview. This is a client-side presentation gate over
+public data, not authentication or a tamper-proof paywall. School links and the
+Schools in Reach footer credit must remain visible. The iframe requires JavaScript.
+
+The SEO generator also creates ignored `site/embed/slugs.json`, matching the
+actual school URLs without changing `site/data/`. Run it before serving/deploying.
+The widget loads council bundles and shared admissions logic without map libraries.
+It skips analytics: the main initializer captures pageviews, which would include
+the postcode URL. Cancellation is handled by replying to the welcome email; the
+operator updates the billing subscription and registry status.
+
+```bash
+python3 -m unittest discover -s pipeline/seo -p 'test_*.py'
+node site/js/embed-core.test.mjs
+node site/js/embed.integration.test.mjs
+```

@@ -380,7 +380,7 @@ def document(title, description, path, body, crumbs, metadata, structured=None, 
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 {head}
 <link rel="stylesheet" href="/css/seo.css"><script type="application/ld+json">{ld}</script>
-</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a></nav></header>
+</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="/agents/">For estate agents</a></nav></header>
 <main><nav class="breadcrumb" aria-label="Breadcrumb">{trail}</nav>{body}</main></body></html>
 '''
 
@@ -395,7 +395,7 @@ def sources_footer(documents, updated):
     for title, url, licence in sources:
         link = f'<a href="{esc(url)}">{esc(title)}</a>' if safe_url(url) else esc(title)
         items.append(f"<li>{link}" + (f" — {esc(licence)}" if licence else " — see publisher for licence terms") + "</li>")
-    return '<footer><h2>Sources and data dates</h2>' + (f"<p>Data updated: {esc(updated)}. Individual inspection, results and census dates are shown above where published.</p>" if updated else "") + "<ul>" + "".join(items) + '</ul><p>Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a> where indicated above.</p></footer>'
+    return '<footer><h2>Sources and data dates</h2>' + (f"<p>Data updated: {esc(updated)}. Individual inspection, results and census dates are shown above where published.</p>" if updated else "") + "<ul>" + "".join(items) + '</ul><p>Contains public sector information licensed under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a> where indicated above.</p><p><a href="/agents/">For estate agents</a></p></footer>'
 
 
 def school_path(s):
@@ -573,6 +573,7 @@ def build(site, sitemap_limit=SITEMAP_LIMIT):
     nations = {nation: Counter() for nation in NATIONS}
     school_urls, page_urls, dates = [], [], []
     seen = set()
+    slugs = {}
     # Rendering into a temporary sibling tree keeps a failed run from deleting good output.
     with tempfile.TemporaryDirectory(prefix=".seo-build-", dir=site) as staging:
         stage = Path(staging)
@@ -595,6 +596,7 @@ def build(site, sitemap_limit=SITEMAP_LIMIT):
                     raise ValueError(f"School identifier appears in multiple councils: {urn}")
                 seen.add(urn)
                 path = school_path(s)
+                slugs.setdefault(council["la_code"], {})[urn] = slug(s["name"])
                 detail = read_json(directory / "schools" / f"{urn}.json")
                 characteristic = chars.get("schools", {}).get(urn, {})
                 census = detail.get("census") or {}
@@ -636,7 +638,7 @@ def build(site, sitemap_limit=SITEMAP_LIMIT):
                 body += f'<h2>{nation}</h2><ul class="nearby">' + "".join(f'<li><a href="{esc(c["path"])}">{esc(c["name"])}</a></li>' for c in members) + "</ul>"
         body += sources_footer(indices, latest)
         (stage / "council/index.html").write_text(document("UK schools by council | Schools in Reach", "Browse UK schools by council: school admissions, catchments, available Ofsted reports, results and pupil numbers in England, Scotland, Wales and Northern Ireland.", "/council/", body, [("Home", "/"), ("Councils", "/council/")], metadata), encoding="utf-8")
-        page_urls += [(p, latest) for p in ("/", "/about.html", "/apply.html", "/faq.html", "/council/")]
+        page_urls += [(p, latest) for p in ("/", "/about.html", "/apply.html", "/faq.html", "/council/", "/agents/")]
         write_sitemap(stage / "sitemaps/pages.xml", page_urls)
         maps = [("/sitemaps/pages.xml", latest)]
         for start in range(0, len(school_urls), sitemap_limit):
@@ -645,6 +647,12 @@ def build(site, sitemap_limit=SITEMAP_LIMIT):
             write_sitemap(stage / path.lstrip("/"), chunk)
             maps.append((path, max(d for _, d in chunk)))
         write_sitemap(stage / "sitemap.xml", maps, index=True)
+        # One small map per council: the widget only fetches the councils near a listing.
+        (stage / "slugs").mkdir()
+        for la_code, la_slugs in slugs.items():
+            (stage / "slugs" / f"{la_code}.json").write_text(json.dumps(la_slugs, ensure_ascii=True, separators=(",", ":")), encoding="utf-8")
+        if (site / "embed").is_symlink() or (site / "embed/slugs").is_symlink():
+            raise ValueError("Refusing to replace symlink: embed/slugs")
         totals["bytes"] = sum(p.stat().st_size for p in stage.rglob("*") if p.is_file()) + len(CSS.encode("utf-8"))
         for folder in ("school", "council", "sitemaps"):
             existing = site / folder
@@ -654,6 +662,11 @@ def build(site, sitemap_limit=SITEMAP_LIMIT):
                 shutil.rmtree(existing)
             shutil.move(str(stage / folder), existing)
         (stage / "sitemap.xml").replace(site / "sitemap.xml")
+        (site / "embed").mkdir(exist_ok=True)
+        if (site / "embed/slugs").exists():
+            shutil.rmtree(site / "embed/slugs")
+        shutil.move(str(stage / "slugs"), site / "embed/slugs")
+        (site / "embed/slugs.json").unlink(missing_ok=True)
         (site / "css").mkdir(exist_ok=True)
         (site / "css/seo.css").write_text(CSS, encoding="utf-8")
     totals.update({"councils": len(councils), "sitemap_files": len(maps) + 1, "pages": totals["schools"] + len(councils) + 1})

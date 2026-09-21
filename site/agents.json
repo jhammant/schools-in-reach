@@ -1,0 +1,8 @@
+[
+  {
+    "id": "demo",
+    "name": "Demo Estates",
+    "domains": ["www.schoolsinreach.com", "schoolsinreach.com", "localhost", "127.0.0.1"],
+    "status": "active"
+  }
+]
