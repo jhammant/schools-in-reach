@@ -28,3 +28,23 @@ copy.addEventListener("click", async () => {
     status.textContent = "Code copied";
   } catch { status.textContent = "Select the code above and copy it manually."; }
 });
+
+// A postcode passed to /agents/?postcode=… (see page-analytics.js) re-points the live demo.
+function personaliseDemo(raw) {
+  const compact = String(raw || "").toUpperCase().replace(/\s+/g, "");
+  if (!/^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$/.test(compact)) return;
+  const postcode = `${compact.slice(0, -3)} ${compact.slice(-3)}`;
+  const demo = document.querySelector(".demo[data-schools-in-reach]");
+  if (!demo) return;
+  demo.dataset.postcode = postcode;
+  const frame = demo.querySelector("iframe");
+  if (frame) {
+    const src = new URL(frame.src);
+    src.searchParams.set("postcode", postcode);
+    frame.src = src.href;
+  }
+  document.querySelector("#demo-heading").textContent = `Here it is for ${postcode}`;
+  document.querySelector("#demo-postcode").textContent = postcode;
+  track("agents_demo_personalised");
+}
+personaliseDemo(window.sirDemoPostcode);

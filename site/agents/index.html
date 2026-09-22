@@ -24,9 +24,9 @@
     <a class="cta trial-cta" href="#pricing">Start 30-day free trial</a>
     <p class="note">£29 per branch per month after your trial. <strong>Founding agents:</strong> the first 20 agencies pay £19 per branch for 12 months with code <strong>FOUNDING</strong> at checkout. No VAT is charged. Cancel any time.</p>
   </section>
-  <section aria-labelledby="demo-heading">
+  <section id="demo" aria-labelledby="demo-heading">
     <h2 id="demo-heading">Try it on a London property</h2>
-    <p>This is the real widget for E8 1DY. School names open the full school pages.</p>
+    <p>This is the real widget for <span id="demo-postcode">E8 1DY</span>. School names open the full school pages.</p>
     <div class="demo" data-schools-in-reach data-postcode="E8 1DY" data-agent="demo"></div>
     <noscript><p><a href="/embed/?postcode=E8%201DY&amp;agent=demo">Open the demo</a> (school lookup needs JavaScript).</p></noscript>
     <p class="note">The full widget shows the nearest five primary and five secondary schools, or just the phase you choose. Admissions lines appear where published figures support them.</p>
@@ -46,7 +46,7 @@
     <pre><code id="embed-code">&lt;div data-schools-in-reach data-postcode="E8 1DY" data-agent="your-agent-id"&gt;&lt;/div&gt;
 &lt;script src="https://www.schoolsinreach.com/widget.js" async&gt;&lt;/script&gt;</code></pre>
     <button id="copy-code" type="button" hidden>Copy code</button><span id="copy-status" role="status"></span>
-    <p><strong>WordPress / Property Hive:</strong> paste into a Custom HTML block or the property template, using the property's postcode. For other platforms, use an HTML field that permits scripts, or ask your website provider to add it to the listing template.</p>
+    <p><strong>WordPress / Property Hive:</strong> <a href="/downloads/schools-in-reach-wordpress.zip">Download the WordPress plugin</a>. It auto-adds the widget to every Property Hive property page and offers a <code>[schools_in_reach]</code> shortcode for other WordPress themes; enter your agent ID under Settings → Schools in Reach. For other platforms, use an HTML field that permits scripts, or ask your website provider to add it to the listing template.</p>
     <p>Optionally add <code>data-phase="primary"</code> or <code>data-phase="secondary"</code> to the div. The default shows both. The widget fits your page width and adjusts its height automatically.</p>
   </section>
   <section aria-labelledby="faq-heading">
