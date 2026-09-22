@@ -78,6 +78,16 @@ class WidgetTest(unittest.TestCase):
         self.assertEqual(offer["priceSpecification"]["unitText"], "branch per month")
         self.assertIn('href="#pricing"', path.read_text())
 
+    def test_agents_footer_and_static_analytics_excludes_embed(self):
+        html = (SITE / "agents/index.html").read_text()
+        self.assertIn(seo.LABS_FOOTER, html)
+        self.assertIn('<script type="module" src="/js/page-analytics.js"></script>', html)
+        self.assertNotIn("nofollow", html)
+        for path in ("embed/index.html", "js/embed.js"):
+            text = (SITE / path).read_text()
+            self.assertNotIn("analytics.js", text)
+            self.assertNotIn("initAnalytics", text)
+
     def test_loader_size_and_safe_dom_construction(self):
         script = (SITE / "widget.js").read_bytes()
         self.assertLess(len(script), 3000)

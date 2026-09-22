@@ -1,4 +1,5 @@
 import { CONFIG } from "./config.js";
+import { track } from "./analytics.js";
 
 let checkout = null;
 try {
@@ -6,7 +7,10 @@ try {
   if (url.protocol === "https:") checkout = url.href;
 } catch { /* Checkout has not been configured yet. */ }
 for (const link of document.querySelectorAll(".trial-cta")) {
-  if (checkout) link.href = checkout;
+  if (checkout) {
+    link.href = checkout;
+    link.addEventListener("click", () => track("agents_cta_click"));
+  }
   else {
     link.textContent = "Coming soon";
     link.setAttribute("aria-disabled", "true");
@@ -17,6 +21,7 @@ if (checkout) document.querySelector("#checkout-status").textContent = "Start yo
 const copy = document.querySelector("#copy-code");
 copy.hidden = false;
 copy.addEventListener("click", async () => {
+  track("agents_copy_snippet");
   const status = document.querySelector("#copy-status");
   try {
     await navigator.clipboard.writeText(document.querySelector("#embed-code").textContent);

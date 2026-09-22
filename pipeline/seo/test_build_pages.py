@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 from pipeline.seo import build_pages as seo
@@ -108,6 +109,14 @@ class BuildTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.site = Path(self.temp.name)
+        self.crosslinks_path = self.site / "crosslinks.json"
+        patcher = patch.object(seo, "CROSSLINKS_PATH", self.crosslinks_path)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.write("crosslinks.json", {"termminder": {
+            "base": "https://www.termminder.com",
+            "schools": {"100001": "/uk/schools/test-school/", "100005": "/uk/schools/metadata-only/"},
+            "councils": {"999": "/uk/term-dates/test-vale/"}}})
         (self.site / "index.html").write_text('<meta name="google-adsense-account" content="ca-pub-test">')
         self.source = {"title": "Register & census", "url": "https://example.org/data?a=1&b=2", "licence": "Open Government Licence v3.0"}
         self.base = {"generated": "2026-09-17", "sources": [self.source]}
@@ -129,6 +138,61 @@ class BuildTest(unittest.TestCase):
 
     def path(self, urn):
         return next((self.site / "school").glob(f"{urn}-*/index.html"))
+
+    def test_contextual_school_links_and_placement(self):
+        text = self.path(100001).read_text()
+        page = Page(self.path(100001))
+        self.assertIn("https://www.termminder.com/uk/schools/test-school/", page.links)
+        self.assertLess(text.index("<h2>Ofsted"), text.index('id="term-dates"'))
+        self.assertLess(text.index('id="term-dates"'), text.index("<h2>Nearby schools"))
+        self.assertNotIn('id="term-dates"', self.path(100002).read_text())
+        self.assertNotIn("nofollow", text)
+        # An editorial link must not make metadata-only records indexable.
+        self.assertIn("https://www.termminder.com/uk/schools/metadata-only/", Page(self.path(100005)).links)
+        self.assertEqual(Page(self.path(100005)).meta["robots"], "noindex,follow")
+
+    def test_contextual_council_link_after_intro(self):
+        path = self.site / "council/test-and-vale/index.html"
+        self.assertIn("https://www.termminder.com/uk/term-dates/test-vale/", Page(path).links)
+        text = path.read_text()
+        self.assertIn("School term dates in Test &amp; Vale:", text)
+        self.assertLess(text.index('class="lead"'), text.index("School term dates in"))
+        self.assertLess(text.index("School term dates in"), text.index("Secondary applications"))
+
+    def test_generated_footer_and_analytics(self):
+        paths = [*self.site.glob("school/*/index.html"), *self.site.glob("council/*/index.html"),
+                 self.site / "council/index.html"]
+        for path in paths:
+            with self.subTest(path=path):
+                text = path.read_text()
+                self.assertIn(seo.LABS_FOOTER, text)
+                self.assertIn('<script type="module" src="/js/page-analytics.js"></script>', text)
+                for url in ("https://www.termminder.com/", "https://www.binminder.co.uk/", "https://hammantlabs.com/"):
+                    self.assertIn(url, Page(path).links)
+                self.assertNotIn("nofollow", text)
+
+    def test_missing_crosslinks_degrades_gracefully(self):
+        self.crosslinks_path.unlink()
+        summary = seo.build(self.site)
+        self.assertEqual(summary["pages"], self.summary["pages"])
+        self.assertNotIn('id="term-dates"', self.path(100001).read_text())
+        self.assertNotIn("School term dates in", (self.site / "council/test-and-vale/index.html").read_text())
+        self.assertIn(seo.LABS_FOOTER, self.path(100001).read_text())
+
+    def test_invalid_crosslinks_degrades_gracefully(self):
+        for content in ("invalid json", "null", "[]", '{"termminder":[]}',
+                        '{"termminder":{"base":"javascript:alert(1)","schools":{},"councils":{}}}',
+                        '{"termminder":{"base":"https://www.termminder.com","schools":{"100001":"//evil.example/"},"councils":{}}}'):
+            with self.subTest(content=content):
+                self.crosslinks_path.write_text(content)
+                summary = seo.build(self.site)
+                self.assertEqual(summary["pages"], self.summary["pages"])
+                self.assertNotIn('id="term-dates"', self.path(100001).read_text())
+
+    def test_crosslinks_loaded_once_per_build(self):
+        with patch.object(seo, "load_crosslinks", wraps=seo.load_crosslinks) as load:
+            seo.build(self.site)
+        load.assert_called_once_with(self.crosslinks_path)
 
     def test_quality_gate_and_closed_exclusion(self):
         self.assertEqual((self.summary["schools"], self.summary["indexable"], self.summary["noindexed"], self.summary["closed_skipped"]), (4, 2, 2, 1))

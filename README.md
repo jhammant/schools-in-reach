@@ -170,6 +170,15 @@ clock. Run it again whenever data changes. Optional missing datasets are allowed
 a missing council register or malformed input fails the build. A school page above
 26,000 bytes also fails rather than silently growing beyond the size budget.
 
+Generated school and council pages optionally link to TermMinder using
+`pipeline/seo/crosslinks.json`. The map is read once per build; missing or invalid
+exports omit contextual links without affecting the school quality gate.
+Generated pages and `/agents/` share a small Hammant Labs footer and initialise
+cookieless pageview analytics through `site/js/page-analytics.js`. The agents page
+also records trial CTA and copy-button clicks without snippet or postcode data.
+The map homepage keeps its existing layout; embeds never initialise analytics
+because their URLs carry postcodes.
+
 ```bash
 python3 -m unittest pipeline/seo/test_build_pages.py -v
 python3 pipeline/seo/build_pages.py
