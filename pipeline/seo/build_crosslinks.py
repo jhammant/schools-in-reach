@@ -1,6 +1,6 @@
 """Build cross-site link maps between Schools in Reach and TermMinder.
 
-Input: a TermMinder export (`{"jurisdictions": [...], "schools": [[official_reference, id, jurisdiction_id], ...]}`)
+Input: a TermMinder export (`{"jurisdictions": [{..., "is_live"}], "schools": [[official_reference, id, jurisdiction_id], ...]}`)
 from its production database, plus this repo's generated slug maps (site/embed/slugs/*.json).
 Output:
   pipeline/seo/crosslinks.json                 -> used by build_pages.py (links to TermMinder)
@@ -35,9 +35,11 @@ def load_las():
 
 def main(export_path, out_dir):
     tm = json.loads(Path(export_path).read_text())
-    juris = [j for j in tm["jurisdictions"] if j.get("level") == "authority"]
+    # TermMinder only serves pages for live jurisdictions; linking any other would 404.
+    live = [j for j in tm["jurisdictions"] if j.get("is_live", True)]
+    juris = [j for j in live if j.get("level") == "authority"]
     # Northern Ireland has one Education Authority calendar, so every NI council links to it.
-    ni = next((j for j in tm["jurisdictions"] if j["id"] == "uk-nir"), None)
+    ni = next((j for j in live if j["id"] == "uk-nir"), None)
     by_code = {j["official_code"]: j for j in juris if j.get("official_code")}
     by_name = {norm(j["name"]): j for j in juris}
     to_tm_councils, to_sir_councils, unmatched = {}, {}, []
