@@ -70,6 +70,26 @@ schools; secondary entry 2026 for 12 of 14, bands included.
 3. **London batch 4** (8 boroughs), same shape as batches 1–3.
 4. Watch for other councils moving to PageSuite; `b3_greenwich_booklet.py` generalises.
 
+## WordPress plugin and cross-link fix (22 Sep 2026)
+
+- `integrations/wordpress/schools-in-reach/` is a free WordPress plugin (GPLv2): auto-inserts
+  the widget on Property Hive property pages (sales/lettings only, never commercial or non-GB),
+  plus a `[schools_in_reach]` shortcode for any theme. `build.sh` lints, runs
+  `tests/run.php` (69 assertions) and zips to `site/downloads/schools-in-reach-wordpress.zip`,
+  linked from `/agents/`. Verified end to end in WordPress Playground with Property Hive:
+  `npx @wp-playground/cli server --mount=<plugin dir>:/wordpress/wp-content/plugins/schools-in-reach --blueprint=...`
+  (blueprint installs propertyhive from wordpress.org and creates test properties).
+  Playground auto-login redirects `/` to `/`; pass the cookie
+  `playground_auto_login_already_happened=1` to browse logged out.
+- `/agents/?postcode=SE13+7JA` re-points the live demo (used by follow-up emails).
+  `page-analytics.js` hands the postcode to `agents.js` and strips it from the URL before
+  PostHog loads, so postcodes never reach analytics; the click shows up as
+  `agents_demo_personalised`.
+- **Cross-links only point at live TermMinder jurisdictions.** TermMinder serves council pages
+  for live rows only, so 122 of 218 council links 404'd from the day they shipped. The export
+  now carries `is_live`; 96/218 councils link out, all 78 unique targets verified 200. Most
+  London boroughs are missing because TermMinder hasn't launched them, not because of matching.
+
 ## Open questions (Jon's to decide)
 - Which pool parses the non-London admissions PDFs (local-batch / DeepSeek / by hand).
 - Whether to pay for a dedicated PostHog project: the RecOS org is at its plan's project
