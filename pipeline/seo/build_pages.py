@@ -406,7 +406,7 @@ def document(title, description, path, body, crumbs, metadata, structured=None, 
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 {head}
 <link rel="stylesheet" href="/css/seo.css"><script type="application/ld+json">{ld}</script>
-</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="/agents/">For estate agents</a></nav></header>
+</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="/money/">School money</a><a href="/agents/">For estate agents</a></nav></header>
 <main><nav class="breadcrumb" aria-label="Breadcrumb">{trail}</nav>{body}</main><script type="module" src="/js/page-analytics.js"></script></body></html>
 '''
 
@@ -495,6 +495,9 @@ def render_school(item, council, peers, metadata, crosslinks=None):
     term_url = (crosslinks or {}).get("schools", {}).get(str(s["urn"]))
     if term_url:
         body += f'<section aria-labelledby="term-dates"><h2 id="term-dates">Term dates</h2><p>This school’s term and holiday dates, INSET days where known, and a calendar you can subscribe to, on <a href="{esc(term_url)}">TermMinder</a>.</p></section>'
+    money = item.get("money")
+    if money:
+        body += f'<section aria-labelledby="money"><h2 id="money">School money</h2><p>Financial status from its latest DfE return: <strong>{esc(money["label"])}</strong>. Reserves, spending and the trend over recent years, compared with similar schools: <a href="{esc(money["path"])}">{esc(name)} finances</a>.</p></section>'
     if item["results"]:
         body += "<h2>Results</h2>" + table(["Measure", "Result", "Academic year"], [[esc(v) for v in row] for row in item["results"]])
         if present(item["league_row"].get("ks4_p8")):
@@ -537,6 +540,8 @@ def render_council(council, items, docs, metadata, crosslinks=None):
     term_url = (crosslinks or {}).get("councils", {}).get(str(council["la_code"]))
     if term_url:
         body += f'<p><a href="{esc(term_url)}">School term dates in {esc(name)}: holidays, half terms and INSET days on TermMinder.</a></p>'
+    if council.get("money_path"):
+        body += f'<p><a href="{esc(council["money_path"])}">School finances in {esc(name)}: which schools are in deficit, and which are doing well.</a></p>'
     if nation == "England":
         body += '<p>Secondary applications close on <strong>31 October</strong>; primary applications close on <strong>15 January</strong>. Apply through your home council, even when choosing a school across a council boundary. <a href="/apply.html">How to apply for a school place</a>.</p>'
     elif nation in ("Scotland", "Wales"):
@@ -602,6 +607,8 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
     if not councils:
         raise ValueError("No councils found in local data")
     metadata = HeadMetadata((site / "index.html").read_text(encoding="utf-8"))
+    # Written by pipeline/money/build_money.py, which runs first; absent means no Money links.
+    money_status = read_json(site / "money/data/status.json")
     totals = Counter()
     nations = {nation: Counter() for nation in NATIONS}
     school_urls, page_urls, dates = [], [], []
@@ -642,7 +649,10 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
                 docs = [register] + ([adm] if has_adm else []) + ([ofs] if inspection[0] or inspection[2] else []) + ([league] if result_data else []) + ([detail] if census else []) + ([chars] if characteristic else [])
                 updated = data_date(*docs)
                 items.append({"school": s, "admissions": rec, "admissions_doc": adm, "has_admissions": has_adm, "ofsted": inspection, "ofsted_rec": ofsted, "league_row": league_row, "results": result_data, "pupils": pupils, "pupil_rows": pupil_data, "documents": docs, "date": updated, "indexable": quality >= 2, "path": path})
+            if money_status and council["nation"] == "England":
+                council["money_path"] = f'/money/council/{slug(council["name"])}/'
             for item in items:
+                item["money"] = money_status.get(str(item["school"]["urn"]))
                 html = render_school(item, council, items, metadata, crosslinks)
                 if len(html.encode("utf-8")) > 26_000:
                     raise ValueError(f"School page exceeds ~25 KB: {item['path']}")
@@ -679,6 +689,8 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
             path = f"/sitemaps/schools-{start // sitemap_limit + 1}.xml"
             write_sitemap(stage / path.lstrip("/"), chunk)
             maps.append((path, max(d for _, d in chunk)))
+        if (site / "money/sitemap.xml").is_file():
+            maps.append(("/money/sitemap.xml", latest))
         write_sitemap(stage / "sitemap.xml", maps, index=True)
         # One small map per council: the widget only fetches the councils near a listing.
         (stage / "slugs").mkdir()

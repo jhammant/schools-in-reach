@@ -5,6 +5,9 @@ server {
   # (/school/x -> /school/x/) would send visitors to http://host:8080/. Keep it relative.
   absolute_redirect off;
 
+  # money.schoolsinreach.com is a short alias for the Money section: one canonical home at /money/.
+  if ($host ~* ^money\.) { return 301 https://www.schoolsinreach.com/money$request_uri; }
+
   # The per-council JSON and GeoJSON files compress very well.
   gzip on;
   gzip_comp_level 5;
@@ -23,5 +26,7 @@ server {
   location = / { add_header Cache-Control "no-cache, must-revalidate"; try_files /index.html =404; }
   location /school/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
   location /council/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
+  location /money/data/ { add_header Cache-Control "public, max-age=3600"; }
+  location /money/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
   location / { try_files $uri $uri/ =404; }
 }

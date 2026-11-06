@@ -1,0 +1,43 @@
+/* Money section styles; copied to site/money/ by pipeline/money/build_money.py. Builds on /css/seo.css tokens. */
+:root{--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a;--c4:#4a3aa7;--critical:#d03b3b;--serious:#ec835a;--warning:#fab219;--good:#0ca30c;--plenty:#2a78d6;--band:#cfcec9;--grid:#e6e5e1}
+@media(prefers-color-scheme:dark){:root{--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#9085e9;--plenty:#3987e5;--band:#4a4a47;--grid:#2e2e2c}}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface-1);font-weight:600;white-space:nowrap;color:var(--text-primary)}
+.badge.small{font-size:.85rem;padding:0 8px}.badge.large{font-size:1.15rem;padding:4px 14px}
+.badge>span[aria-hidden]{font-size:.9em}
+.s-in_deficit>span[aria-hidden]{color:var(--critical)}.s-heading_for_deficit>span[aria-hidden]{color:var(--serious)}.s-tight>span[aria-hidden]{color:var(--warning)}.s-healthy>span[aria-hidden]{color:var(--good)}.s-large_reserves>span[aria-hidden]{color:var(--plenty)}
+.badge.s-in_deficit{border-color:var(--critical)}.badge.s-heading_for_deficit{border-color:var(--serious)}.badge.s-tight{border-color:var(--warning)}.badge.s-healthy{border-color:var(--good)}.badge.s-large_reserves{border-color:var(--plenty)}
+.status-line{margin:8px 0 4px}.lead strong{white-space:nowrap}.muted{color:var(--text-secondary)}.small{font-size:.875rem}
+.note{border-left:3px solid var(--border);padding:4px 12px;color:var(--text-secondary)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.tlabel{font-size:.8rem;color:var(--text-secondary)}.tvalue{font-size:1.4rem;font-weight:700;line-height:1.3}.tvalue .sub{display:block;font-size:.78rem;font-weight:400;color:var(--text-secondary)}
+.statusbar{display:flex;gap:2px;height:16px;margin:16px 0 8px;border-radius:4px;overflow:hidden}
+.statusbar .seg{display:block;min-width:2px}.statusbar .seg:hover,.statusbar .seg:focus{filter:brightness(1.12);outline:none}
+.seg.s-in_deficit{background:var(--critical)}.seg.s-heading_for_deficit{background:var(--serious)}.seg.s-tight{background:var(--warning)}.seg.s-healthy{background:var(--good)}.seg.s-large_reserves{background:var(--plenty)}
+.statuslegend{display:flex;flex-wrap:wrap;gap:6px 18px;list-style:none;padding:0;margin:0 0 12px}
+svg.chart{display:block;width:100%;height:auto;max-width:720px;overflow:visible;font:12px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.chart .grid{stroke:var(--grid);stroke-width:1}.chart .axis{stroke:var(--text-secondary);stroke-width:1}
+.chart .tick{fill:var(--text-secondary);font-size:11px}.chart .direct,.chart .cat{fill:var(--text-primary);font-size:12px}
+.chart .bar.pos{fill:var(--c1)}.chart .bar.neg{fill:var(--critical)}
+.chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}.chart .line.s1{stroke:var(--c1)}.chart .line.s2{stroke:var(--c2)}
+.chart .dot.s1{fill:var(--c1)}.chart .dot.s2{fill:var(--c2)}.chart .ring{stroke:var(--surface-0);stroke-width:2}
+.chart .track{stroke:var(--grid)}.chart .band{fill:var(--band)}.chart .median{stroke:var(--text-secondary);stroke-width:2}
+.chart .hit{fill:transparent}.chart .mark{outline:none}.chart .mark:hover .bar,.chart .mark:focus .bar{filter:brightness(1.15)}
+.chart .mark:hover .hit,.chart .mark:focus .hit{fill:var(--text-primary);fill-opacity:.05}
+.legend{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:4px 0;font-size:.875rem;color:var(--text-secondary)}
+.key{display:inline-block;margin-right:4px;vertical-align:middle}.key.line{width:16px;height:2px}.key.line.s1{background:var(--c1)}.key.line.s2{background:var(--c2)}
+.key.dot{width:10px;height:10px;border-radius:50%;background:var(--c1)}.key.band{width:18px;height:10px;border-radius:3px;background:var(--band)}.key.median{width:2px;height:14px;background:var(--text-secondary)}
+.money-tip{position:fixed;z-index:20;max-width:280px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-1);color:var(--text-primary);font-size:.85rem;line-height:1.35;box-shadow:0 4px 14px rgba(0,0,0,.15);pointer-events:none}
+.tableview{margin:8px 0 16px}.tableview summary{cursor:pointer;color:var(--accent)}
+table[data-sortable] th{cursor:pointer;user-select:none}table[data-sortable] th[aria-sort=ascending]::after{content:" ▲"}table[data-sortable] th[aria-sort=descending]::after{content:" ▼"}
+.finder{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0}.finder label{font-weight:600}
+.finder input{flex:1 1 220px;min-width:0;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-1);color:var(--text-primary);font:inherit}
+.finder button,.button{display:inline-block;padding:8px 14px;border:1px solid var(--accent);border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.results{list-style:none;padding:0;margin:0 0 12px;border:1px solid var(--border);border-radius:8px;max-height:340px;overflow:auto}.results:empty{display:none}
+.results li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--border)}.results li:last-child{border-bottom:0}
+.results .where{color:var(--text-secondary);font-size:.85rem}.results button{padding:4px 10px;border:1px solid var(--accent);border-radius:6px;background:none;color:var(--accent);font:inherit;cursor:pointer}
+.chosen{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0}.chosen li{display:flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface-1)}
+.chosen button{border:0;background:none;color:var(--text-secondary);cursor:pointer;font-size:1rem}
+.cmp-table{overflow-x:auto}.cmp-table table{min-width:520px}.cmp-table th[scope=row]{text-align:left;font-weight:600}
+ul.defs{list-style:none;padding:0}ul.defs li{margin:10px 0}
+@media(max-width:600px){.tvalue{font-size:1.2rem}svg.chart{font-size:11px}}
