@@ -9,9 +9,11 @@ import os
 import tempfile
 import unittest
 import zipfile
+from datetime import date
 from pathlib import Path
 
 from pipeline.dfe import finance, finance_history as fh
+from pipeline.money import build_money
 
 REAL_CACHE = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea/pipeline/.cache/dfe/fbit")
 HAS_REAL = (REAL_CACHE / "CFR_2024-25_Full_Data_Workbook.xlsx").exists() and (REAL_CACHE / "AAR_2024-25_download.xlsx").exists()
@@ -165,6 +167,20 @@ class AarCodeRowTest(FixtureTest):
         self.assertIn("formula note", info["mapping"]["in_year_balance"])
         self.assertIn("BAB030", info["mapping"]["revenue_reserve"])
 
+    def test_code_row_resolves_trailing_blank_descriptive_cell(self):
+        # Arrange: the reserve column's descriptive cell is blank and last, so the header row
+        # as read is one cell shorter than the code row that names it BAB030.
+        header = ["URN", "LA", "Overall Phase", "Period covered by return", "No Pupils",
+                  "Total Income", "Total Expenditure", None]
+        codes = aar_code_row(8, **{"7": "BAB030"})
+        data = [140001, 204, "Primary", 12, 300, 2000000, 1950000, 150000]
+        path = self.aar_file([codes, header, data], name="AAR_2023-24_download.xlsx")
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(rows[0]["revenue_reserve"], 150000)
+        self.assertIn("BAB030", info["mapping"]["revenue_reserve"])
+
     def test_title_row_above_code_row_still_finds_header(self):
         # Arrange: 2018-19 layout: title, code row, descriptive header.
         header = aar_header()
@@ -236,7 +252,38 @@ class AliasDriftTest(FixtureTest):
         self.assertEqual(info["mapping"]["pupils"], "Number of pupils in academy (FTE)")
         self.assertEqual(rows[0]["pupils"], 1234)
         self.assertEqual(rows[0]["trust_type"], "Multi Academy Trust (MAT)")
-        # The combined column is absent, so reserve + share is derived from the share column.
+        # The distributed column pools the whole trust's reserve (academies included), so it is
+        # neither the combined 2024-25 measure nor something to add to the school's own reserve.
+        self.assertIsNone(rows[0]["revenue_reserve_incl_trust_share"])
+        self.assertNotIn("derived", rows[0])
+        self.assertEqual(info["mapping"]["whole_trust_reserve_share"], "Share of Revenue Reserve, distributed on per pupil basis")
+        self.assertTrue(any("already contains this school's reserve" in w for w in info["warnings"]))
+
+    def test_whole_trust_distributed_reserve_is_not_added_to_school_reserve(self):
+        # Arrange: a single-academy trust with no central reserve; the 2021-22..2023-24 code row
+        # spells out that the distributed column is (CS RR + sum of academy RR) spread per pupil.
+        header = aar_header(pupils="Number of pupils in academy (FTE)", trust_type="MAT/SAT",
+                            revenue_reserve_incl_trust_share="Share of Revenue Reserve, distributed on per pupil basis")
+        share_col = header.index("Share of Revenue Reserve, distributed on per pupil basis")
+        codes = aar_code_row(len(header), **{str(share_col): "(CS RR+ Sum of Acad RR / total pupils in Trust * Pupils in Acad)"})
+        row = aar_row(140010, reserve=150000)
+        row[share_col] = 150000
+        path = self.aar_file([codes, header, row], name="AAR_2023-24_download.xlsx")
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert: the reserve a consumer picks is the school's own 150000, not 300000.
+        self.assertEqual(rows[0]["revenue_reserve"], 150000)
+        self.assertIsNone(rows[0]["revenue_reserve_incl_trust_share"])
+        self.assertEqual(build_money.reserve_of(rows[0]), 150000)
+
+    def test_central_services_share_is_added_when_combined_column_absent(self):
+        # Arrange: the 2024-25 central-only share label, but no 'RR + share of CS RR' column.
+        header = aar_header(revenue_reserve_incl_trust_share=(
+            "Share of Central Services Revenue Reserve, distributed on per pupil basis, at end of period based on time spent in trust"))
+        path = self.aar_file([header, aar_row(140011, reserve=500000)])
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert: aar_row puts reserve + 1000 in that column, so the derived total is reserve + share.
         self.assertEqual(rows[0]["revenue_reserve_incl_trust_share"], 500000 + 501000)
         self.assertEqual(rows[0]["derived"], ["revenue_reserve_incl_trust_share"])
 
@@ -316,6 +363,29 @@ class AcademyMergeTest(FixtureTest):
         self.assertEqual(merged["trust"], "New Trust")
         self.assertNotIn("date_joined", merged)
         self.assertEqual(by_urn["140004"]["trust"], "Solo Trust")
+
+    def test_mixed_excel_serial_and_text_join_dates_share_one_epoch(self):
+        # Arrange: an earlier textual date and a later Excel serial for the same academy.
+        later_serial = (date(2024, 3, 1) - date(1899, 12, 30)).days
+        rows_in = [aar_header(),
+                   aar_row(140006, income=1000000, trust="Old Trust", joined="01/09/2023", months=6, pupils=300),
+                   aar_row(140006, income=1100000, trust="New Trust", joined=later_serial, months=6, pupils=310)]
+        path = self.aar_file(rows_in, name="AAR_2023-24_download.xlsx")
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["total_income"], 2100000)
+        self.assertEqual(rows[0]["trust"], "New Trust")
+        self.assertEqual(rows[0]["pupils"], 310)
+
+    def test_sort_date_converts_text_to_excel_serial(self):
+        # Arrange / Act / Assert: 2024-03-01 is Excel serial 45352 whichever way it is written.
+        self.assertEqual(fh._sort_date("01/03/2024"), 45352)
+        self.assertEqual(fh._sort_date("2024-03-01"), 45352)
+        self.assertEqual(fh._sort_date(45352), 45352)
+        self.assertEqual(fh._sort_date("n/a"), 0)
+        self.assertEqual(fh._sort_date(None), 0)
 
     def test_text_join_dates_sort_without_error(self):
         # Arrange

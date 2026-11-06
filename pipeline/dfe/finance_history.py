@@ -45,7 +45,8 @@ INCOME_KEYS = ["grant_funding", "self_generated", "sen_funding", "pupil_premium"
 MONEY_KEYS = ["total_income", "total_expenditure", "in_year_balance", "revenue_reserve",
               "revenue_reserve_incl_trust_share"] + INCOME_KEYS + finance.EXPENDITURE_KEYS
 # Columns read for their own sake but not written out.
-INTERNAL_KEYS = ["e30", "trust_reserve_share", "date_joined"]
+INTERNAL_KEYS = ["e30", "trust_reserve_share", "whole_trust_reserve_share", "date_joined"]
+EXCEL_EPOCH_ORDINAL = 693594  # date(1899, 12, 30).toordinal(): Excel serial day 0
 
 
 def _norm(text) -> str:
@@ -132,11 +133,17 @@ AAR_ALIASES: dict[str, list[str]] = {
     "revenue_reserve": [exact("Revenue Reserve"), exact("Revenue reserve")],
     "revenue_reserve_incl_trust_share": [exact("RR + share of CS RR distributed on proportional per pupil basis"),
                                          r"rr \+ share of cs rr.*"],
+    # Central-services reserve only (2024-25): added to the school's own reserve when the combined column is absent.
     "trust_reserve_share": [
         exact("Share of Central Services Revenue Reserve, distributed on per pupil basis, at end of period based on time spent in trust"),
+        r"share of central services revenue reserve, distributed.*"],
+    # 2018-19 .. 2023-24: the WHOLE trust's reserve (central services plus every academy's own reserve) spread
+    # per pupil. It already contains this school's reserve, so it is never added to revenue_reserve; it is read
+    # only so the report can say why revenue_reserve_incl_trust_share is null for those years.
+    "whole_trust_reserve_share": [
         exact("Share of Revenue Reserve, distributed on per pupil basis"),
         exact("Distributed Revenue Reserve.on pp basis"),
-        r"share of (central services )?revenue reserve, distributed.*"],
+        r"share of revenue reserve, distributed.*", r"distributed revenue reserve.*"],
     "grant_funding": [exact("Total Grant Funding"), exact("Grant Funding")],
     "self_generated": [exact("Total Self Generated Funding"), exact("Self Generated Funding")],
     "sen_funding": [exact("SEN funding"), exact("SEN")],
@@ -166,8 +173,9 @@ AAR_NOTE_ALIASES: dict[str, list[str]] = {
     "in_year_balance": [r"=?\s*total income\s*-\s*total expenditure"],
     "revenue_reserve": [exact("BAB030")],
     "revenue_reserve_incl_trust_share": [r"rr \+ \(cs rr \*.*"],
-    "trust_reserve_share": [r"multiply trust total pp share of rr.*",
-                            r"share of central services revenue reserve, distributed.*"],
+    "trust_reserve_share": [r"share of central services revenue reserve, distributed.*"],
+    "whole_trust_reserve_share": [r"multiply trust total pp share of rr.*",
+                                  r"\(?cs rr\s*\+\s*sum of acad rr.*"],
 }
 
 ALIASES = {"CFR": CFR_ALIASES, "AAR": AAR_ALIASES}
@@ -207,8 +215,8 @@ def resolve_columns(header: list, neighbours: list[list], source: str) -> tuple[
     neighbouring rows (the code row above, a second header row below), and finally
     the ordinary aliases against those neighbouring rows.
     """
-    labels = [_norm(c) for c in header]
-    width = len(labels)
+    width = max([len(header)] + [len(r) for r in neighbours])
+    labels = [_norm(header[i]) if i < len(header) else "" for i in range(width)]
     others = [[_norm(r[i]) if i < len(r) else "" for i in range(width)] for r in neighbours]
     aliases, notes = ALIASES[source], NOTE_ALIASES[source]
     index: dict[str, int] = {}
@@ -235,15 +243,25 @@ def resolve_columns(header: list, neighbours: list[list], source: str) -> tuple[
 
 
 def _sort_date(value):
-    """Excel serial numbers sort as they are; dd/mm/yyyy text becomes an ordinal; anything else sorts first."""
+    """Join date as an Excel serial day, so mixed serial-number and text dates sort on one scale.
+
+    Excel serials are kept; dd/mm/yyyy and yyyy-mm-dd text are converted to the same epoch
+    (day 0 = 1899-12-30); blanks and 'n/a' sort first as 0.
+    """
     n = num(value)
     if n is not None:
         return n
-    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4}).*", _norm(value))
+    text = _norm(value)
+    m = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4}).*", text)
     if m:
-        from datetime import date
-        return date(int(m.group(3)), int(m.group(2)), int(m.group(1))).toordinal()
-    return 0
+        day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    else:
+        m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2}).*", text)
+        if not m:
+            return 0
+        year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    from datetime import date
+    return date(year, month, day).toordinal() - EXCEL_EPOCH_ORDINAL
 
 
 def _int_str(value) -> str | None:
@@ -394,6 +412,8 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
             item["did_not_supply"] = False
             item["date_joined"] = _sort_date(get("date_joined"))
             if "revenue_reserve_incl_trust_share" not in index and "trust_reserve_share" in index:
+                # Only the central-services share may be added: the older whole-trust distributed
+                # column already includes this academy's own reserve (see whole_trust_reserve_share).
                 share = num(get("trust_reserve_share"))
                 if item["revenue_reserve"] is not None:
                     item["revenue_reserve_incl_trust_share"] = item["revenue_reserve"] + (share or 0)
@@ -424,6 +444,10 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
             warnings.append(f"{key} harmonised by subtracting E30 direct revenue financing in {count} rows (later workbooks already exclude it)")
         else:
             warnings.append(f"{key} derived in {count} rows")
+    if source == "AAR" and "whole_trust_reserve_share" in index and "revenue_reserve_incl_trust_share" not in index:
+        warnings.append(f"{used['whole_trust_reserve_share']!r} spreads the whole trust's reserve (central services plus "
+                        "every academy's own reserve) per pupil, so it already contains this school's reserve; it is not "
+                        "comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null")
     if source == "CFR" and "lead_laestab" not in index:
         warnings.append("no 'Lead school in federation' column; lead_laestab only known where the federation column holds a LAEstab")
     info["rows"] = len(out)
