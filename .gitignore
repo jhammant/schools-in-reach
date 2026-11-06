@@ -32,3 +32,4 @@ site/sitemaps/
 site/sitemap.xml
 site/.seo-build-*/
 site/embed/slugs/
+.project-map/
