@@ -319,6 +319,54 @@ class HardeningTest(unittest.TestCase):
         self.assertLess(size, 40_000, size)
         self.assertIn("Money raised by parents", (page / "index.html").read_text(encoding="utf-8"))
 
+    def test_every_page_stays_under_40kb_with_a_big_council_and_trust(self):
+        # Arrange: one council and one trust with 90 academies, more than one page of table rows.
+        schools = [school(100000 + n, f"Primary Academy {n}", type="Academy converter", trust="Example Trust") for n in range(90)]
+        rows = [r for n in range(90) for r in full_rows(str(100000 + n), source="AAR", years=("2024-08", "2025-08"))]
+        # Act
+        money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert: every page is under budget, the table continues on numbered pages, and every school is listed once.
+        oversized = {str(p.relative_to(money)): p.stat().st_size for p in money.rglob("*.html") if p.stat().st_size >= 40_000}
+        self.assertEqual(oversized, {})
+        council = self.read(money, "council", "hackney")
+        self.assertIn('href="/money/council/hackney/2/"', council)
+        self.assertIn("Page 1 of", council)
+        listed = sum(self.read(money, "council", "hackney", *rest).count("Primary Academy") for rest in ([], ["2"], ["3"]) if (money / "council/hackney" / "/".join(rest) / "index.html").exists())
+        self.assertEqual(listed, 90)
+        self.assertIn("Back to the summary", self.read(money, "trust", "example-trust", "2"))
+        sitemap = (money / "sitemap.xml").read_text(encoding="utf-8")
+        self.assertIn("/money/council/hackney/2/", sitemap)
+        self.assertIn("/money/council/</loc>", sitemap)
+        self.assertEqual(summary["pages"], sitemap.count("<loc>"))
+
+    def test_reported_year_matches_the_assessed_figures(self):
+        for missing in ({"total_income": 0}, {"revenue_reserve": None}):
+            with self.subTest(missing=missing):
+                # Arrange: the newest return cannot be assessed, an older one can.
+                rows = [row("100001", "2024-03", 2_000_000, 1_990_000, 100_000),
+                        row("100001", "2025-03", 2_000_000, 1_990_000, -50_000, **missing)]
+                # Act
+                money, _ = self.build([("204", "Hackney")], {"204": [school(100001, "Mixed Years")]}, rows)
+                # Assert: the JSON and page report the assessed year and its own reserve, and say a newer return exists.
+                data = json.loads((money / "data/s/100001.json").read_text(encoding="utf-8"))
+                self.assertEqual((data["year"], data["reserve"], data["share"]), ("2023-24", 100_000, 0.05))
+                html = self.read(money, "school", "100001-mixed-years")
+                self.assertIn("Latest full year 2023-24", html)
+                self.assertIn("A 2024-25 return is published too", html)
+
+    def test_urn_that_is_not_a_number_is_rejected_before_any_write(self):
+        # Arrange: a URN that would climb out of the output directory.
+        urn = "../../../../sentinel"
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": [school(urn, "Escape")]}, full_rows(urn))
+        sentinel = site / "sentinel.json"
+        sentinel.write_text("untouched", encoding="utf-8")
+        # Act / Assert
+        with self.assertRaises(ValueError):
+            build_money.build(site, history, links, pta_path)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "untouched")
+        self.assertFalse((self.root / "sentinel-escape").exists())
+        self.assertFalse((site / "money").exists())
+
     def test_six_thousand_schools_build_in_under_a_minute(self):
         # Arrange: 20 councils, 300 schools each, 5 years each, a few trusts and one PTA in ten.
         councils, schools, rows, pta = [], {}, [], {}

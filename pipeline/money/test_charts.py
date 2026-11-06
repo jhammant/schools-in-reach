@@ -86,6 +86,21 @@ class ChartsTest(unittest.TestCase):
             with self.subTest(name):
                 self.check(charts.compare_dots(rows))
 
+    def test_compare_dots_keep_negative_values_inside_the_chart(self):
+        # Arrange: a rebate year, every figure below zero.
+        rows = [{"label": "Energy", "value": -10, "p25": -30, "median": -20, "p75": -15}]
+        # Act
+        svg = charts.compare_dots(rows)
+        # Assert: dot, band and median all sit within the viewBox, and a zero axis is drawn.
+        root = ET.fromstring(svg[svg.index("<svg"):svg.index("</svg>") + 6])
+        left, _, width, _ = map(float, root.attrib["viewBox"].split())
+        dot = root.find(".//{*}circle")
+        self.assertTrue(left <= float(dot.attrib["cx"]) <= left + width, dot.attrib["cx"])
+        band = root.find(".//{*}rect[@class='band']")
+        self.assertGreaterEqual(float(band.attrib["x"]), left)
+        self.assertLessEqual(float(band.attrib["x"]) + float(band.attrib["width"]), left + width)
+        self.assertEqual(len(root.findall(".//{*}line[@class='axis']")), 1)
+
     def test_status_bar_odd_inputs(self):
         for name, counts in {
             "single": {"healthy": 1},

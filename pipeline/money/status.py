@@ -40,8 +40,9 @@ def _money(value) -> str:
     return f"{sign}£{value:.0f}"
 
 
-def _full_years(rows: list[dict]) -> list[dict]:
-    """Full-year returns with the figures we need, oldest first, one per year."""
+def full_years(rows: list[dict]) -> list[dict]:
+    """Full-year returns with the figures we need, oldest first, one per year. The page
+    builder uses the same list, so the year a page reports is the year that was assessed."""
     usable = [r for r in rows if not r.get("did_not_supply")
               and r.get("period_months") == 12
               and r.get("total_income") and r.get("revenue_reserve") is not None]
@@ -73,7 +74,7 @@ def deficit_streak(years: list[dict]) -> int:
 
 def assess(rows: list[dict]) -> dict | None:
     """Status for one school. Returns None when there is no usable full-year return."""
-    years = _full_years(rows)
+    years = full_years(rows)
     if not years:
         return None
     latest = years[-1]

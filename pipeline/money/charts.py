@@ -229,11 +229,14 @@ def compare_dots(rows: list[dict], width: int = 640) -> str:
         return ""
     row_h, top, left, right = 34, 8, 190, 64
     height = top + row_h * len(rows) + 8
-    hi = max(1, max(max(r["value"], r["p75"]) for r in rows) * 1.08)
+    values = [r[k] for r in rows for k in ("value", "p25", "median", "p75")]
+    lo, hi = min(0, min(values)), max(0, max(values))
+    span = (hi - lo) or 1
+    lo, hi = (lo - span * 0.08 if lo < 0 else 0), hi + span * 0.08  # room for the dot at either end
     plot_w = width - left - right
 
     def x_of(v):
-        return left + v / hi * plot_w
+        return left + (v - lo) / (hi - lo) * plot_w
 
     parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="Spending per pupil compared with similar schools">']
     for i, r in enumerate(rows):
@@ -248,6 +251,8 @@ def compare_dots(rows: list[dict], width: int = 640) -> str:
                      f'<line class="median" x1="{x_of(r["median"]):.1f}" x2="{x_of(r["median"]):.1f}" y1="{cy - 9:.1f}" y2="{cy + 9:.1f}"/>'
                      f'<circle class="dot s1 ring" cx="{x_of(r["value"]):.1f}" cy="{cy:.1f}" r="6"/>'
                      f'<text class="direct" x="{width - right + 8}" y="{cy + 4:.1f}">£{r["value"]:,.0f}</text></g>')
+    if lo < 0:
+        parts.append(f'<line class="axis" x1="{x_of(0):.1f}" x2="{x_of(0):.1f}" y1="{top}" y2="{height - 8}"/>')
     parts.append("</svg>")
     legend = ('<p class="legend"><span class="key dot s1"></span>This school <span class="key band"></span>Middle half of similar schools '
               '<span class="key median"></span>Similar schools’ median</p>')
