@@ -13,6 +13,7 @@ pipeline/seo/build_pages.py, which links school pages here and adds the sitemap.
 """
 import argparse
 import csv
+import hashlib
 import json
 import math
 from collections import Counter, defaultdict
@@ -126,6 +127,25 @@ def pct(value, digits=0):
     return "—" if value is None else f"{value * 100:.{digits}f}%"
 
 
+def trust_paths(names):
+    """One distinct /money/trust/<slug>/ per trust name. Names whose slugs collide, or that
+    slugify to nothing, get a short hash of the name so no page overwrites another."""
+    by_slug = defaultdict(list)
+    for name in names:
+        by_slug[slug(name)].append(name)
+    paths = {}
+    for key, group in by_slug.items():
+        for name in group:
+            if len(group) > 1 or key == "school":
+                key_for = f"{key}-{hashlib.sha1(name.encode('utf-8')).hexdigest()[:6]}"
+            else:
+                key_for = key
+            paths[name] = f"/money/trust/{key_for}/"
+    if len(set(paths.values())) != len(paths):
+        raise ValueError("Trust pages would overwrite each other")
+    return paths
+
+
 # ----------------------------------------------------------------- model
 
 def build_model(site, history_path, links_path, pta_path):
@@ -134,7 +154,7 @@ def build_model(site, history_path, links_path, pta_path):
     by_urn = load_history(history_path)
     pred = load_predecessors(links_path)
     pta = json.loads(pta_path.read_text(encoding="utf-8")).get("schools", {}) if pta_path and pta_path.exists() else {}
-    councils, schools = [], []
+    councils, schools, paths = [], [], {}
     for la in sorted(las, key=lambda c: c["name"]):
         code = str(la["la_code"])
         reg_path = data / "la" / code / "schools.json"
@@ -142,6 +162,8 @@ def build_model(site, history_path, links_path, pta_path):
             continue
         council = {"code": code, "name": la["name"], "region": la.get("region"), "schools": [],
                    "path": f"/money/council/{slug(la['name'])}/", "site_path": f"/council/{slug(la['name'])}/"}
+        if any(c["path"] == council["path"] for c in councils):
+            raise ValueError(f"Two councils share the page {council['path']}: {la['name']}")
         councils.append(council)
         for s in json.loads(reg_path.read_text(encoding="utf-8")).get("schools", []):
             if closed(s):
@@ -166,37 +188,43 @@ def build_model(site, history_path, links_path, pta_path):
                 "trust": (s.get("trust") or (latest or {}).get("trust") or "").strip() or None,
                 "academy": (latest or {}).get("source") == "AAR",
             }
+            if urn in paths:
+                raise ValueError(f"URN {urn} appears in two registers: {paths[urn]['name']} and {council['name']}")
+            paths[urn] = council
             council["schools"].append(item)
             schools.append(item)
     by_laestab = {}
     for item in schools:
         for r in item["rows"]:
-            if r.get("laestab") and not r.get("did_not_supply") and r.get("urn") == item["urn"]:
+            if r.get("laestab") and not r.get("did_not_supply") and str(r.get("urn")) == item["urn"]:
                 by_laestab[str(r["laestab"])] = item
     for item in schools:
         if item["member_of"]:
             item["lead"] = by_laestab.get(str(item["member_of"].get("lead_laestab")))
+    trust_path = trust_paths(trusts_of(schools))
+    for item in schools:
+        item["trust_path"] = trust_path.get(item["trust"])
     add_similar(schools)
     return councils, schools, by_urn
 
 
 def add_similar(schools):
-    """Up to 30 nearest schools of the same phase, London or not, by size and free-school-meals share."""
-    def coords(s):
-        return math.log(s["latest"]["pupils"]) / 0.1, (s["fsm"] if s["fsm"] is not None else 25.0) / 2.5
-
-    groups = defaultdict(list)
+    """Up to 30 nearest schools of the same phase, London or not, by size and free-school-meals share.
+    Schools are bucketed on a grid of (log pupils, FSM band) and searched ring by ring, so each
+    lookup touches a few dozen schools rather than all of them."""
+    groups, coords = defaultdict(list), {}
     for s in schools:
         s["similar"] = []
         if s["status"] and s["latest"] and s["latest"].get("pupils"):
             groups[(s["phase"], s["london"])].append(s)
+            coords[s["urn"]] = (math.log(s["latest"]["pupils"]) / 0.1, (s["fsm"] if s["fsm"] is not None else 25.0) / 2.5)
     for members in groups.values():
         grid = defaultdict(list)
         for s in members:
-            x, y = coords(s)
+            x, y = coords[s["urn"]]
             grid[(int(x), int(y))].append(s)
         for s in members:
-            x, y = coords(s)
+            x, y = coords[s["urn"]]
             cx, cy = int(x), int(y)
             found, r, extra = [], 0, None
             while r <= 40:
@@ -210,7 +238,7 @@ def add_similar(schools):
                     break
                 r += 1
             found = [o for o in found if o is not s]
-            found.sort(key=lambda o: abs(coords(o)[0] - x) + abs(coords(o)[1] - y))
+            found.sort(key=lambda o: abs(coords[o["urn"]][0] - x) + abs(coords[o["urn"]][1] - y))
             s["similar"] = found[:SIMILAR_N]
 
 
@@ -351,7 +379,7 @@ def render_school(item, metadata):
     ])
     if item["academy"]:
         trust = item["trust"]
-        trust_html = f'<a href="/money/trust/{esc(slug(trust))}/">{esc(trust)}</a>' if trust else "its academy trust"
+        trust_html = f'<a href="{esc(item["trust_path"])}">{esc(trust)}</a>' if trust and item.get("trust_path") else "its academy trust"
         body += (f'<p class="note">Academies in a trust don\'t hold money on their own: {trust_html} can move money between its schools. '
                  + ("The reserve includes this school's per-pupil share of the trust's central reserve." if st["trust_share_included"] else
                     "The DfE doesn't publish this school's share of the trust's central reserve for this year, so the reserve shown is the school's own.")
@@ -379,7 +407,7 @@ def render_school(item, metadata):
         body += details_table("Show the comparison as a table", ["Spending per pupil", "This school", "Similar schools (median)", "Middle half"],
                               [[esc(r["label"]), f'£{r["value"]:,.0f}', f'£{r["median"]:,.0f}', f'£{r["p25"]:,.0f}–£{r["p75"]:,.0f}'] for r in cmp])
         near = ",".join([item["urn"]] + [o["urn"] for o in item["similar"][:3]])
-        body += (f'<p><a class="button" href="/money/compare/?urns={near}">Compare side by side with the 3 most similar schools</a></p>'
+        body += (f'<p><a class="button" href="/money/compare/?urns={esc(near)}">Compare side by side with the 3 most similar schools</a></p>'
                  '<details class="tableview"><summary>Which schools are these?</summary><ul class="nearby">'
                  + "".join(f'<li>{school_link(o)} {status_cell(o)}</li>' for o in item["similar"][:12]) + "</ul></details>")
     income = [(label, latest.get(key)) for key, label in INCOME_KEYS if latest.get(key)]
@@ -446,8 +474,11 @@ def render_council(council, metadata):
     name = council["name"]
     crumbs = [("Home", "/"), ("School money", "/money/"), (name, council["path"])]
     body = f'<h1>{esc(name)} school finances</h1>'
-    body += (f'<p class="lead"><strong>{len(deficit):,} of {len(items):,}</strong> schools in {esc(name)} were in deficit in their latest return, '
-             f'with combined deficits of <strong>{money(owed)}</strong>. {counts["heading_for_deficit"]:,} more are heading that way.</p>')
+    if items:
+        body += (f'<p class="lead"><strong>{len(deficit):,} of {len(items):,}</strong> schools in {esc(name)} were in deficit in their latest return, '
+                 f'with combined deficits of <strong>{money(owed)}</strong>. {counts["heading_for_deficit"]:,} more are heading that way.</p>')
+    else:
+        body += f'<p class="lead">No school in {esc(name)} has a full-year finance return in the latest data, so there are no statuses to show yet.</p>'
     body += charts.status_bar(counts)
     body += tiles([("Schools in deficit", f"{len(deficit):,}"), ("Combined deficits", money(owed)),
                    ("Heading for deficit", f'{counts["heading_for_deficit"]:,}'), ("Reserves held by the rest", money(held))])
@@ -459,7 +490,8 @@ def render_council(council, metadata):
     if back:
         body += "<h2>Back in the black</h2><p>Schools that were in deficit in an earlier year and are now healthy:</p><ul class=\"nearby\">" + "".join(
             f"<li>{school_link(i)}</li>" for i in sorted(back, key=lambda i: i["name"])) + "</ul>"
-    body += f'<h2>Every school, worst first</h2><p class="muted small">Tap a column heading to sort.</p>' + sortable(COUNCIL_HEADERS, council_rows(items))
+    if items:
+        body += f'<h2>Every school, worst first</h2><p class="muted small">Tap a column heading to sort.</p>' + sortable(COUNCIL_HEADERS, council_rows(items))
     members = [i for i in council["schools"] if not i["status"]]
     if members:
         body += '<p class="muted small">Not shown: ' + ", ".join(school_link(i) for i in members[:40]) + (" and others" if len(members) > 40 else "") + ' (in a federation\'s combined return, or no full-year return yet).</p>'
@@ -483,9 +515,12 @@ def render_national(councils, schools, metadata):
     back = sorted((i for i in items if recovered(i)), key=lambda i: -(i["status"]["reserve_share"] or 0))
     owed = -sum(i["status"]["reserve"] for i in deficit)
     body = '<h1>School money: which schools are in deficit, and which are doing well</h1>'
-    body += (f'<p class="lead">Of {len(items):,} state schools in England with a full-year return, <strong>{len(deficit):,} were in deficit</strong> '
-             f'({len(deficit) / len(items):.0%}), owing a combined <strong>{money(owed)}</strong>. Another {counts["heading_for_deficit"]:,} are '
-             'heading that way: they have spent more than they received for two years or more and their reserves are running out.</p>')
+    if items:
+        body += (f'<p class="lead">Of {len(items):,} state schools in England with a full-year return, <strong>{len(deficit):,} were in deficit</strong> '
+                 f'({len(deficit) / len(items):.0%}), owing a combined <strong>{money(owed)}</strong>. Another {counts["heading_for_deficit"]:,} are '
+                 'heading that way: they have spent more than they received for two years or more and their reserves are running out.</p>')
+    else:
+        body += '<p class="lead">No school has a full-year finance return in the latest data yet, so there are no statuses to show.</p>'
     body += ('<form class="finder" action="/money/compare/" role="search"><label for="find">Find a school</label>'
              '<input id="find" name="q" type="search" placeholder="School name or town" autocomplete="off"><button type="submit">Find</button></form>')
     body += charts.status_bar(counts)
@@ -535,7 +570,7 @@ def trusts_of(schools):
 
 
 def render_trust(name, items, metadata):
-    path = f"/money/trust/{slug(name)}/"
+    path = items[0]["trust_path"]
     counts = Counter(i["status"]["status"] for i in items)
     total = sum(i["status"]["reserve"] for i in items)
     shared = all(i["status"]["trust_share_included"] for i in items)
@@ -556,7 +591,7 @@ def render_trust_index(trusts, metadata):
     for name, items in sorted(trusts.items(), key=lambda kv: kv[0].casefold()):
         d = sum(i["status"]["status"] == "in_deficit" for i in items)
         total = sum(i["status"]["reserve"] for i in items)
-        rows.append([f'<a href="/money/trust/{esc(slug(name))}/">{esc(name)}</a>', f'<span data-sort="{len(items)}">{len(items):,}</span>',
+        rows.append([f'<a href="{esc(items[0]["trust_path"])}">{esc(name)}</a>', f'<span data-sort="{len(items)}">{len(items):,}</span>',
                      f'<span data-sort="{d}">{d:,}</span>', f'<span data-sort="{total:.0f}">{money(total)}</span>'])
     body = ('<h1>Academy trust finances</h1><p class="lead">Every academy trust in England with its academies\' reserves and how many are in deficit.</p>'
             + sortable(["Trust", "Academies", "In deficit", "Combined reserves"], rows) + sources())
@@ -645,8 +680,9 @@ def build(site, history_path, links_path, pta_path):
         write("/money/", render_national(councils, schools, metadata))
         urls.append(("/money/", today))
         for c in councils:
-            if any(i["status"] for i in c["schools"]):
+            if c["schools"]:
                 write(c["path"], render_council(c, metadata))
+            if any(i["status"] for i in c["schools"]):
                 urls.append((c["path"], today))
         for item in schools:
             html = render_school(item, metadata)

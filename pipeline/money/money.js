@@ -31,9 +31,21 @@
 
   // ---- sortable tables: cells may carry data-sort with a raw value
   function cellValue(td) {
+    if (!td) return "";
     var raw = td.querySelector("[data-sort]");
-    if (raw) return parseFloat(raw.getAttribute("data-sort"));
+    if (raw) {
+      var n = parseFloat(raw.getAttribute("data-sort"));
+      if (isFinite(n)) return n;
+    }
     return td.textContent.trim().toLowerCase();
+  }
+  // Numbers sort before text in either direction, so "n/a" cells sit together at the end.
+  function compareCells(x, y, asc) {
+    var xn = typeof x === "number", yn = typeof y === "number";
+    if (xn && yn) return asc ? x - y : y - x;
+    if (xn !== yn) return xn ? -1 : 1;
+    var c = String(x).localeCompare(String(y));
+    return asc ? c : -c;
   }
   document.querySelectorAll("table[data-sortable]").forEach(function (t) {
     t.querySelectorAll("thead th").forEach(function (th, col) {
@@ -45,9 +57,7 @@
         var body = t.tBodies[0];
         var rows = Array.prototype.slice.call(body.rows);
         rows.sort(function (a, b) {
-          var x = cellValue(a.cells[col]), y = cellValue(b.cells[col]);
-          var c = (typeof x === "number" && typeof y === "number") ? x - y : String(x).localeCompare(String(y));
-          return asc ? c : -c;
+          return compareCells(cellValue(a.cells[col]), cellValue(b.cells[col]), asc);
         });
         rows.forEach(function (r) { body.appendChild(r); });
       }
@@ -102,7 +112,15 @@
     return fetch("/money/data/s/" + encodeURIComponent(urn) + ".json").then(function (r) {
       if (!r.ok) throw new Error("not found");
       return r.json();
-    }).then(function (d) { cache[urn] = d; return d; });
+    }).then(function (d) {
+      if (!d || typeof d !== "object" || !Array.isArray(d.years) || !d.pp) throw new Error("bad data");
+      d.similar = d.similar || {};
+      cache[urn] = d;
+      return d;
+    }).catch(function () {
+      // Keep the URN in the list with a message; the other schools still render.
+      return {urn: urn, name: "School " + urn, missing: true};
+    });
   }
   function search(q) {
     var words = q.toLowerCase().split(/\s+/).filter(Boolean);
@@ -155,17 +173,21 @@
     render();
   }
   function render() {
-    Promise.all(chosen.map(function (u) { return loadSchool(u).catch(function () { return null; }); })).then(function (schools) {
-      schools = schools.filter(Boolean);
+    Promise.all(chosen.map(loadSchool)).then(function (loaded) {
+      var schools = loaded.filter(function (s) { return !s.missing; });
       chosenList.textContent = "";
-      schools.forEach(function (s, i) {
+      loaded.forEach(function (s) {
         var li = el("li");
-        var key = el("span", "key dot");
-        key.style.background = SERIES[i];
-        li.appendChild(key);
-        var a = el("a", null, s.name);
-        a.href = s.path;
-        li.appendChild(a);
+        if (s.missing) {
+          li.appendChild(el("span", "muted", "No finance data for school " + s.urn));
+        } else {
+          var key = el("span", "key dot");
+          key.style.background = SERIES[schools.indexOf(s)];
+          li.appendChild(key);
+          var a = el("a", null, s.name);
+          a.href = s.path;
+          li.appendChild(a);
+        }
         var x = el("button", null, "×");
         x.type = "button";
         x.setAttribute("aria-label", "Remove " + s.name);
@@ -174,7 +196,10 @@
         chosenList.appendChild(li);
       });
       out.textContent = "";
-      if (!schools.length) { out.appendChild(el("p", "muted", "Search above to add up to four schools.")); return; }
+      if (!schools.length) {
+        out.appendChild(el("p", "muted", loaded.length ? "None of the chosen schools has finance data to compare." : "Search above to add up to four schools."));
+        return;
+      }
       out.appendChild(el("h2", null, "Side by side"));
       out.appendChild(table(schools));
       if (schools.some(function (s) { return s.years.length > 1; })) {
@@ -202,7 +227,7 @@
         if (v instanceof Node) td.appendChild(v); else td.textContent = v;
       });
     }
-    row("Status", function (s) { return badge(s.status); });
+    row("Status", function (s) { return LABELS[s.status] ? badge(s.status) : "—"; });
     row("Why", function (s) { return s.reason; });
     row("Council", function (s) { return s.council; });
     row("Latest year", function (s) { return s.year + (s.academy ? " (academy)" : ""); });
@@ -214,7 +239,7 @@
     CATS.forEach(function (c) {
       row(c[1], function (s) {
         var v = s.pp[c[0]];
-        if (v == null) return "—";
+        if (typeof v !== "number") return "—";
         var m = s.similar[c[0]];
         return "£" + v.toLocaleString("en-GB") + (m ? " (similar schools £" + m.toLocaleString("en-GB") + ")" : "");
       });
@@ -229,8 +254,8 @@
     schools.forEach(function (s) { s.years.forEach(function (y) { if (labels.indexOf(y[0]) === -1) labels.push(y[0]); }); });
     labels.sort();
     var vals = [];
-    schools.forEach(function (s) { s.years.forEach(function (y) { if (y[1]) vals.push(y[3] / y[1] * 100); }); });
-    var lo = Math.min(0, Math.min.apply(null, vals)), hi = Math.max(5, Math.max.apply(null, vals));
+    schools.forEach(function (s) { s.years.forEach(function (y) { if (y[1] && typeof y[3] === "number") vals.push(y[3] / y[1] * 100); }); });
+    var lo = Math.min(0, Math.min.apply(null, vals.concat([0]))), hi = Math.max(5, Math.max.apply(null, vals.concat([5])));
     var step = (hi - lo) > 40 ? 10 : 5;
     lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
     function x(i) { return L + (labels.length < 2 ? 0 : i * (W - L - R) / (labels.length - 1)); }
@@ -253,7 +278,7 @@
     }
     labels.forEach(function (lab, i) { add("text", {"class": "tick", x: x(i), y: H - 8, "text-anchor": "middle"}, lab); });
     schools.forEach(function (s, si) {
-      var pts = s.years.filter(function (yr) { return yr[1]; }).map(function (yr) { return [labels.indexOf(yr[0]), yr[3] / yr[1] * 100, yr[0]]; });
+      var pts = s.years.filter(function (yr) { return yr[1] && typeof yr[3] === "number"; }).map(function (yr) { return [labels.indexOf(yr[0]), yr[3] / yr[1] * 100, yr[0]]; });
       if (!pts.length) return;
       var path = add("path", {"class": "line", d: "M" + pts.map(function (p) { return x(p[0]).toFixed(1) + "," + y(p[1]).toFixed(1); }).join("L")});
       path.style.stroke = SERIES[si];

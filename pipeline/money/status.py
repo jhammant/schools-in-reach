@@ -9,6 +9,10 @@ and 5% (secondary), and many councils' schemes for financing schools claw back
 surpluses above those levels. A school is "heading for deficit" when it has spent
 more than it received for at least two years running and, at its recent rate, its
 reserve would run out within about three years.
+
+Boundaries: "tight" is a reserve share strictly below 3% (exactly 3% is healthy);
+"large_reserves" is 8% (5% secondary) or more, so exactly 8% counts; "heading for
+deficit" needs a runway of 3.0 years or less, so exactly three years counts.
 """
 
 from __future__ import annotations

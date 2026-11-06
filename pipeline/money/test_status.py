@@ -66,3 +66,43 @@ class AssessTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BoundaryTest(unittest.TestCase):
+    """Exact thresholds: tight is strictly below 3%; large is 8% (5% secondary) or more; runway 3.0 counts."""
+
+    def test_exactly_three_percent_is_healthy_not_tight(self):
+        # Arrange: 90k reserve on 3m income is exactly 3%.
+        rows = [year("2025-03", 3_000_000, 2_990_000, 90_000)]
+        # Act / Assert
+        self.assertEqual(status.assess(rows)["status"], "healthy")
+        rows[0]["revenue_reserve"] = 89_999
+        self.assertEqual(status.assess(rows)["status"], "tight")
+
+    def test_exactly_eight_percent_primary_is_large(self):
+        rows = [year("2025-03", 3_000_000, 2_990_000, 240_000)]
+        self.assertEqual(status.assess(rows)["status"], "large_reserves")
+        rows[0]["revenue_reserve"] = 239_999
+        self.assertEqual(status.assess(rows)["status"], "healthy")
+
+    def test_exactly_five_percent_secondary_is_large(self):
+        rows = [year("2025-03", 6_000_000, 5_990_000, 300_000, phase="secondary")]
+        self.assertEqual(status.assess(rows)["status"], "large_reserves")
+        rows[0]["revenue_reserve"] = 299_999
+        self.assertEqual(status.assess(rows)["status"], "healthy")
+
+    def test_runway_of_exactly_three_years_is_heading_for_deficit(self):
+        # Three years of -100k overspend and a 300k reserve: runway exactly 3.0.
+        rows = [year("2023-03", 3_000_000, 3_100_000, 500_000),
+                year("2024-03", 3_000_000, 3_100_000, 400_000),
+                year("2025-03", 3_000_000, 3_100_000, 300_000)]
+        result = status.assess(rows)
+        self.assertEqual(result["runway_years"], 3.0)
+        self.assertEqual(result["status"], "heading_for_deficit")
+        rows[2]["revenue_reserve"] = 300_001
+        self.assertEqual(status.assess(rows)["status"], "large_reserves")
+
+    def test_docstring_states_the_boundary_rule(self):
+        doc = status.__doc__
+        self.assertIn("3%", doc)
+        self.assertIn("or more", doc)
