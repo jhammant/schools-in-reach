@@ -214,7 +214,7 @@ def match(schools, charities):
             return (set(r["tokens"]) <= ctokens and not phases_conflict(r["phase"], cphase)
                     and not (ctokens - set(r["tokens"])) & EXCLUDED)
 
-        candidates = {}
+        candidates, ambiguous = {}, []
         if pc:
             for r in by_postcode.get(pc, []):
                 if fits(r):
@@ -226,7 +226,9 @@ def match(schools, charities):
                 # and no other school in the district may carry the same distinctive name.
                 if ctokens - set(r["tokens"]) - r["place"]:
                     continue
-                if any(o is not r and set(o["tokens"]) == set(r["tokens"]) for o in by_district[r["district"]]):
+                shared = [o for o in by_district[r["district"]] if o is not r and set(o["tokens"]) == set(r["tokens"])]
+                if shared:
+                    ambiguous.append((r, shared))
                     continue
                 candidates[r["urn"]] = (r, "sector", f"tokens {','.join(r['tokens'])}; sector {pc[:-2]}, unique in {r['district']}")
         if host:
@@ -234,6 +236,10 @@ def match(schools, charities):
                 if r["urn"] not in candidates and fits(r):
                     candidates[r["urn"]] = (r, "website", f"tokens {','.join(r['tokens'])}; website {host}")
         if not candidates:
+            if ambiguous:
+                # The only lead was a sector match blocked by a namesake: record it so the report shows it.
+                names = sorted({o["name"] for r, shared in ambiguous for o in [r, *shared]})
+                reject(charity, "another school in the district shares the name", names)
             continue
 
         # The most specific candidates, plus anything else in their districts whose name also fits the
@@ -249,8 +255,9 @@ def match(schools, charities):
         if len(tied) == 1:
             chosen, = candidates
         elif cphase:
-            # 'X Junior School PTA' settles an infant/junior tie when exactly one school carries the phase words.
-            survivors = [urn for urn, o in tied.items() if o["phase"] and o["phase"] <= cphase]
+            # 'X Junior School PTA' settles an infant/junior tie only when every other tied school's own phase
+            # words clearly conflict with the charity's. A school with no phase words cannot be ruled out.
+            survivors = [urn for urn, o in tied.items() if not phases_conflict(o["phase"], cphase)]
             if len(survivors) == 1 and survivors[0] in candidates:
                 chosen = survivors[0]
         if chosen is None:
@@ -314,12 +321,27 @@ def iter_json_array(path, chunk_size=1 << 20):
 
 
 def load_schools(site_data):
-    """All open schools from every council's register."""
-    las = Path(site_data) / "england/las.json"
-    councils = {str(la["la_code"]): la["name"] for la in json.loads(las.read_text(encoding="utf-8")).get("las", [])} if las.exists() else {}
+    """All open schools from every English council's register.
+
+    site/data/la also holds Scottish, Welsh and Northern Irish councils; only those listed in the
+    English manifest (england/las.json) are read, and any register that names another nation is skipped.
+    """
+    site_data = Path(site_data)
+    las = site_data / "england/las.json"
+    if las.exists():
+        councils = {str(la["la_code"]): la["name"] for la in json.loads(las.read_text(encoding="utf-8")).get("las", [])}
+        paths = [site_data / "la" / code / "schools.json" for code in sorted(councils)]
+    else:
+        councils, paths = {}, sorted(site_data.glob("la/*/schools.json"))
     schools = []
-    for path in sorted(Path(site_data).glob("la/*/schools.json")):
-        for school in json.loads(path.read_text(encoding="utf-8")).get("schools", []):
+    for path in paths:
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text(encoding="utf-8"))
+        nation = (data.get("la") or {}).get("nation")
+        if nation and nation != "England":
+            continue
+        for school in data.get("schools", []):
             school.setdefault("council", councils.get(path.parent.name))
             schools.append(school)
     return schools
