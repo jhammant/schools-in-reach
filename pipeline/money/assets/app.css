@@ -371,7 +371,7 @@ a.watch:hover, a.watch:focus-visible { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 
    only, and a table too wide for the page scrolls sideways inside itself (phones keep the stacked layout). */
 th, td { overflow-wrap: break-word; }
 @media (min-width: 601px) {
-  table.responsive, table.mini { display: block; max-width: 100%; overflow-x: auto; }
+  table.responsive, table.mini, table.sp-years, table.sp-rows, table.sp-pta { display: block; max-width: 100%; overflow-x: auto; }
 }
 
 /* Home page "Start here": one card per audience, in that audience's colour (set with the chips above). */
