@@ -317,11 +317,22 @@
       };
     });
     if (!Object.keys(rows).length) {
+      // As series._pta counts it: a return listed twice counts once, and distinct returns in one school year are added.
+      var returns = {};
       arr(main.history).forEach(function (h) {
         h = obj(h);
-        var y = yearOfPeriodEnd(h.period_end);
-        if (!y || num(h.income) == null) return;
-        rows[y] = { y: y, income: num(h.income), spend: num(h.expenditure), periodEnd: h.period_end, volunteers: num(h.volunteers), incomeLines: {}, spendLines: {} };
+        if (yearOfPeriodEnd(h.period_end) && num(h.income) != null) returns[String(h.period_end)] = h;
+      });
+      Object.keys(returns).sort().forEach(function (end) {
+        var h = returns[end], y = yearOfPeriodEnd(end), r = rows[y], spend = num(h.expenditure);
+        if (!r) {
+          rows[y] = { y: y, income: num(h.income), spend: spend, periodEnd: end, volunteers: num(h.volunteers), incomeLines: {}, spendLines: {} };
+          return;
+        }
+        r.income += num(h.income);
+        if (spend != null) r.spend = (r.spend || 0) + spend;
+        r.periodEnd = end;
+        if (num(h.volunteers) != null) r.volunteers = num(h.volunteers);
       });
     }
     var breakdown = obj(main.breakdown);
@@ -925,10 +936,11 @@
     var eSame = !!(E && year && (E.ptaByYear || {})[year]);
     var hasE = !!(eYear && (E.ptaPP != null || Object.keys(E.ptaBands).length));
     var near = d.nearby && year ? d.nearby.schools.filter(function (r) { return r.pta_pp != null && r.pta_year === year; }).slice(0, 3) : [];
-    if (!hasE && !near.length) return null;
+    var council = A && year ? (A.ptaByYear || {})[year] : null, england = eSame ? E.ptaByYear[year] : null;
+    // The council's same-year median is a comparison on its own, so the card stands when England's figures are missing.
+    if (!hasE && !near.length && !council) return null;
     var c = newCard("pta-gap", "stat", "How the PTFA compares");
     var mineRow = P && year ? P.years.filter(function (r) { return r.y === year && r.pp != null; })[0] : null;
-    var council = A && year ? (A.ptaByYear || {})[year] : null, england = eSame ? E.ptaByYear[year] : null;
     var cname = A && A.name ? A.name : d.council.name || "The council";
     var labels = barLabels(near);
     c.bars = [];
@@ -959,6 +971,9 @@
       c.figures.push(fig("pta_band5", "Least affluent intakes", null, b5, bandYear, src));
     } else if (!mineRow && england) {
       c.big = { v: england.pp, text: fmtExact(england.pp), fmt: "exact", unit: "per pupil, England's typical PTA" };
+    } else if (!mineRow && council) {
+      c.big = { v: council.pp, text: fmtExact(council.pp), fmt: "exact", unit: "per pupil, " + cname + "'s typical PTA" };
+      c.lines.push("The middle registered parents' association in " + cname + " raised " + fmtExact(council.pp) + " per pupil in the " + ptaYearWords(year) + ".");
     } else if (!mineRow) {
       c.big = { v: null, text: year, fmt: "text", unit: "nearby parents' associations" };
     }

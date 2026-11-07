@@ -910,6 +910,25 @@ test("PTFA pack on the live William Patten shape: £48,547 in 2024-25 is £111 p
   assertClean(deck, "live ptfa");
 });
 
+test("two returns ending in one school year are added together, and a return listed twice counts once", () => {
+  // Arrange: the association moves its year end from March to August, so 2024-25 has two returns (as series._pta sums them).
+  const { s, sx, council } = livePatten();
+  s.pta[0].history = [{ period_end: "2025-03", income: 10000, expenditure: 9000 }, { period_end: "2025-08", income: 20000, expenditure: 18000 },
+    { period_end: "2025-08", income: 20000, expenditure: 18000 }, { period_end: "2024-03", income: 32743, expenditure: 36767 }];
+  sx.pta["2024-25"] = { income: 30000, spend: 27000, income_pp: 69, spend_pp: 62, charity_number: 1103834, confidence: "high" };
+  // Act
+  const m = D.adapt(s, sx, council, ENGLAND);
+  const deck = D.ptfaDeck(m, CTXT);
+  // Assert
+  assert.deepEqual(m.pta[0].years.map((e) => [e.y, e.income, e.spend]), [["2023-24", 32743, 36767], ["2024-25", 30000, 27000]]);
+  assert.equal(m.pta[0].fye, "August");
+  const money = findSlide(deck, "pta_money");
+  assert.deepEqual(seriesOf(money, "pta_income").points.map((p) => p.y), ["2023-24", "2024-25"], "one bar per school year");
+  assert.ok(money.bullets.some((b) => b.startsWith("Year to Aug 2025 (accounts to Mar 2025 and Aug 2025, added together): raised £69 per pupil (£30k)")), money.bullets.join("\n"));
+  assert.equal(findSlide(deck, "summary").messages[0], "Year to Aug 2025 (accounts to Mar 2025 and Aug 2025, added together): raised £30,000, £69 per pupil, down 8% on the year before");
+  assertClean(deck, "two returns in one year");
+});
+
 test("an academy's PTA return counts in the same September-to-August year as a council-run school's", () => {
   // Arrange: the same charity history under an academy with AAR years.
   const { s, sx, council } = livePatten();

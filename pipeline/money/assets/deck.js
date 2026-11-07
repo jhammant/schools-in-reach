@@ -357,24 +357,38 @@
     var charities = (Array.isArray(s.pta) ? s.pta : []).filter(function (p) { return isObj(p) && !p.review; });
     m.pta = charities.map(function (p) {
       var num = str(p.charity_number);
-      var years = [], fye = null;
+      // One entry per school year, as series._pta and the area medians count it: a return listed twice counts once,
+      // and distinct returns ending in the same school year (an association moving its year end files two) are added.
+      var returns = {}, slots = {};
       (Array.isArray(p.history) ? p.history : []).forEach(function (h) {
-        if (!isObj(h)) return;
-        var ce = charityEnd(h.period_end);
-        if (!ce) return;
-        fye = ce.fye;
-        years.push({ y: ptaSchoolYear(ce), end: ce.end, month: ce.month, iso: ce.iso, income: n(h.income), spend: n(h.expenditure != null ? h.expenditure : h.spend) });
+        if (!isObj(h) || !charityEnd(h.period_end)) return;
+        if (n(h.income) == null && n(h.expenditure != null ? h.expenditure : h.spend) == null) return;
+        returns[String(h.period_end)] = h;
       });
+      Object.keys(returns).forEach(function (key) {
+        var h = returns[key], ce = charityEnd(key), y = ptaSchoolYear(ce);
+        var income = n(h.income), spend = n(h.expenditure != null ? h.expenditure : h.spend);
+        var e = slots[y] || (slots[y] = { y: y, ends: [], income: null, spend: null });
+        e.ends.push(ce);
+        if (income != null) e.income = (e.income || 0) + income;
+        if (spend != null) e.spend = (e.spend || 0) + spend;
+      });
+      var years = Object.keys(slots).sort().map(function (y) {
+        var e = slots[y];
+        e.ends.sort(function (a, b) { return a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0; });
+        var latest = e.ends[e.ends.length - 1];
+        e.end = latest.end; e.month = latest.month; e.iso = latest.iso; e.fye = latest.fye;
+        return e;
+      });
+      var fye = years.length ? years[years.length - 1].fye : null;
       if (!years.length) {
         Object.keys(sxPta).sort().forEach(function (y) {
           var e = sxPta[y];
           if (isObj(e) && (!e.charity_number || String(e.charity_number) === num || charities.length === 1)) {
-            years.push({ y: y, end: null, month: null, iso: "", income: n(e.income), spend: n(e.spend) });
+            years.push({ y: y, ends: [], end: null, month: null, iso: "", income: n(e.income), spend: n(e.spend) });
           }
         });
       }
-      // By school year, then by period end, so the latest return is last even when two share a school year.
-      years.sort(function (a, b) { return a.y < b.y ? -1 : a.y > b.y ? 1 : a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0; });
       var confidence = isObj(p.match) && (p.match.method === "llm" || p.match.confidence === "medium") ? "medium" : null;
       years.forEach(function (e) {
         var x = sxPta[e.y];
@@ -830,9 +844,11 @@
   }
   function ratePtaAgainst(last, median, words, year) {
     if (!last || !isNum(last.incomePp) || !median || !isNum(median.v) || median.v <= 0) return null;
-    var pp = last.incomePp, w = year === last.y ? ratioWords(pp, median.v) : null;
+    // ratioWords has no words for a zero income, so a null phrase alone doesn't mean the years differ.
+    var pp = last.incomePp, same = year === last.y, w = same ? ratioWords(pp, median.v) : null;
     return rag(pp >= median.v ? "green" : pp >= median.v / 2 ? "amber" : "red", "Per pupil against " + words,
       w ? fmtExact(pp) + " per pupil in the " + ptaYearWords(last.y) + ", " + w + " the median (" + fmtExact(median.v) + ")"
+        : same ? fmtExact(pp) + " per pupil in the " + ptaYearWords(last.y) + ", against a median of " + fmtExact(median.v)
         : fmtExact(pp) + " per pupil (" + ptaYearWords(last.y) + ") against a median of " + fmtExact(median.v) + " (" + ptaYearWords(year) + ", a different year)",
       "At or above the median is on track; at least half of it is worth watching; under half needs attention. What parents can give varies a lot between schools.");
   }
@@ -1141,8 +1157,12 @@
     return null;
   }
   // Every PTA figure leads with the school year its return is counted in, as "the year to Aug 2025" (the year pupils
-  // and medians use); accounts that end in another month say when.
-  function accountsEnd(e) { return e.end && e.month && e.month !== 8 ? "accounts to " + e.end : ""; }
+  // and medians use); accounts that end in another month say when, and two returns in one school year say both.
+  function accountsEnd(e) {
+    var ends = (e.ends || []).map(function (x) { return x.end; });
+    if (ends.length > 1) return "accounts to " + ends.slice(0, -1).join(", ") + " and " + ends[ends.length - 1] + ", added together";
+    return e.end && e.month && e.month !== 8 ? "accounts to " + e.end : "";
+  }
   function ptaWhen(e) { var a = accountsEnd(e); return "the " + ptaYearWords(e.y) + (a ? " (" + a + ")" : ""); }
   function ptaLead(e) { var a = accountsEnd(e); return capital(ptaYearWords(e.y)) + (a ? " (" + a + ")" : ""); }
   function ptaYearText(e) { var a = accountsEnd(e); return ptaYearWords(e.y) + " (school year " + e.y + (a ? ", " + a : "") + ")"; }

@@ -827,6 +827,49 @@ test("PTFA mode treats undated England PTA figures as missing and uses this PTFA
   assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN/);
 });
 
+test("PTFA mode keeps the council's same-year PTA comparison when England's figures are missing", () => {
+  // Arrange: Hackney publishes a 2024-25 median; England's file did not load and there are no nearby PTAs.
+  const f = fixture();
+  f.council.by_year["2024-25"] = { all: { schools: 60, pta_schools: 12, pta_pp_median: 62.46 } };
+  // Act
+  const m = MW.buildCards(MW.adapt(f.s, f.sx, f.council, null, CTX), "ptfa");
+  const c = card(m, "pta-gap");
+  // Assert
+  assert.ok(c, "the council's median is a comparison on its own");
+  assert.equal(c.big.v, card(m, "pta-money").big.v);
+  assert.match(c.lines[0], /^Year to Aug 2025: this PTFA raised £111 per pupil, about double Hackney's typical PTA \(£62\)\.$/);
+  assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Hackney's middle PTA"]);
+  assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN/);
+});
+
+test("PTFA mode with no per-pupil figure of its own shows the council's same-year median, with its year", () => {
+  // Arrange: no pupil count for 2024-25, so this PTFA has a total but no per-pupil figure; England did not load.
+  const f = fixture();
+  f.council.by_year["2024-25"] = { all: { schools: 60, pta_schools: 12, pta_pp_median: 62.46 } };
+  delete f.sx.pupils["2024-25"];
+  f.s.years.find((r) => r.y === "2024-25").pupils = null;
+  f.sx.pta["2024-25"].income_pp = null;
+  // Act
+  const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, null, CTX), "ptfa"), "pta-gap");
+  // Assert
+  assert.deepEqual(c.big, { v: 62.46, text: "£62", fmt: "exact", unit: "per pupil, Hackney's typical PTA" });
+  assert.ok(c.lines.includes("The middle registered parents' association in Hackney raised £62 per pupil in the year to Aug 2025."), c.lines.join("\n"));
+  assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN|nearby/i);
+});
+
+test("with no sx.pta, two returns ending in one school year are added together and a repeated return counts once", () => {
+  // Arrange: the register history alone; the association moved its year end from March to August 2025.
+  const f = fixture();
+  f.sx.pta = {};
+  f.s.pta[0].history = [{ period_end: "2025-03-31", income: 10000, expenditure: 9000 }, { period_end: "2025-08-31", income: 20000, expenditure: 18000 },
+    { period_end: "2025-08-31", income: 20000, expenditure: 18000 }, { period_end: "2024-08-31", income: 32743, expenditure: 36767 }];
+  // Act
+  const d = MW.adapt(f.s, f.sx, f.council, f.england, CTX);
+  // Assert: as series._pta counts it, one row per school year.
+  assert.deepEqual(d.pta.years.map((r) => [r.y, r.income, r.spend]), [["2023-24", 32743, 36767], ["2024-25", 30000, 27000]]);
+  assert.equal(d.pta.latest.pp, Math.round(30000 / pupilsOf("2024-25")));
+});
+
 test("PTFA mode keeps to 3 nearby PTAs when more share the year", () => {
   // Arrange
   const contract = nearbyContract();
