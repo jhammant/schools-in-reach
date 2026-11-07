@@ -25,6 +25,8 @@ Warnings:
 - 47 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 1 academies have a company number with no central-services row; trust_central_* null
 - 'Distributed Revenue Reserve.on pp basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -65,7 +67,7 @@ Warnings:
 | non_government_grants | `Non- Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -83,6 +85,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -154,6 +158,8 @@ Warnings:
 - optional key 'cfr_additional_grants_i18' not found; written as null
 - 121 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 'Distributed Revenue Reserve.on pp basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -194,7 +200,7 @@ Warnings:
 | non_government_grants | `Non-Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -212,6 +218,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -284,6 +292,8 @@ Warnings:
 - 186 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 52 academies have a company number with no central-services row; trust_central_* null
 - 'Distributed Revenue Reserve.on pp basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -324,7 +334,7 @@ Warnings:
 | non_government_grants | `Non- Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -342,6 +352,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -414,6 +426,8 @@ Warnings:
 - optional key 'cfr_additional_grants_i18' not found; written as null
 - 116 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 'Share of Revenue Reserve, distributed on per pupil basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -454,7 +468,7 @@ Warnings:
 | non_government_grants | `Non-Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff Costs` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff Costs)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -472,6 +486,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -547,6 +563,8 @@ Warnings:
 - 135 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 3 academies have a company number with no central-services row; trust_central_* null
 - 'Share of Revenue Reserve, distributed on per pupil basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 - fsm_pct is suspect for the whole workbook: academy median 16.3% against 20.3% (2021/22) and 22.1% (2023/24), with values up to 646.2; rows above 100 carry 'fsm_pct' in suspect
 
 | key | source column |
@@ -588,7 +606,7 @@ Warnings:
 | non_government_grants | `Non-Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff Costs` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff Costs)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -606,6 +624,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -680,6 +700,8 @@ Warnings:
 - 133 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
 - 13 academies have a company number with no central-services row; trust_central_* null
 - 'Share of Revenue Reserve, distributed on per pupil basis' spreads the whole trust's reserve (central services plus every academy's own reserve) per pupil, so it already contains this school's reserve; it is not comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -720,7 +742,7 @@ Warnings:
 | non_government_grants | `Non-Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff Costs` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff Costs)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -738,6 +760,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -808,6 +832,8 @@ Warnings:
 - optional key 'cfr_additional_grants_i18' not found; written as null
 - facilities_income derived as lettings + other facilities income in 11560 rows (no total column)
 - 113 academies report negative non-government or inter-academy income (refunds), so grant_funding_government exceeds grant_funding for them
+- supply_staff is bae020 + bae240 (FBIT's supply staff); the workbook column also includes bae100 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = aar_other_dfe_revenue_grants: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -849,7 +875,7 @@ Warnings:
 | non_government_grants | `Non-Government` |
 | income_from_academies | `Academies` |
 | teaching_staff | `Teaching staff` |
-| supply_staff | `Supply Staff Costs` |
+| supply_staff | `= lines bae020 + bae240 (column Supply Staff Costs)` |
 | education_support_staff | `Education support staff` |
 | admin_clerical_staff | `Administrative and clerical staff` |
 | premises_staff | `Premises staff` |
@@ -867,6 +893,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line bae100` |
+| other_dfe_grants | `= aar_other_dfe_revenue_grants` |
 
 Line columns:
 
@@ -938,6 +966,8 @@ Warnings:
 - total_expenditure harmonised by subtracting E30 direct revenue financing in 3099 rows (later workbooks already exclude it)
 - total_income harmonised by subtracting E30 direct revenue financing in 3099 rows (later workbooks already exclude it)
 - no 'Lead school in federation' column; lead_laestab only known where the federation column holds a LAEstab
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -973,7 +1003,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Additional grant for schools` |
 | teaching_staff | `E01 Teaching Staff` |
-| supply_staff | `Supply Staff` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff)` |
 | education_support_staff | `E03 Education support staff` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -991,6 +1021,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1071,6 +1103,8 @@ Warnings:
 - total_expenditure harmonised by subtracting E30 direct revenue financing in 2631 rows (later workbooks already exclude it)
 - total_income harmonised by subtracting E30 direct revenue financing in 2630 rows (later workbooks already exclude it)
 - no 'Lead school in federation' column; lead_laestab only known where the federation column holds a LAEstab
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1106,7 +1140,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Additional grant for schools` |
 | teaching_staff | `E01 Teaching Staff` |
-| supply_staff | `Supply Staff` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff)` |
 | education_support_staff | `E03 Education support staff` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1124,6 +1158,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1198,6 +1234,8 @@ Line columns:
 Warnings:
 
 - optional key 'teacher_pension_ni_grants' not found; written as null
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1233,7 +1271,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Total additional grant for schools` |
 | teaching_staff | `Teaching Staff: E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1251,6 +1289,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1333,6 +1373,8 @@ Line columns:
 Warnings:
 
 - optional key 'teacher_pension_ni_grants' not found; written as null
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1368,7 +1410,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Total additional grant for schools` |
 | teaching_staff | `Teaching Staff: E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1386,6 +1428,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1470,6 +1514,8 @@ Warnings:
 
 - optional key 'teacher_pension_ni_grants' not found; written as null
 - skipped 4 rows without a numeric URN
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1505,7 +1551,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Total additional grant for schools` |
 | teaching_staff | `Teaching Staff E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1523,6 +1569,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1606,6 +1654,8 @@ Line columns:
 Warnings:
 
 - optional key 'teacher_pension_ni_grants' not found; written as null
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1641,7 +1691,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Total additional grant for schools` |
 | teaching_staff | `Teaching Staff E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1659,6 +1709,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1737,13 +1789,16 @@ Line columns:
 - Rows: 10701 (10520 with a return, 181 federation members without one)
 - Schools with revenue_reserve < 0: 1884
 - England total income: £25.63bn
-- Line columns: 70 (10520 rows carry lines); rows with adjusted: 0; rows with suspect: 10701
+- Line columns: 70 (10520 rows carry lines); rows with adjusted: 6727; rows with suspect: 10701
 
 Warnings:
 
 - sixth_form_pupils column is zero for every row; written as null and added to suspect
 - optional key 'teacher_pension_ni_grants' not found; written as null
 - skipped 1 rows without a numeric URN
+- educational_supplies recomputed as E19 + (E20 - E20D) + E21 in 6727 rows: this workbook's column counts E20D administration software, which 2025-26 and FBIT leave out ('adjusted')
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = cfr_additional_grants_i18: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
 
 | key | source column |
 |---|---|
@@ -1779,7 +1834,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | `I18 Total additional grant for schools` |
 | teaching_staff | `Teaching Staff E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1797,6 +1852,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= cfr_additional_grants_i18` |
 
 Line columns:
 
@@ -1885,7 +1942,9 @@ Warnings:
 
 - optional key 'teacher_pension_ni_grants' not found; written as null
 - optional key 'cfr_additional_grants_i18' not found; written as null
-- I18 additional grants line removed; those grants now appear in I06 Other government grants, so cfr_additional_grants_i18 is null and I06 is not comparable with earlier years
+- supply_staff is E02 + E26 (FBIT's supply staff); the workbook column also includes E10 supply teacher insurance, written separately as supply_insurance
+- other_dfe_grants = line I06: a container line that includes the teachers' pension and National Insurance grants, which cannot be separated out
+- I18 additional grants line removed; those grants now appear in I06 Other government grants, so cfr_additional_grants_i18 is null, other_dfe_grants is I06, and I06 is not comparable with earlier years
 
 | key | source column |
 |---|---|
@@ -1921,7 +1980,7 @@ Warnings:
 | teacher_pension_ni_grants | *absent* |
 | cfr_additional_grants_i18 | *absent* |
 | teaching_staff | `Teaching Staff E01` |
-| supply_staff | `Supply Staff: E02 + E10 + E26` |
+| supply_staff | `= lines E02 + E26 (column Supply Staff: E02 + E10 + E26)` |
 | education_support_staff | `Education support staff: E03` |
 | admin_clerical_staff | `E05 Administrative and clerical staff` |
 | premises_staff | `E04 Premises staff` |
@@ -1939,6 +1998,8 @@ Warnings:
 | total_staff_costs | `= total_staff` |
 | teaching_staff_costs | `= teaching_staff` |
 | education_support_staff_costs | `= education_support_staff` |
+| supply_insurance | `= line E10` |
+| other_dfe_grants | `= line I06` |
 
 Line columns:
 
@@ -2034,23 +2095,23 @@ Line columns:
 
 ## New keys: rows with a value per workbook
 
-| workbook | ehcp_pct | sixth_form_pupils | self_generated_income | donations_revenue | donations_capital | facilities_income | lettings_income | community_facilities_income | catering_income | teacher_pension_ni_grants | cfr_additional_grants_i18 | aar_other_dfe_revenue_grants | non_government_grants | income_from_academies | grant_funding_government | total_staff_costs | teaching_staff_costs | education_support_staff_costs | company_number | trust_central_spend_per_pupil | trust_central_total_expenditure | trust_central_pupils | line cols | rows with lines | adjusted | suspect |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| AAR_2018-19_download.xlsx | 8634 | 8634 | 8690 | 8690 | 0 | 8690 | 0 | 0 | 8690 | 0 | 0 | 8690 | 8690 | 8690 | 8690 | 8690 | 8690 | 8690 | 8767 | 8766 | 8690 | 8766 | 44 | 8767 | 0 | 0 |
-| AAR_2019-20_download.xlsx | 9181 | 9227 | 9153 | 9153 | 0 | 9153 | 0 | 0 | 9153 | 0 | 0 | 9153 | 9153 | 9153 | 9153 | 9153 | 9153 | 9153 | 9288 | 9207 | 9230 | 9288 | 45 | 9288 | 0 | 0 |
-| AAR_2020-21_download.xlsx | 9646 | 9375 | 9594 | 9594 | 0 | 9594 | 0 | 0 | 9594 | 0 | 0 | 9591 | 9594 | 9594 | 9594 | 9594 | 9594 | 9594 | 9646 | 9594 | 9594 | 9589 | 45 | 9646 | 0 | 0 |
-| AAR_2021-22_download.xlsx | 10001 | 9959 | 9897 | 9897 | 0 | 9897 | 0 | 0 | 9897 | 0 | 0 | 9897 | 9897 | 9897 | 9897 | 9897 | 9897 | 9897 | 10001 | 9893 | 9894 | 10001 | 45 | 10001 | 0 | 0 |
-| AAR_2022-23_download.xlsx | 10295 | 10136 | 10292 | 10292 | 0 | 10292 | 0 | 0 | 10292 | 0 | 0 | 10292 | 10292 | 10292 | 10292 | 10292 | 10292 | 10292 | 10295 | 10261 | 10292 | 10292 | 45 | 10295 | 0 | 5 |
-| AAR_2023-24_download.xlsx | 10954 | 10810 | 10941 | 10941 | 0 | 10941 | 0 | 0 | 10941 | 0 | 0 | 10941 | 10941 | 10941 | 10941 | 10941 | 10941 | 10941 | 10954 | 10919 | 10941 | 10924 | 45 | 10954 | 0 | 0 |
-| AAR_2024-25_download.xlsx | 11560 | 11480 | 11560 | 11560 | 0 | 11560 | 11560 | 0 | 11560 | 0 | 0 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11557 | 11560 | 11557 | 49 | 11560 | 0 | 0 |
-| CFR_2018-19_Full_Data_Workbook.xlsx | 13875 | 14059 | 13947 | 13947 | 13947 | 13947 | 0 | 13947 | 13947 | 0 | 13947 | 0 | 0 | 0 | 13947 | 13947 | 13947 | 13947 | 0 | 0 | 0 | 0 | 58 | 13947 | 3099 | 0 |
-| CFR_2019-20_Full_Data_Workbook.xlsx | 13349 | 13349 | 13158 | 13159 | 13159 | 13158 | 0 | 13159 | 13159 | 0 | 13159 | 0 | 0 | 0 | 13159 | 13159 | 13159 | 13159 | 0 | 0 | 0 | 0 | 57 | 13159 | 2631 | 0 |
-| CFR_2020-21_Full_Data_Workbook.xlsx | 12807 | 12692 | 12656 | 12656 | 12656 | 12656 | 12656 | 12656 | 12656 | 0 | 12656 | 0 | 0 | 0 | 12656 | 12656 | 12656 | 12656 | 0 | 0 | 0 | 0 | 65 | 12656 | 0 | 0 |
-| CFR_2021-22_Full_Data_Workbook.xlsx | 12371 | 12390 | 12221 | 12221 | 12221 | 12221 | 12221 | 12221 | 12221 | 0 | 12221 | 0 | 0 | 0 | 12221 | 12221 | 12221 | 12221 | 0 | 0 | 0 | 0 | 66 | 12221 | 0 | 0 |
-| CFR_2022-23_Full_Data_Workbook.xlsx | 12026 | 12026 | 11862 | 11862 | 11862 | 11862 | 11862 | 11862 | 11862 | 0 | 11862 | 0 | 0 | 0 | 11862 | 11862 | 11862 | 11862 | 0 | 0 | 0 | 0 | 66 | 11862 | 0 | 0 |
-| CFR_2023-24_Full_Data_Workbook.xlsx | 11295 | 11286 | 11362 | 11362 | 11362 | 11362 | 11362 | 11362 | 11362 | 0 | 11360 | 0 | 0 | 0 | 11360 | 11362 | 11362 | 11362 | 0 | 0 | 0 | 0 | 66 | 11362 | 0 | 0 |
-| CFR_2024-25_Full_Data_Workbook.xlsx | 10682 | 0 | 10520 | 10520 | 10520 | 10520 | 10520 | 10520 | 10520 | 0 | 10520 | 0 | 0 | 0 | 10520 | 10520 | 10520 | 10520 | 0 | 0 | 0 | 0 | 70 | 10520 | 0 | 10701 |
-| CFR_2025-26_Full_Data_Workbook.xlsx | 10395 | 10413 | 10285 | 10285 | 10285 | 10285 | 10285 | 10285 | 10285 | 0 | 0 | 0 | 0 | 0 | 10285 | 10285 | 10285 | 10285 | 0 | 0 | 0 | 0 | 67 | 10285 | 0 | 0 |
+| workbook | ehcp_pct | sixth_form_pupils | self_generated_income | donations_revenue | donations_capital | facilities_income | lettings_income | community_facilities_income | catering_income | teacher_pension_ni_grants | cfr_additional_grants_i18 | aar_other_dfe_revenue_grants | non_government_grants | income_from_academies | grant_funding_government | total_staff_costs | teaching_staff_costs | education_support_staff_costs | company_number | trust_central_spend_per_pupil | trust_central_total_expenditure | trust_central_pupils | supply_insurance | other_dfe_grants | line cols | rows with lines | adjusted | suspect |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| AAR_2018-19_download.xlsx | 8634 | 8634 | 8690 | 8690 | 0 | 8690 | 0 | 0 | 8690 | 0 | 0 | 8690 | 8690 | 8690 | 8690 | 8690 | 8690 | 8690 | 8767 | 8766 | 8690 | 8766 | 8690 | 8690 | 44 | 8767 | 0 | 0 |
+| AAR_2019-20_download.xlsx | 9181 | 9227 | 9153 | 9153 | 0 | 9153 | 0 | 0 | 9153 | 0 | 0 | 9153 | 9153 | 9153 | 9153 | 9153 | 9153 | 9153 | 9288 | 9207 | 9230 | 9288 | 9153 | 9153 | 45 | 9288 | 0 | 0 |
+| AAR_2020-21_download.xlsx | 9646 | 9375 | 9594 | 9594 | 0 | 9594 | 0 | 0 | 9594 | 0 | 0 | 9591 | 9594 | 9594 | 9594 | 9594 | 9594 | 9594 | 9646 | 9594 | 9594 | 9589 | 9594 | 9591 | 45 | 9646 | 0 | 0 |
+| AAR_2021-22_download.xlsx | 10001 | 9959 | 9897 | 9897 | 0 | 9897 | 0 | 0 | 9897 | 0 | 0 | 9897 | 9897 | 9897 | 9897 | 9897 | 9897 | 9897 | 10001 | 9893 | 9894 | 10001 | 9897 | 9897 | 45 | 10001 | 0 | 0 |
+| AAR_2022-23_download.xlsx | 10295 | 10136 | 10292 | 10292 | 0 | 10292 | 0 | 0 | 10292 | 0 | 0 | 10292 | 10292 | 10292 | 10292 | 10292 | 10292 | 10292 | 10295 | 10261 | 10292 | 10292 | 10292 | 10292 | 45 | 10295 | 0 | 5 |
+| AAR_2023-24_download.xlsx | 10954 | 10810 | 10941 | 10941 | 0 | 10941 | 0 | 0 | 10941 | 0 | 0 | 10941 | 10941 | 10941 | 10941 | 10941 | 10941 | 10941 | 10954 | 10919 | 10941 | 10924 | 10941 | 10941 | 45 | 10954 | 0 | 0 |
+| AAR_2024-25_download.xlsx | 11560 | 11480 | 11560 | 11560 | 0 | 11560 | 11560 | 0 | 11560 | 0 | 0 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11560 | 11557 | 11560 | 11557 | 11560 | 11560 | 49 | 11560 | 0 | 0 |
+| CFR_2018-19_Full_Data_Workbook.xlsx | 13875 | 14059 | 13947 | 13947 | 13947 | 13947 | 0 | 13947 | 13947 | 0 | 13947 | 0 | 0 | 0 | 13947 | 13947 | 13947 | 13947 | 0 | 0 | 0 | 0 | 13947 | 13947 | 58 | 13947 | 3099 | 0 |
+| CFR_2019-20_Full_Data_Workbook.xlsx | 13349 | 13349 | 13158 | 13159 | 13159 | 13158 | 0 | 13159 | 13159 | 0 | 13159 | 0 | 0 | 0 | 13159 | 13159 | 13159 | 13159 | 0 | 0 | 0 | 0 | 13159 | 13159 | 57 | 13159 | 2631 | 0 |
+| CFR_2020-21_Full_Data_Workbook.xlsx | 12807 | 12692 | 12656 | 12656 | 12656 | 12656 | 12656 | 12656 | 12656 | 0 | 12656 | 0 | 0 | 0 | 12656 | 12656 | 12656 | 12656 | 0 | 0 | 0 | 0 | 12656 | 12656 | 65 | 12656 | 0 | 0 |
+| CFR_2021-22_Full_Data_Workbook.xlsx | 12371 | 12390 | 12221 | 12221 | 12221 | 12221 | 12221 | 12221 | 12221 | 0 | 12221 | 0 | 0 | 0 | 12221 | 12221 | 12221 | 12221 | 0 | 0 | 0 | 0 | 12221 | 12221 | 66 | 12221 | 0 | 0 |
+| CFR_2022-23_Full_Data_Workbook.xlsx | 12026 | 12026 | 11862 | 11862 | 11862 | 11862 | 11862 | 11862 | 11862 | 0 | 11862 | 0 | 0 | 0 | 11862 | 11862 | 11862 | 11862 | 0 | 0 | 0 | 0 | 11862 | 11862 | 66 | 11862 | 0 | 0 |
+| CFR_2023-24_Full_Data_Workbook.xlsx | 11295 | 11286 | 11362 | 11362 | 11362 | 11362 | 11362 | 11362 | 11362 | 0 | 11360 | 0 | 0 | 0 | 11360 | 11362 | 11362 | 11362 | 0 | 0 | 0 | 0 | 11362 | 11360 | 66 | 11362 | 0 | 0 |
+| CFR_2024-25_Full_Data_Workbook.xlsx | 10682 | 0 | 10520 | 10520 | 10520 | 10520 | 10520 | 10520 | 10520 | 0 | 10520 | 0 | 0 | 0 | 10520 | 10520 | 10520 | 10520 | 0 | 0 | 0 | 0 | 10520 | 10520 | 70 | 10520 | 6727 | 10701 |
+| CFR_2025-26_Full_Data_Workbook.xlsx | 10395 | 10413 | 10285 | 10285 | 10285 | 10285 | 10285 | 10285 | 10285 | 0 | 0 | 0 | 0 | 0 | 10285 | 10285 | 10285 | 10285 | 0 | 0 | 0 | 0 | 10285 | 10285 | 67 | 10285 | 0 | 0 |
 
 ## New keys: all rows
 
@@ -2080,12 +2141,37 @@ Rows in total: 167877
 | trust_central_spend_per_pupil | 70197 |
 | trust_central_total_expenditure | 70201 |
 | trust_central_pupils | 70417 |
+| supply_insurance | 166139 |
+| other_dfe_grants | 166134 |
 | lines (non-empty) | 166523 |
+
+## Supply staff, learning resources and other DfE grants
+
+`supply_staff` is supply plus agency supply teachers (CFR E02 + E26, AAR bae020 + bae240), as FBIT counts them; both sectors' workbook columns also add supply teacher insurance, which is now `supply_insurance` (CFR E10, AAR bae100). CFR 2024-25 `educational_supplies` leaves out E20D administration software, as 2025-26 and FBIT do. `other_dfe_grants` is the container line holding the teachers' pension and NI grants, which no workbook separates out (CFR I18 to 2024-25, I06 in 2025-26; AAR other DfE revenue grants).
+
+| workbook | supply_staff | supply_insurance | educational_supplies adjusted | E20D taken out | other_dfe_grants rows | other_dfe_grants |
+|---|---:|---:|---:|---:|---:|---:|
+| AAR_2018-19_download.xlsx | £481.3m | £11.3m | 0 | £0.0m | 8690 | £546.9m |
+| AAR_2019-20_download.xlsx | £436.3m | £12.3m | 0 | £0.0m | 9153 | £621.8m |
+| AAR_2020-21_download.xlsx | £428.0m | £16.5m | 0 | £0.0m | 9591 | £684.5m |
+| AAR_2021-22_download.xlsx | £702.4m | £15.8m | 0 | £0.0m | 9897 | £748.8m |
+| AAR_2022-23_download.xlsx | £882.7m | £16.5m | 0 | £0.0m | 10292 | £843.6m |
+| AAR_2023-24_download.xlsx | £1,022.8m | £18.6m | 0 | £0.0m | 10941 | £978.6m |
+| AAR_2024-25_download.xlsx | £1,037.5m | £23.3m | 0 | £0.0m | 11560 | £1,208.8m |
+| CFR_2018-19_Full_Data_Workbook.xlsx | £555.0m | £115.9m | 0 | £0.0m | 13947 | £661.6m |
+| CFR_2019-20_Full_Data_Workbook.xlsx | £521.6m | £108.3m | 0 | £0.0m | 13159 | £634.1m |
+| CFR_2020-21_Full_Data_Workbook.xlsx | £348.6m | £103.0m | 0 | £0.0m | 12656 | £928.6m |
+| CFR_2021-22_Full_Data_Workbook.xlsx | £521.9m | £99.9m | 0 | £0.0m | 12221 | £884.9m |
+| CFR_2022-23_Full_Data_Workbook.xlsx | £595.9m | £102.1m | 0 | £0.0m | 11862 | £839.1m |
+| CFR_2023-24_Full_Data_Workbook.xlsx | £649.8m | £106.7m | 0 | £0.0m | 11360 | £790.2m |
+| CFR_2024-25_Full_Data_Workbook.xlsx | £584.5m | £91.6m | 6727 | £61.6m | 10520 | £612.5m |
+| CFR_2025-26_Full_Data_Workbook.xlsx | £552.3m | £86.4m | 0 | £0.0m | 10285 | £661.6m |
 
 ## Adjusted and suspect flags
 
 | flag | key | rows |
 |---|---|---:|
+| adjusted | educational_supplies | 6727 |
 | adjusted | total_expenditure | 5730 |
 | adjusted | total_income | 5729 |
 | suspect | fsm_pct | 5 |

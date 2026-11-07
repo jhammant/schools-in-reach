@@ -5,6 +5,7 @@ through the real xlsx.iter_rows). Real-data tests only run when the FBIT cache
 exists and never write into it.
 """
 
+import json
 import os
 import tempfile
 import unittest
@@ -724,6 +725,177 @@ class NewKeysTest(FixtureTest):
         self.assertEqual(text, fh.report(rows, infos))
 
 
+def _put(header: list, row: list, label: str, value) -> None:
+    """Set the cell under `label` in a fixture row."""
+    row[header.index(label)] = value
+
+
+# William Patten's real 2024-25 learning-resource lines: E19, E20A..E20G and E21 (E20D is admin software).
+E19_E21 = ["E19 Learning resources (not ICT equipment)", "E20A Connectivity", "E20B Onsite servers",
+           "E20C IT learning resources", "E20D Administration software and systems", "E20E Laptops, desktops and tablets",
+           "E20F Other hardware", "E20G IT support", "E21 Exam fees"]
+WP_E19_E21 = [112121, 6698, 0, 973, 10211, 12008, 3764, 11761, 0]
+SUPPLY_LINES = ["E02 Supply teaching staff", "E10 Supply teacher insurance", "E26 Agency supply teaching staff"]
+
+
+class GoldFixesTest(FixtureTest):
+    def test_cfr_supply_staff_is_e02_plus_e26_with_e10_kept_apart(self):
+        # Arrange: the workbook column is E02 + E10 + E26 = 300 + 200 + 500.
+        header = cfr_header() + SUPPLY_LINES
+        row = cfr_row(100050) + [300, 200, 500]
+        _put(header, row, "Supply Staff: E02 + E10 + E26", 1000)
+        path = self.cfr_file([header, row])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(rows[0]["supply_staff"], 800)
+        self.assertEqual(rows[0]["supply_insurance"], 200)
+        self.assertNotIn("adjusted", rows[0])
+        self.assertEqual(info["mapping"]["supply_insurance"], "= line E10")
+        self.assertIn("E02 + E26", info["mapping"]["supply_staff"])
+        self.assertTrue(any("supply_insurance" in w for w in info["warnings"]))
+
+    def test_cfr_supply_staff_falls_back_to_column_less_e10_then_unknown(self):
+        # Arrange: one workbook has only the E10 line; another has no supply lines at all.
+        header = cfr_header() + ["E10 Supply teacher insurance"]
+        row = cfr_row(100051) + [200]
+        _put(header, row, "Supply Staff: E02 + E10 + E26", 1000)
+        with_e10 = self.cfr_file([header, row])
+        without = self.cfr_file([cfr_header(), cfr_row(100052)], name="CFR_2023-24_Full_Data_Workbook.xlsx")
+        # Act
+        rows, _ = fh.read_workbook(with_e10)
+        bare, info = fh.read_workbook(without)
+        # Assert: a mixed figure is never passed off as supply staff.
+        self.assertEqual((rows[0]["supply_staff"], rows[0]["supply_insurance"]), (800, 200))
+        self.assertIsNone(bare[0]["supply_staff"])
+        self.assertIsNone(bare[0]["supply_insurance"])
+        self.assertTrue(any("supply_staff null in 1 workbook rows" in w for w in info["warnings"]))
+
+    def test_aar_supply_insurance_stays_out_of_supply_staff(self):
+        # Arrange: the academies' 'Supply Staff Costs' column is bae020 + bae240 + bae100 in every real workbook.
+        header = aar_header() + ["Supply teaching staff", "Agency supply teaching staff", "Supply teacher insurance"]
+        base = len(aar_header())
+        codes = aar_code_row(len(header), **{str(base): "BAE020", str(base + 1): "BAE240", str(base + 2): "BAE100"})
+        row = aar_row(140050) + [600, 300, 100]
+        _put(header, row, "Supply Staff Costs", 1000)
+        path = self.aar_file([codes, header, row])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(rows[0]["supply_staff"], 900)
+        self.assertEqual(rows[0]["supply_insurance"], 100)
+        self.assertEqual(info["mapping"]["supply_insurance"], "= line bae100")
+
+    def test_aar_supply_lines_found_by_label_without_a_code_row(self):
+        # Arrange: an export with no code row keeps its detail lines under label slugs.
+        header = aar_header() + ["Supply teaching staff", "Agency supply teaching staff", "Supply teacher insurance"]
+        row = aar_row(140051) + [600, 300, 100]
+        _put(header, row, "Supply Staff Costs", 1000)
+        path = self.aar_file([header, row])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual((rows[0]["supply_staff"], rows[0]["supply_insurance"]), (900, 100))
+        self.assertEqual(info["mapping"]["supply_insurance"], "= line supply_teacher_insurance")
+
+    def test_cfr_2024_25_educational_supplies_with_zero_or_suppressed_e20d(self):
+        # Arrange: E20D is 0 with no column value; E20D is suppressed but every other line is known.
+        header = cfr_header() + E19_E21
+        zero = cfr_row(100054) + [5000, 100, 0, 0, 0, 400, 0, 0, 500]
+        _put(header, zero, "Educational Supplies: (E19:E21)", None)
+        suppressed = cfr_row(100055) + [5000, 100, 0, 0, "SUPP", 400, 0, 0, 500]
+        _put(header, suppressed, "Educational Supplies: (E19:E21)", 7000)
+        path = self.cfr_file([header, zero, suppressed])
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert: E19 + the non-admin E20 parts + E21 in both.
+        by_urn = {r["urn"]: r for r in rows}
+        self.assertEqual(by_urn["100054"]["educational_supplies"], 6000)
+        self.assertEqual(by_urn["100055"]["educational_supplies"], 6000)
+        self.assertEqual(by_urn["100055"]["adjusted"], ["educational_supplies"])
+
+    def test_cfr_2024_25_educational_supplies_leaves_out_e20d(self):
+        # Arrange: William Patten's 2024-25 lines; the column (157,536) counts E20D admin software (10,211).
+        header = cfr_header() + E19_E21
+        wp = cfr_row(130932) + WP_E19_E21
+        _put(header, wp, "Educational Supplies: (E19:E21)", 157536)
+        no_admin_software = cfr_row(100053) + [5000, 100, 0, 0, 0, 400, 0, 0, 500]
+        _put(header, no_admin_software, "Educational Supplies: (E19:E21)", 6000)
+        path = self.cfr_file([header, wp, no_admin_software])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert: 147,325 is the 2025-26 and FBIT basis that the gold file gives.
+        by_urn = {r["urn"]: r for r in rows}
+        self.assertEqual(by_urn["130932"]["educational_supplies"], 147325)
+        self.assertEqual(by_urn["130932"]["adjusted"], ["educational_supplies"])
+        self.assertEqual(by_urn["130932"]["derived"], ["educational_supplies"])
+        self.assertEqual(by_urn["100053"]["educational_supplies"], 6000)
+        self.assertNotIn("adjusted", by_urn["100053"])
+        self.assertTrue(any("E19 + (E20 - E20D) + E21 in 1 rows" in w for w in info["warnings"]))
+
+    def test_cfr_2025_26_column_already_leaves_out_e20d_and_other_grants_move_to_i06(self):
+        # Arrange: 2025-26 labels; no I18 line, the pension and NI grants sit in I06.
+        header = cfr_header(total_income="Total Income: I01:I17 - E30",
+                            educational_supplies="Educational Supplies: (E19:E20C) + (E20E:E21)")
+        header += E19_E21 + ["I06 Other government grants"]
+        row = cfr_row(130932) + WP_E19_E21 + [96016]
+        _put(header, row, "Educational Supplies: (E19:E20C) + (E20E:E21)", 147325)
+        path = self.cfr_file([header, row], name="CFR_2025-26_Full_Data_Workbook.xlsx")
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(rows[0]["educational_supplies"], 147325)
+        self.assertNotIn("adjusted", rows[0])
+        self.assertIsNone(rows[0]["cfr_additional_grants_i18"])
+        self.assertEqual(rows[0]["other_dfe_grants"], 96016)
+        self.assertEqual(info["mapping"]["other_dfe_grants"], "= line I06")
+        self.assertTrue(any("cannot be separated out" in w for w in info["warnings"]))
+
+    def test_other_dfe_grants_is_i18_then_aar_other_dfe_revenue_grants(self):
+        # Arrange: up to 2024-25 the container is I18 (I06 is a different line then).
+        cfr = cfr_header() + ["I06 Other government grants", "I18 Total additional grant for schools"]
+        cfr_path = self.cfr_file([cfr, cfr_row(100054) + [0, 200455]])
+        aar = aar_header() + ["Other DfE Revenue Grants"]
+        aar_path = self.aar_file([aar, aar_row(140054) + [11000]])
+        # Act
+        cfr_rows, cfr_info = fh.read_workbook(cfr_path)
+        aar_rows, aar_info = fh.read_workbook(aar_path)
+        # Assert
+        self.assertEqual(cfr_rows[0]["other_dfe_grants"], 200455)
+        self.assertEqual(cfr_info["mapping"]["other_dfe_grants"], "= cfr_additional_grants_i18")
+        self.assertEqual(aar_rows[0]["other_dfe_grants"], 11000)
+        self.assertEqual(aar_info["mapping"]["other_dfe_grants"], "= aar_other_dfe_revenue_grants")
+
+    def test_merged_academy_sums_the_line_derived_keys(self):
+        # Arrange: a trust change mid-year gives two rows for one academy.
+        header = aar_header() + ["Supply teaching staff", "Agency supply teaching staff", "Supply teacher insurance",
+                                 "Other DfE Revenue Grants"]
+        base = len(aar_header())
+        codes = aar_code_row(len(header), **{str(base): "BAE020", str(base + 1): "BAE240", str(base + 2): "BAE100"})
+        first = aar_row(140055, trust="Old Trust", joined=44000, months=5) + [100, 50, 10, 1000]
+        second = aar_row(140055, trust="New Trust", joined=44200, months=7) + [200, 70, 20, 3000]
+        path = self.aar_file([codes, header, first, second])
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["supply_staff"], 420)
+        self.assertEqual(rows[0]["supply_insurance"], 30)
+        self.assertEqual(rows[0]["other_dfe_grants"], 4000)
+
+    def test_report_shows_the_line_derived_keys(self):
+        # Arrange
+        header = cfr_header() + SUPPLY_LINES + ["I18 Total additional grant for schools"]
+        self.cfr_file([header, cfr_row(100056) + [300, 200, 500, 7000]])
+        rows, infos = fh.load_history_with_info(self.dir)
+        # Act
+        text = fh.report(rows, infos)
+        # Assert
+        self.assertIn("| supply_insurance | `= line E10` |", text)
+        self.assertIn("| other_dfe_grants | `= cfr_additional_grants_i18` |", text)
+        self.assertIn("| other_dfe_grants | 1 |", text)
+
+
 # ----------------------------------------------------------------- real data
 
 _REAL: dict = {}
@@ -831,6 +1003,87 @@ class RealDataTest(unittest.TestCase):
         self.assertTrue(all("fsm_pct" in r.get("suspect", []) for r in rows if (r["fsm_pct"] or 0) > 100))
         self.assertTrue(all("bae010" in r["lines"] and "bai030" in r["lines"] for r in aar))
         self.assertTrue(all("E01" in r["lines"] and "B01" in r["lines"] for r in cfr))
+
+
+REAL_HISTORY = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea/pipeline/.cache/dfe/finance_history.jsonl")
+GOLD = Path(__file__).resolve().parents[1] / "money" / "data" / "gold" / "130932.json"
+
+
+def william_patten_rows() -> dict[str, dict]:
+    """William Patten's CFR rows by year: from finance_history.jsonl (rows start with the urn), else the workbooks."""
+    if "wp" not in _REAL:
+        rows = []
+        if REAL_HISTORY.exists():
+            with open(REAL_HISTORY, encoding="utf-8") as fh_in:
+                rows = [json.loads(line) for line in fh_in if line.startswith('{"urn": "130932"')]
+        else:
+            for year in ("2019-20", "2024-25", "2025-26"):
+                part, _ = fh.read_workbook(REAL_CACHE / f"CFR_{year}_Full_Data_Workbook.xlsx")
+                rows += [r for r in part if r["urn"] == "130932"]
+        _REAL["wp"] = {r["year"]: r for r in rows if r["source"] == "CFR"}
+    return _REAL["wp"]
+
+
+@unittest.skipUnless(REAL_HISTORY.exists() or HAS_REAL, "neither finance_history.jsonl nor the FBIT cache is present")
+class WilliamPattenAnchorTest(unittest.TestCase):
+    def test_reserves_and_pupils(self):
+        # Arrange / Act
+        rows = william_patten_rows()
+        # Assert
+        self.assertEqual(rows["2019-20"]["revenue_reserve"], 543908)
+        self.assertEqual(rows["2025-26"]["revenue_reserve"], -210901)
+        self.assertEqual(rows["2024-25"]["pupils"], 437.5)
+
+
+@unittest.skipUnless(REAL_HISTORY.exists(), "finance_history.jsonl not present")
+class GoldFinanceHistoryTest(unittest.TestCase):
+    def setUp(self):
+        self.gold = json.loads(GOLD.read_text(encoding="utf-8"))
+        self.rows = william_patten_rows()
+
+    def lines(self, year: str) -> dict:
+        found = {code: v["value"] for code, v in self.gold["years"][year]["lines"].items()}
+        found.update({code: v["value"] for code, v in self.gold["years"][year].get("subtotal_lines", {}).items()})
+        return found
+
+    def test_every_gold_pipeline_value_matches(self):
+        # Arrange
+        expected = {year: y["totals"]["pipeline_finance_history"] for year, y in self.gold["years"].items()}
+        # Act / Assert
+        self.assertEqual(sorted(self.rows), sorted(expected))
+        for year, values in expected.items():
+            for key, value in values.items():
+                self.assertEqual(self.rows[year][key], value, f"{year} {key}")
+
+    def test_only_2019_20_totals_differ_from_the_workbook_by_e30(self):
+        # Arrange: the documented adjustment takes E30 direct revenue financing out of both 2019-20 totals.
+        differences = {(year, key): check for year, y in self.gold["years"].items()
+                       for key, check in y["totals"]["pipeline_vs_workbook"].items() if not check["match"]}
+        # Act
+        e30 = self.lines("2019-20")["E30"]
+        # Assert
+        self.assertEqual(sorted(differences), [("2019-20", "total_expenditure"), ("2019-20", "total_income")])
+        for (year, key), check in differences.items():
+            self.assertEqual(check["workbook"] - check["pipeline"], e30)
+            self.assertEqual(self.rows[year][key], check["pipeline"])
+        self.assertEqual(self.rows["2019-20"]["adjusted"], ["total_income", "total_expenditure"])
+
+    def test_supply_staff_and_educational_supplies_follow_fbit(self):
+        # Arrange / Act / Assert: E02 + E26 every year, E10 apart; 2024-25 learning resources without E20D.
+        for year, row in self.rows.items():
+            lines = self.lines(year)
+            self.assertEqual(row["supply_staff"], lines["E02"] + lines["E26"], year)
+            self.assertEqual(row["supply_insurance"], lines["E10"], year)
+        self.assertEqual(self.rows["2025-26"]["supply_staff"], 82434)
+        self.assertEqual(self.rows["2024-25"]["educational_supplies"], 147325)
+        self.assertIn("educational_supplies", self.rows["2024-25"]["adjusted"])
+
+    def test_other_dfe_grants_is_the_container_line(self):
+        # Arrange / Act / Assert: I18 up to 2024-25, I06 in 2025-26.
+        for year, row in self.rows.items():
+            lines = self.lines(year)
+            expected = lines["I06"] if year == "2025-26" else lines["I18"]
+            self.assertEqual(row["other_dfe_grants"], expected, year)
 
 
 if __name__ == "__main__":

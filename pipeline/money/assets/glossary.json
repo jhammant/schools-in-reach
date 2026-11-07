@@ -49,7 +49,7 @@
   "donations_revenue": {
     "label": "Donations (day-to-day)",
     "plain": "Gifts of money the school can spend on day-to-day running, such as PTA contributions.",
-    "how": "Donations and private funds reported in the school's revenue income for the year.",
+    "how": "Donations and private funds reported in the school's revenue income for the year. It can include money passed on by a parents' association, so it can overlap with PTA income and the two are never added together.",
     "source": "CFR line I13 Donations and/or private funds / AAR Donations and/or voluntary funds"
   },
   "donations_capital": {
@@ -79,8 +79,8 @@
   "teacher_pension_ni_grants": {
     "label": "Pension and National Insurance grants",
     "plain": "Grants that cover rises in what the school must pay towards teachers' pensions and staff National Insurance.",
-    "how": "Government grants that pass straight through to pay and pension costs, so they add to income and spending by the same amount without adding spending power.",
-    "source": "CFR line I18 additional grants / AAR other DfE revenue grants, where the workbook separates them",
+    "how": "Government grants that pass straight through to pay and pension costs, so they add to income and spending by the same amount without adding spending power. No return separates them out, so the site shows the line that contains them (Other DfE grants) rather than a figure for these grants alone.",
+    "source": "Not separated in the CFR or AAR: inside CFR line I18 (I06 from 2025-26) and AAR Other DfE revenue grants",
     "ifs": "framings.pass_through_grants"
   },
   "non_government_grants": {
@@ -106,8 +106,8 @@
   "supply_staff": {
     "label": "Supply teachers",
     "plain": "What the school paid for cover when teachers were absent or posts were empty.",
-    "how": "Supply teaching staff plus agency supply costs.",
-    "source": "CFR lines E02 and E26 / AAR Supply teaching staff"
+    "how": "Supply teaching staff plus agency supply teachers, as the DfE's benchmarking tool (FBIT) counts them. Supply teacher insurance is not included, so the figure compares like with like across years and sectors.",
+    "source": "CFR lines E02 and E26 / AAR Supply teaching staff and Agency supply teaching staff"
   },
   "education_support_staff": {
     "label": "Support staff",
@@ -173,8 +173,8 @@
   "educational_supplies": {
     "label": "Learning resources",
     "plain": "Books, equipment, software and computers used for teaching, plus exam fees.",
-    "how": "Learning resources (not ICT), ICT learning resources and examination fees added together.",
-    "source": "CFR lines E19 to E21 / AAR learning resources and exam fees"
+    "how": "Learning resources (not ICT), ICT learning resources and examination fees added together. Administration software (CFR line E20D, split out from 2024-25) is left out in every year, as FBIT does, so years compare like with like.",
+    "source": "CFR lines E19 to E21 less E20D / AAR learning resources and exam fees"
   },
   "supplies_services": {
     "label": "Supplies and services",
@@ -290,20 +290,20 @@
   },
   "pta_income": {
     "label": "PTA income",
-    "plain": "Money raised by the school's parent-teacher association in its latest reported year.",
-    "how": "The latest income reported to the Charity Commission by the registered PTA charities matched to this school. Smaller PTAs are not registered, so many schools show nothing.",
+    "plain": "Money raised by the school's registered parents' association in a year, as reported to the Charity Commission.",
+    "how": "Income reported to the Charity Commission by the registered parents' association charities matched to this school, placed in the school year that contains the end of the charity's financial year. Charities with an income of five thousand pounds or less need not register, so many schools with an active association show nothing. Some of this money may reach the school as donations, so it can overlap with the school's donations line and is never added to it.",
     "source": "Charity Commission register of charities, OGL v3"
   },
   "pta_spending": {
     "label": "PTA spending",
-    "plain": "What the parent-teacher association spent in its latest reported year.",
-    "how": "The latest expenditure reported to the Charity Commission by the PTA charities matched to this school.",
+    "plain": "What the school's registered parents' association spent in a year, as reported to the Charity Commission.",
+    "how": "Expenditure reported to the Charity Commission by the parents' association charities matched to this school, placed in the school year that contains the end of the charity's financial year.",
     "source": "Charity Commission register of charities, OGL v3"
   },
   "pta_per_pupil": {
     "label": "PTA income per pupil",
     "plain": "How much the parent-teacher association raised for each pupil in the school.",
-    "how": "PTA income divided by the school's pupil number for the nearest finance year.",
+    "how": "Parents' association income divided by the school's pupils for the same school year; left out when that year's pupil number is not known.",
     "source": "Charity Commission register and the school's finance return"
   },
   "trust_central_spend": {
@@ -363,5 +363,108 @@
     "plain": "Where the school's intake sits nationally on a scale from 1 (least disadvantaged) to 5 (most disadvantaged), used to compare like with like.",
     "how": "A national quintile of a combined rank of free school meal eligibility and the deprivation of the school's neighbourhood (IDACI).",
     "source": "DfE finance returns, GIAS and the English Indices of Deprivation 2019, OGL v3"
+  },
+  "other_dfe_grants": {
+    "label": "Other DfE grants (including pension and NI grants)",
+    "plain": "Extra grants from the Department for Education on top of the main funding, including the grants that cover rises in teachers' pension and staff National Insurance costs.",
+    "how": "A container line: the pension and National Insurance grants sit inside it alongside other targeted and one-off grants, and no return separates them out, so this is never a figure for the pension grants alone. Much of it passes straight through to pay and pension costs. For council-run schools it is the additional-grants line I18 up to 2024-25; in 2025-26 that line was removed and these grants moved into I06 other government grants, so 2025-26 is not directly comparable with earlier years. For academies it is other DfE revenue grants.",
+    "source": "CFR line I18 (to 2024-25) and line I06 (2025-26) / AAR Other DfE revenue grants",
+    "ifs": "framings.pass_through_grants"
+  },
+  "gov_funding_pp": {
+    "label": "Government funding per pupil",
+    "plain": "The government grant money the school received for each of its pupils in the year.",
+    "how": "Government grants divided by the same year's pupils. For academies, non-government grants and income from other academies are taken out. Council-run schools' grant total includes line I07 other grants and payments, which can hold some non-government money, so the two sectors are not strictly comparable.",
+    "source": "CFR Grant funding / AAR Total grant funding less non-government and academy income, with the pupil number from the same return",
+    "ifs": "framings.funding_vs_spending_per_pupil"
+  },
+  "spend_pp": {
+    "label": "Spending per pupil",
+    "plain": "What the school spent in the year for each of its pupils.",
+    "how": "Total spending divided by the same year's pupils. The fairest national comparison is the IFS figure for spending by schools themselves in the same phase (primary or secondary), not its all-in figure, which also counts money councils and trusts spend centrally. Academy figures leave out what the trust spends centrally.",
+    "source": "CFR and AAR Total expenditure, with the pupil number from the same return",
+    "ifs": "national.per_pupil_2025_26"
+  },
+  "gov_vs_spend_gap": {
+    "label": "Funding compared with spending",
+    "plain": "Government funding per pupil set beside spending per pupil, which shows how much of a school's spending the government grant covers.",
+    "how": "Both figures for the same year and divided by the same pupils. Spending above government funding is met from money the school raises itself (lettings, catering, donations) or by drawing on its savings; spending below it adds to them. Council-run schools' years run April to March and academies' September to August, and their government grant lines are not strictly comparable.",
+    "source": "Worked out from the government grant and total expenditure lines of the school's CFR or AAR return",
+    "ifs": "framings.funding_vs_spending_per_pupil"
+  },
+  "falling_rolls": {
+    "label": "Falling pupil numbers",
+    "plain": "The school has fewer pupils than it used to, which brings less funding while many costs stay the same.",
+    "how": "Shown when pupil numbers fell by 5% or more across the years on the page, or fell in each of the last three years. This is the site's own rule, not an official measure. Schools are funded mostly per pupil, and costs such as a class teacher do not fall in step, so a well-run school with falling numbers can still find its budget stretched.",
+    "source": "Pupil numbers reported with each year's CFR or AAR return",
+    "ifs": "framings.falling_rolls"
+  },
+  "pass_through": {
+    "label": "Income that passed straight through",
+    "plain": "Much of a rise in the school's income was matched by a rise in its staff costs, so it was not extra money to spend.",
+    "how": "Shown for the latest year, from 2023-24 on, when total income rose by 5% or more on the year before and staff costs rose by at least seven-tenths of that rise. This is the site's own rule. Grants for higher teacher pension and National Insurance costs arrive as income and leave as pay, so they add to both sides without adding spending power.",
+    "source": "Worked out from total income and total staff costs in the school's CFR or AAR return",
+    "ifs": "framings.pass_through_grants"
+  },
+  "high_send": {
+    "label": "Many pupils with special educational needs",
+    "plain": "The school supports more pupils with special educational needs than most schools, which brings extra costs.",
+    "how": "Shown when the share of pupils with an Education, Health and Care plan is above the national 5.3% reported by the IFS, or when special needs funding makes up a bigger share of the school's income than at three schools in four. This is the site's own rule. Schools are expected to meet the first part of the extra cost for each pupil from their own budget before council top-up funding starts.",
+    "source": "CFR and AAR % of pupils with an EHCP and SEN funding lines; national EHCP share from the IFS",
+    "ifs": "framings.send_pressure"
+  },
+  "trust_central_spend_pp": {
+    "label": "Trust central spending per pupil",
+    "plain": "What the academy's trust spent centrally for each pupil on shared services such as finance, HR, IT and school improvement.",
+    "how": "The trust's central-services spending divided by all the pupils in its academies, for the same academic year. The academy's own spending per pupil on this site does not include it, so bear it in mind when comparing with council-run schools, whose councils also spend some money centrally. The IFS reports that trusts' central spending per pupil more than doubled between 2016-17 and 2023-24.",
+    "source": "AAR Central Services sheet: Trust Total Exp per pupil, or total expenditure divided by total pupils",
+    "ifs": "national.academies.trust_central_spend"
+  },
+  "pta_gap": {
+    "label": "Parents' association money compared",
+    "plain": "How much more or less the school's parents' association raised per pupil than those at the schools it is compared with.",
+    "how": "The school's parents' association income per pupil set against the median for the comparison group, for the same school year. Only registered charities are counted, and charities with an income of five thousand pounds or less need not register, so the gap can reflect registration as much as fundraising. Parents' association money and school donations can overlap and are never added together.",
+    "source": "Charity Commission register of charities (OGL v3) and the school's finance return"
+  },
+  "pta_history": {
+    "label": "Parents' association history",
+    "plain": "What the school's registered parents' association raised and spent each year, as reported to the Charity Commission.",
+    "how": "Each annual return is placed in the school year that contains the end of the charity's financial year, using the school's own year (April to March for council-run schools, September to August for academies), and divided by that year's pupils. A charity shared by several schools is split equally between them. A charity with no income reported since 2019 is described as having had a registered PTA until its last year with income. Charities with an income of five thousand pounds or less need not register, so a school with no registered parents' association found may still have an active one.",
+    "source": "Charity Commission register of charities, annual returns, OGL v3"
+  },
+  "statutory_override": {
+    "label": "The statutory override",
+    "plain": "A temporary accounting rule that lets councils hold special needs budget deficits apart from their main accounts.",
+    "how": "Since 2020-21 councils' Dedicated Schools Grant deficits, mostly from special needs spending, have been held in a separate reserve rather than met from their general funds. The override runs to the end of 2027-28, and the IFS quotes an OBR forecast that the total could reach 14 billion pounds by 2028. Under the February 2026 approach, the High Needs Stability Grant pays 90% of each council's eligible deficit at 31 March 2026 from autumn 2026, so balances are expected to fall sharply in 2026-27.",
+    "source": "DfE section 251 outturn note in pipeline/money/data/la_dsg.json; IFS annual report on education spending 2025-26, p.61",
+    "ifs": "national.send.statutory_override"
+  },
+  "deficit_pp": {
+    "label": "Deficit per pupil",
+    "plain": "How far below zero the savings are, spread across the pupils.",
+    "how": "A negative revenue reserve divided by the same year's pupils. Most deficits build up over several years in which costs rise faster than funding, and a school in deficit agrees a recovery plan with its council or trust.",
+    "source": "Worked out from the revenue reserve and pupil numbers in each school's return",
+    "ifs": "framings.why_schools_go_into_deficit"
+  },
+  "reserve_median_pp": {
+    "label": "Typical reserve per pupil",
+    "plain": "The savings per pupil of the middle school in the group: half hold more and half hold less.",
+    "how": "Each school's revenue reserve divided by its pupils for the same year, then the median across the group's schools with a full-year return. Values the source marks as suspect are left out. The median is used so that one very large or very small reserve does not skew it.",
+    "source": "Worked out from each school's revenue reserve and pupil numbers",
+    "ifs": "framings.one_deficit_year"
+  },
+  "schools_in_deficit": {
+    "label": "Schools in deficit",
+    "plain": "The number of schools in the group whose savings were below zero at the end of the year.",
+    "how": "Schools with a negative revenue reserve in a full-year return for that year. An academy's figure is its own reserve and does not include money its trust holds centrally. Council-run schools' years run April to March and academies' September to August.",
+    "source": "Worked out from each school's revenue reserve line in the CFR and AAR",
+    "ifs": "framings.why_schools_go_into_deficit"
+  },
+  "ifs_figure": {
+    "label": "IFS figure",
+    "plain": "A figure quoted from the IFS annual report on education spending, in 2025-26 prices.",
+    "how": "Quoted exactly as the Institute for Fiscal Studies published it in its annual report on education spending in England 2025-26 (January 2026), in 2025-26 prices using the HM Treasury GDP deflator of November 2025. It is a national figure, not this school's, and the site's own real-terms figures use the newer October 2026 deflator.",
+    "source": "Institute for Fiscal Studies, Annual report on education spending in England: 2025-26 (January 2026)",
+    "ifs": "source"
   }
 }
