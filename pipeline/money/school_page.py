@@ -1050,7 +1050,9 @@ def _phase_schools(nb) -> str:
     return "schools of the same phase" if not phase or phase == "Other" else f"{phase[:1].lower() + phase[1:]} schools"
 
 
-def _nb_rank_lines(nb, year) -> str:
+def _nb_rank_lines(nb, year, spend_words=None) -> str:
+    """The rank sentences. spend_words (the lighter levels' comparison) ends the spending line: '..., about a quarter
+    more than their median' (rank and median count the same schools, this one included)."""
     phases, out = _phase_schools(nb), []
     for key, what in NEARBY_RANKS:
         r = (nb.get("rank") or {}).get(key) or {}
@@ -1059,6 +1061,8 @@ def _nb_rank_lines(nb, year) -> str:
             continue
         place = "Highest" if rank == 1 else ("Lowest" if rank == of else f"{ordinal(rank)} highest")
         tail = f" in {year}"
+        if key == "spend_pp" and spend_words:
+            tail += f", {spend_words} their median"
         if key == "pta_pp":
             low = sum(1 for row in [nb["self"]] + nb["schools"]
                       if _num(row.get("pta_pp")) is not None and row.get("pta_confidence") == "medium")
@@ -1068,16 +1072,22 @@ def _nb_rank_lines(nb, year) -> str:
     return f'<ul class="nb-ranks">{"".join(out)}</ul>' if out else ""
 
 
-def _nb_ratio_line(nb, year) -> str:
-    """'Per pupil, this school spends about a quarter more than the median of 9 nearby primary schools, this school
-    included (2024-25).' build_money.nearby_doc's median is taken over this school and every neighbour with a figure,
-    so the sentence counts the same schools as the rank lines. Needs phrasing.ratio_words; "" without it, or when this
-    school's figure is a federation's."""
+def _nb_ratio_words(nb):
+    """phrasing.ratio_words for this school's spending per pupil against the nearby median; None without the module or
+    a figure, or when this school's figure is a federation's."""
     me = nb["self"]
     mine, median = _num(me.get("spend_pp")), _num((nb.get("medians") or {}).get("spend_pp"))
-    words = ratio_words(mine, median) if _federation(me) is None else None
+    return ratio_words(mine, median) if _federation(me) is None else None
+
+
+def _nb_ratio_line(nb, year, words) -> str:
+    """'Per pupil, this school spends about a quarter more than the median of 9 nearby primary schools, this school
+    included (2024-25): £8,750 against £7,000.' build_money.nearby_doc's median is taken over this school and every
+    neighbour with a figure, so the sentence counts the same schools as the rank lines. "" without words."""
     if not words:
         return ""
+    me = nb["self"]
+    mine, median = _num(me.get("spend_pp")), _num((nb.get("medians") or {}).get("spend_pp"))
     counted = 1 + sum(1 for r in nb["schools"] if _num(r.get("spend_pp")) is not None)
     return (f'<p class="nb-ratio">Per pupil, this school spends {esc(words)} the median of {counted} nearby '
             f'{esc(_phase_schools(nb))}, this school included ({esc(year)}): {exact_figure("spend_pp", mine, year, "This school, per pupil")} '
@@ -1235,14 +1245,16 @@ def nearby_section(item, view, level="full") -> str:
     """'Compared with schools nearby' from ctx['nearby'] (build_money's 'nearby' contract): rank sentences, this school
     and its neighbours nearest first, a bar chart of spending per pupil, a compare link and what to bear in mind.
     level 'table' drops the chart; 'lite' keeps the nearest NEARBY_LITE_ROWS and fewer columns; 'brief' keeps the
-    sentences and links. "" when ctx has no nearby schools."""
+    sentences and links. 'lite' and 'brief' fold the spending comparison into its rank line, without the figures.
+    "" when ctx has no nearby schools."""
     nb = _nearby(view)
     if nb is None:
         return ""
     year = str(nb.get("year") or view.latest or "")
     full = level in ("full", "table")
     rows = [nb["self"]] + (nb["schools"] if full else nb["schools"][:NEARBY_LITE_ROWS])
-    html = _nb_rank_lines(nb, year) + _nb_ratio_line(nb, year)
+    words = _nb_ratio_words(nb)
+    html = _nb_rank_lines(nb, year, None if full else words) + (_nb_ratio_line(nb, year, words) if full else "")
     if level != "brief":
         html += _nb_table(nb, year, rows, full)
     if level == "full":

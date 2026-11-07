@@ -404,10 +404,27 @@ class ComparisonWordsTest(PhrasingPatch):
         self.assertIn("highest spending per pupil of 8 nearby primary schools", nearby)
         self.assertIn("This school's parents' association raised about double that in the same school year", pta)
 
+    def test_lighter_nearby_levels_fold_the_comparison_into_the_spending_rank(self):
+        # Arrange
+        self.use_phrasing(StubPhrasing("about half as much again as"))
+        item, ctx = nearby_school()
+        # Act
+        result = school_page.render(item, ctx)
+        lite, brief = (text_of(section(b, "nearby")) for b in result["lighter"][1:3])
+        # Assert: the same words for the same 8 schools, without the standalone sentence and its figures.
+        for nearby in (lite, brief):
+            with self.subTest(nearby=nearby[:40]):
+                self.assertIn("3rd highest spending per pupil of 8 nearby primary schools in 2024-25, about half as much "
+                              "again as their median.", nearby)
+                self.assertNotIn("Per pupil, this school spends", nearby)
+                self.assertNotIn("against £6,950", nearby)
+
     def test_no_comparison_sentences_without_the_module(self):
         self.use_phrasing(None)
-        body = school_page.render(*nearby_school())["body"]
+        result = school_page.render(*nearby_school())
+        body = result["body"]
         self.assertNotIn("nb-ratio", body)
+        self.assertFalse([b for b in result["lighter"] if "their median" in b])
         self.assertNotIn("raised about", body)
 
 
