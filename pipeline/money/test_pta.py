@@ -570,6 +570,16 @@ class WidenedNameTest(unittest.TestCase):
                      "FRIENDS OF THE BAND", "OAK PRE-SCHOOL FRIENDS", "WOODLEA PTA", "FRIENDS OF WOODLEA SCHOOL"):
             self.assertFalse(pta.is_widened_name(name), name)
 
+    def test_hospital_friends_are_not_widened_even_with_a_school_word(self):
+        # Arrange: 'college' is a school word, and a hospital school shares the hospital's postcode
+        hospital, broad = "FRIENDS OF KINGS COLLEGE HOSPITAL", {"charity_name": "KINGS COLLEGE HOSPITAL FRIENDS FUND",
+            "charity_activities": "Parents and friends raise funds for equipment for children at the school"}
+        # Act / Assert
+        self.assertFalse(pta.is_parent_association(hospital))
+        self.assertFalse(pta.is_widened_name(hospital))
+        self.assertFalse(pta.is_broad_candidate(broad))
+        self.assertTrue(pta.is_parent_association("FRIENDS OF THE HOSPITAL SCHOOL"))  # a school name stays matchable
+
     def test_wider_names_match_only_by_exact_postcode_or_domain(self):
         # Arrange
         schools = [school(1, "Bousfield Primary School", "SW5 0DJ", town="London"),

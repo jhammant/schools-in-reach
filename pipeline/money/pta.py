@@ -224,6 +224,9 @@ WIDE_VETO = re.compile(r"\bchurch\b|chapel|parish|hospital|hospice|library|museu
                        r"\bearth\b|refugee|overseas|africa|india|kenya|uganda|gambia|nepal|romania|league\s+of\s+friends|"
                        r"society\s+of\s+friends|medical|health|graveyard|cemetery|monument|handicap|mental|\bschool\s+fund\b",
                        re.I)
+# Health charities are never a school's PTA unless the name says school: 'Friends of King's College Hospital' carries
+# a school word ('college') yet supports the hospital, and a hospital school shares the hospital's postcode.
+WIDE_HEALTH = re.compile(r"hospital|hospice|infirmary|\bnhs\b|medical|\bhealth\b", re.I)
 # Parents' groups that are not a school's PTA, whatever else the name says.
 WIDE_NOT_PTA = re.compile(r"supplementary|\bcarers?\b|parent\s+and\s+(?:child|toddler)|foster|adopt|deaf|blind|disab|"
                           r"autis|bereave|\bmusic|\bband\b|orchestra|choir|sport|swim|minibus|bursar|scholarship|alumni|"
@@ -259,6 +262,8 @@ def is_parent_association(name) -> bool:
         return False
     if PARENT_MARKERS.search(text):
         return True
+    if WIDE_HEALTH.search(text) and not re.search(r"\bschool\b", text, re.I):
+        return False  # 'Friends of King's College Hospital': 'college' is not a school here
     return bool(WEAK_MARKERS.search(text) and SCHOOL_WORDS.search(text))
 
 
@@ -268,6 +273,8 @@ def is_widened_name(name) -> bool:
     text = str(name or "")
     if is_parent_association(text) or NOT_PTA.search(text) or WIDE_NOT_PTA.search(text) or not WIDE_NAME.search(text):
         return False
+    if WIDE_HEALTH.search(text) and not re.search(r"\bschool\b", text, re.I):
+        return False
     return bool(SCHOOL_WORDS.search(text) or not WIDE_VETO.search(text))
 
 
@@ -276,6 +283,8 @@ def is_broad_candidate(charity) -> bool:
     'Woodlea School Fund' whose charity_activities say parents raise money for the school or its pupils."""
     name = str(charity.get("charity_name") or "")
     if is_parent_association(name) or NOT_PTA.search(name) or BROAD_VETO.search(name):
+        return False
+    if WIDE_HEALTH.search(name) and not re.search(r"\bschool\b", name, re.I):
         return False
     if not (BROAD_NAME.search(name) and (SCHOOL_WORDS.search(name) or WEAK_MARKERS.search(name))):
         return False

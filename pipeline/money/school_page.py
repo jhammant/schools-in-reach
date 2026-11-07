@@ -921,6 +921,15 @@ def pta_section(item, view) -> str:
         desc = "Parents' association income and spending per pupil. " + "; ".join(
             f"{y}: raised {charts.money(by_year[y].get('income_pp'))}" for y in chart_years)
         html += trend(lines, years=chart_years, unit="£", title="Parents' association money per pupil", desc=desc)
+    # The charity's own year end beside each school year, so a council-run school's April-March label doesn't read as
+    # the association's year: William Patten's year to August 2025 sits in 2025-26 (April 2025 to March 2026).
+    ends = {}
+    for c in charities:
+        for h in c.get("history") or []:
+            pe = h.get("period_end")
+            label = pta_label(view, pe) if pe else None
+            if label and (_num(h.get("income")) is not None or _num(h.get("expenditure")) is not None):
+                ends.setdefault(label, set()).add(str(pe)[:7])
     rows = []
     for y in reversed(years[-PTA_ROWS:]):
         e = by_year[y]
@@ -928,7 +937,9 @@ def pta_section(item, view) -> str:
         inc = site.money_figure("pta_income", e["income"], p, y) if _num(e.get("income")) is not None else "—"
         exp = site.money_figure("pta_spending", e["spend"], p, y) if _num(e.get("spend")) is not None else "—"
         low = ' <small>matched with lower confidence</small>' if e.get("confidence") == "medium" else ""
-        rows.append(f'<tr><th scope="row">{esc(y)}</th><td>{inc}{low}</td><td>{exp}</td></tr>')
+        to = ", ".join(_month_year(pe) for pe in sorted(ends.get(y, ())))
+        to = f'<br><small class="muted">year to {esc(to)}</small>' if to else ""
+        rows.append(f'<tr><th scope="row">{esc(y)}{to}</th><td>{inc}{low}</td><td>{exp}</td></tr>')
     if rows:
         html += ('<table class="sp-pta"><caption>Each school year\'s returns, newest first</caption><thead><tr><th scope="col">School year</th>'
                  f'<th scope="col">Raised</th><th scope="col">Spent</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
@@ -959,7 +970,9 @@ def intake_section(item, view) -> str:
     if _num(intake.get("fsm_pct")) is not None:
         extra = [f"{label} {intake[k]:.0f}%" for k, label in (("fsm_pct_council", "council"), ("fsm_pct_england", "England"))
                  if _num(intake.get(k)) is not None]
-        facts.append(f"{intake['fsm_pct']:.0f}% of pupils eligible for free school meals" + (f" ({', '.join(extra)})" if extra else ""))
+        # Medians of school rates, not pupil-weighted rates, so say so: Hackney's median school is 52%.
+        facts.append(f"{intake['fsm_pct']:.0f}% of pupils eligible for free school meals"
+                     + (f" (median school: {', '.join(extra)})" if extra else ""))
     area = profile.get("area") or {}
     for key, text in (("imd_decile", "Neighbourhood deprivation decile {} of 10 (1 = most deprived)"),
                       ("idaci_decile", "Income deprivation affecting children: decile {} of 10 (1 = most deprived)"),

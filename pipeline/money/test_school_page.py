@@ -270,6 +270,17 @@ class RequiredMarkersTest(unittest.TestCase):
         self.assertTrue(all(f["data-pp"] == "120" and f["data-year"] == "2022-23" for f in old), old)
         self.assertTrue(all(f["data-year"] in ("2022-23", "2024-25") for f in figures(body, "pta_income")))
 
+    def test_pta_rows_name_the_charitys_own_year_end(self):
+        # Arrange: a council-run school; the association's year to August 2025 sits in 2025-26 (April to March)
+        item, ctx = cfr_school()
+
+        # Act
+        body = school_page.render(item, ctx)["body"]
+
+        # Assert
+        self.assertIn('2025-26<br><small class="muted">year to August 2025</small>', body)
+        self.assertIn('2024-25<br><small class="muted">year to August 2024</small>', body)
+
     def test_pta_year_rule_for_academies_and_council_run_schools(self):
         # Act / Assert
         self.assertEqual(school_page.pta_year("2023-03", "CFR"), "2022-23")
@@ -407,6 +418,8 @@ class ReadingOrderTest(unittest.TestCase):
                  "split", "context", "questions", "check"]
         sections = [i for i in page.ids if i in order]
         self.assertEqual(sections, order)
+        self.assertIn("20% of pupils eligible for free school meals (median school: council 30%, England 25%)",
+                      school_page.render(item, ctx)["body"])
         self.assertEqual([h.get("data-unit") for h in page.hidden], ["total"], "only the total-unit charts start hidden")
         self.assertFalse(page.errors, page.errors)
 
