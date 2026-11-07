@@ -358,8 +358,9 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 }
 
 /* ▶ "in 30 seconds" video links: a play button that stands out beside the status badge and in share rows. */
-a.watch { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 14px; border-radius: 999px;
-  background: var(--berry); color: var(--berry-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
+/* A long school name wraps inside the button rather than pushing the page wider than a 360px screen. */
+a.watch { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: var(--tap); padding: 4px 14px; border-radius: 22px;
+  background: var(--berry); color: var(--berry-ink); font-weight: 600; text-decoration: none; }
 a.watch:hover, a.watch:focus-visible { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22); text-decoration: underline; }
 .wrapped-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-video { margin: 4px 0 20px; }
