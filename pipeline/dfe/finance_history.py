@@ -282,6 +282,7 @@ CFR_LINE_LABELS: dict[str, str] = {
     "I11": "Receipts from other insurance claims",
     "I12": "Income from contributions to visits etc.",
     "I13": "Donations and/or private funds",
+    "I14": "School standards grant, pupil focused (no longer collected)",
     "I15": "Pupil focused extended school funding and/or grants",
     "I16": "Community focused school funding and/or grants",
     "I17": "Community focused school facilities income",
@@ -337,6 +338,7 @@ CFR_LINE_LABELS: dict[str, str] = {
     "B01": "Committed revenue balances",
     "B02": "Uncommitted revenue balances",
     "B03": "Devolved formula capital balance",
+    "B04": "Other Standards Fund capital balances (no longer collected)",
     "B05": "Other capital balances",
     "B06": "Community-focused school revenue balances",
     "B07": "Outstanding balance on capital loans to school",
@@ -460,8 +462,28 @@ def aar_line_key(label: str, code_cell: str) -> str | None:
     return code.lower()
 
 
+# AAR columns that are never a detail line, for exports without a code row: identifiers, names, dates,
+# counts, percentages, categories, flags, and the totals/reserves that the canonical keys already hold.
+# Whole-label matches first (so "PFI" is excluded but "PFI Charges" is a line), then fragments.
+AAR_NON_LINE_LABEL = re.compile(
+    r"^(la|urn|estab|laestab|laesteb|uid|pfi|gender|phase|overall phase|type|region|london borough|london weighting|"
+    r"admissions policy|has a 6th form|mat/?sat|mat sat or central services|school name|academy ?upin|lead upin)$"
+    r"|^total\b|^no\b|upin|company (number|name)|trust or company|trust type|\bdate\b|\bperiod\b|reserve|balance|"
+    r"\brr\b|%|\bno\.? of\b|\bnumber of\b|\bage of\b|\bflag\b|urban|rural", re.IGNORECASE)
+
+
+def aar_has_code_row(codes: list[str]) -> bool:
+    """True when at least one code cell above the header carries a benchmarking code (BAI010, BNCH11141...)."""
+    return any(re.search(r"\b(BA[IE]\d{3}|BNCH[A-Z0-9]+)\b", c, re.IGNORECASE) for c in codes if c)
+
+
 def line_columns(header: list, neighbours: list[list], source: str) -> dict[str, int]:
-    """Map line keys to column indexes for one workbook."""
+    """Map line keys to column indexes for one workbook.
+
+    AAR keys are the lowercased benchmarking codes from the code row above the header. An export with no
+    code row at all falls back to a slug of each detail label (teaching_staff, income_from_catering...),
+    skipping identifier, count, percentage and total columns (AAR_NON_LINE_LABEL).
+    """
     width = max([len(header)] + [len(r) for r in neighbours])
     labels = [_norm(header[i]) if i < len(header) else "" for i in range(width)]
     codes = [""] * width
@@ -470,9 +492,15 @@ def line_columns(header: list, neighbours: list[list], source: str) -> dict[str,
             cell = _norm(row[i]) if i < len(row) else ""
             if cell and not codes[i]:
                 codes[i] = cell
+    slug_fallback = source == "AAR" and not aar_has_code_row(codes)
     out: dict[str, int] = {}
     for i, label in enumerate(labels):
-        key = cfr_line_code(label) if source == "CFR" else aar_line_key(label, codes[i])
+        if source == "CFR":
+            key = cfr_line_code(label)
+        else:
+            key = aar_line_key(label, codes[i])
+            if key is None and slug_fallback and label and not AAR_NON_LINE_LABEL.search(label):
+                key = _slug(label)
         if key and key not in out:
             out[key] = i
     return out
@@ -814,13 +842,14 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
                     item["revenue_reserve_incl_trust_share"] = item["revenue_reserve"] + (share or 0)
                     derived.append("revenue_reserve_incl_trust_share")
             if item["facilities_income"] is None and "lettings_income" in index and "facilities_other_income" in index:
+                # A suppressed (or missing) part makes the sum unknown, not smaller: never treat it as zero.
                 lettings, other = item["lettings_income"], num(get("facilities_other_income"))
-                if lettings is not None or other is not None:
-                    item["facilities_income"] = (lettings or 0) + (other or 0)
+                if lettings is not None and other is not None:
+                    item["facilities_income"] = lettings + other
                     derived.append("facilities_income")
-            if item["grant_funding"] is not None:
-                item["grant_funding_government"] = (item["grant_funding"] - (item["non_government_grants"] or 0)
-                                                    - (item["income_from_academies"] or 0))
+            # Government-only grants need every operand; an absent column or a suppressed cell leaves it unknown.
+            parts = (item["grant_funding"], item["non_government_grants"], item["income_from_academies"])
+            item["grant_funding_government"] = parts[0] - parts[1] - parts[2] if None not in parts else None
         item["fsm_pct"] = num(get("fsm_pct"))
         if item["fsm_pct"] is not None and item["fsm_pct"] > 100:
             suspect.append("fsm_pct")
