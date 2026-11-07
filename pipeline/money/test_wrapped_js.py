@@ -1,5 +1,6 @@
 """Runs the node suite for assets/wrapped.js (test_wrapped_js.mjs), handing it the real context.json that
-wrapped.context_doc() builds, through WRAPPED_CTX naming a file in a temp dir."""
+wrapped.context_doc() builds, through WRAPPED_CTX naming a file in a temp dir, and the phrasing case table (contract C1)
+through PHRASING_CASES."""
 import json
 import os
 import shutil
@@ -20,7 +21,7 @@ class WrappedJsTest(unittest.TestCase):
             # Arrange
             ctx = Path(tmp) / "context.json"
             ctx.write_text(json.dumps(wrapped.context_doc("2026-11-07"), ensure_ascii=False), encoding="utf-8")
-            env = dict(os.environ, WRAPPED_CTX=str(ctx))
+            env = dict(os.environ, WRAPPED_CTX=str(ctx), PHRASING_CASES=str(REPO / "pipeline/money/data/phrasing_cases.json"))
             # Act
             proc = subprocess.run(["node", "--test", "--test-reporter=tap", str(REPO / "pipeline/money/test_wrapped_js.mjs")],
                                   cwd=REPO, env=env, capture_output=True, text=True, timeout=120)

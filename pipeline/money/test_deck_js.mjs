@@ -313,9 +313,8 @@ test("summary: the three key messages for William Patten come from the gold file
   assert.equal(msgs[0], "In deficit by " + A.fmtMoney(-f.revenue_reserve) + " (" + Math.round((100 * -f.revenue_reserve) / f.total_income) + "% of a year's income) at the end of " +
     LATEST + (run >= 2 ? ", the " + words[run] + " year running" : ""));
   assert.ok(run >= 2, "gold has a multi-year deficit");
-  const diff = Math.round(spendPp) - sim;
-  assert.equal(msgs[1], "Spends " + D.fmtExact(spendPp) + " per pupil in " + LATEST + ", " + D.fmtExact(Math.abs(diff)) + (diff > 0 ? " more" : " less") +
-    " than similar schools' median; staff costs are " + Math.round((100 * staffTotal(LATEST)) / f.total_expenditure) + "% of spending");
+  assert.equal(msgs[1], "Spends " + D.fmtExact(spendPp) + " per pupil in " + LATEST + ", " + D.ratioWords(spendPp, sim) + " the median of similar schools (" + D.fmtExact(sim) +
+    "); staff costs are " + Math.round((100 * staffTotal(LATEST)) / f.total_expenditure) + "% of spending");
   assert.ok(msgs[2].startsWith("The reserve fell from " + D.fmtExact(fin(peakY).revenue_reserve) + " in " + peakY + " to " + D.fmtExact(f.revenue_reserve) + " in " + LATEST), msgs[2]);
   // The deficit is named beside its reasons and what helps.
   const summary = findSlide(D.schoolDeck(m, CTXT), "summary");
@@ -503,12 +502,12 @@ test("PTFA pack: income per charity year equals the register, comparisons name t
   assert.deepEqual(inc.points.map((p) => p.y), ptfaYears.map(ptaSchoolYear), "each return in the school year the producer counts it in");
   assert.deepEqual(inc.points.map((p) => p.v), ptfaYears.map((y) => gold.ptfa.years[y].income));
   assert.deepEqual(sp.points.map((p) => p.v), ptfaYears.map((y) => gold.ptfa.years[y].expenditure));
-  assert.ok(money.figures.every((f) => f.year.includes("charity year")), "years labelled as charity years");
+  assert.ok(money.figures.every((f) => f.year.startsWith("year to Aug ")), "every PTA figure leads with its year to August");
   assert.ok(money.lead.includes("31 August"));
-  assert.ok(money.links.some((l) => l.href.endsWith("/charity-details/" + gold.ptfa.charity_number)));
+  assert.ok(money.links.some((l) => l.href === D.charityUrl(gold.ptfa.charity_number)));
   const cmp = findSlide(deck, "pta_compare");
   assert.ok(cmp.chart.series[0].points.every((p) => /\d{4}-\d{2}$/.test(p.y)), "every bar names its year");
-  assert.ok(cmp.bullets.some((b) => b.includes("Neighbour 2 Primary School") && b.includes("(2024-25)") && b.includes("matched with lower confidence")));
+  assert.ok(cmp.bullets.some((b) => b.includes("Neighbour 2 Primary School") && b.includes("(year to Aug 2025)") && b.includes("matched with lower confidence")));
   const brief = findSlide(deck, "school_brief");
   assert.ok(/never added together/.test(brief.note));
   assert.equal(brief.status.key, "in_deficit");
@@ -522,8 +521,8 @@ test("PTFA pack: income per charity year equals the register, comparisons name t
   const msgs = findSlide(deck, "summary").messages;
   assert.equal(msgs.length, 3);
   const lastY = ptfaYears.at(-1), lastSchoolY = ptaSchoolYear(lastY);
-  assert.ok(msgs[0].startsWith("Raised " + D.fmtExact(gold.ptfa.years[lastY].income) + " in the charity year to "), msgs[0]);
-  assert.ok(msgs[0].includes("(school year " + lastSchoolY + "), " + D.fmtExact(gold.ptfa.years[lastY].income / pupils(lastSchoolY)) + " per pupil"), "per pupil uses the same school year's pupils: " + msgs[0]);
+  assert.ok(msgs[0].startsWith(D.ptaYearWords(lastSchoolY).replace("year", "Year") + ": raised " + D.fmtExact(gold.ptfa.years[lastY].income) + ", "), msgs[0]);
+  assert.ok(msgs[0].includes(", " + D.fmtExact(gold.ptfa.years[lastY].income / pupils(lastSchoolY)) + " per pupil"), "per pupil uses the same school year's pupils: " + msgs[0]);
   // Never summed: no figure or chart value equals any PTA income + school donations total.
   const sums = new Set();
   for (const p of ptfaYears) for (const y of YEARS) if (donations(y)) sums.add(Math.round(gold.ptfa.years[p].income + donations(y)));
@@ -555,7 +554,7 @@ test("PTFA target: the council's median per pupil times the same year's pupils, 
   assert.ok(fig.label.startsWith("Illustration"));
   // Above the median: says so, still an illustration.
   const above = D.ptaTarget(schoolModel());
-  assert.ok(above.gap <= 0 && above.message.startsWith("Already raises more"));
+  assert.ok(above.gap <= 0 && above.message.startsWith("Already raises ") && above.message.includes("median per pupil"), above.message);
 });
 
 test("PTFA pack with no registered PTA: honest wording and the £5,000 explanation", () => {
@@ -812,4 +811,287 @@ test("no pack string uses a banned phrase or leaves a placeholder", () => {
   });
   const academy = decks[11];
   assert.ok(findSlide(academy, "questions").bullets.some((b) => b.includes("Example Learning Trust")), "{overseer} is the trust for academies");
+});
+
+// ---------------------------------------------------------------- fix wave 1: comparisons in words, links, years, bases
+// The case table phrasing.py is tested against (contract C1); test_deck_js.py passes its path in PHRASING_CASES.
+const PHRASING = JSON.parse(readFileSync(process.env.PHRASING_CASES || join(here, "data", "phrasing_cases.json"), "utf8"));
+const CC_LINK = "https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet" +
+  "&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_regId=1103834" +
+  "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0";
+
+// The live /data/s and /data/sx shape for William Patten (URN 130932, PTFA charity 1103834), copied from the built site
+// on 2026-11-07 and trimmed to the fields the PTFA pack reads.
+function livePatten() {
+  const pupils = { "2018-19": 435.0, "2019-20": 443.0, "2020-21": 430.5, "2021-22": 429.0, "2022-23": 432.0, "2023-24": 427.5, "2024-25": 437.5, "2025-26": 432.5 };
+  const years = Object.keys(pupils);
+  const income = { "2023-24": 3640870, "2024-25": 3861666, "2025-26": 3927968 }, spend = { "2023-24": 3721955, "2024-25": 3831287, "2025-26": 4097753 };
+  const reserve = { "2023-24": -71496, "2024-25": -41117, "2025-26": -210901 };
+  const cells = (o) => Object.fromEntries(Object.entries(o).map(([y, v]) => [y, { v, pp: Math.round(v / pupils[y]) }]));
+  const s = {
+    urn: "130932", name: "William Patten Primary School", path: "/school/130932-william-patten-primary-school/",
+    council: { code: "204", name: "Hackney", path: "/council/hackney/" }, status: "in_deficit", label: "In deficit",
+    reason: "In deficit by £211k, 5% of a year's income: it has spent more over the years than it received.", year: "2025-26", academy: false, trust: null,
+    pupils: 432.5, years: Object.keys(income).map((y) => ({ y, income: income[y], spend: spend[y], reserve: reserve[y], pupils: pupils[y], status: "in_deficit" })),
+    pta: [{ charity_number: 1103834, name: "WILLIAM PATTEN PARENTS TEACHERS & FRIENDS ASSOCIATION", status: "Registered", latest_income: 48547.0,
+      history: [{ period_end: "2025-08", income: 48547.0, expenditure: 50100.0 }, { period_end: "2024-08", income: 32743.0, expenditure: 36767.0 },
+        { period_end: "2023-08", income: 32339.0, expenditure: 23683.0 }, { period_end: "2022-08", income: 15951.0, expenditure: 9339.0 },
+        { period_end: "2021-08", income: 12602.0, expenditure: 21451.0 }] }],
+    tags: { governance: "council-run", phase: "Primary" }, band: 1,
+  };
+  const sx = {
+    years, source: Object.fromEntries(years.map((y) => [y, "CFR"])), pupils,
+    m: { total_income: cells(income), total_expenditure: cells(spend), revenue_reserve: cells(reserve) },
+    pta: { "2020-21": { income: 12602, spend: 21451, income_pp: 29, spend_pp: 50, charity_number: 1103834, confidence: "high" },
+      "2021-22": { income: 15951, spend: 9339, income_pp: 37, spend_pp: 22, charity_number: 1103834, confidence: "high" },
+      "2022-23": { income: 32339, spend: 23683, income_pp: 75, spend_pp: 55, charity_number: 1103834, confidence: "high" },
+      "2023-24": { income: 32743, spend: 36767, income_pp: 77, spend_pp: 86, charity_number: 1103834, confidence: "high" },
+      "2024-25": { income: 48547, spend: 50100, income_pp: 111, spend_pp: 115, charity_number: 1103834, confidence: "high" } },
+    flags: { falling_rolls: null, pass_through: null, high_send: { ehcp_pct: 5.5, sen_share: 0.0652, reason: "ehcp" }, suspect: {}, not_reported: {} },
+    trust_central_pp: null,
+  };
+  // Hackney's PTA medians from the live council file, 2024-25 the latest with one.
+  const council = { id: "council-204", type: "council", name: "Hackney", by_year: { "2023-24": { all: { schools: 61, pta_pp_median: 59.738435453138855, pta_schools: 12 } },
+    "2024-25": { all: { schools: 60, pta_pp_median: 62.46205357142857, pta_schools: 12 } }, "2025-26": { all: null } } };
+  return { s, sx, council };
+}
+
+test("ratioWords matches the shared phrasing table (contract C1)", () => {
+  // Arrange
+  assert.ok(PHRASING.length >= 30);
+  for (const c of PHRASING) {
+    // Act
+    const words = D.ratioWords(c.a, c.b);
+    // Assert
+    assert.equal(words, c.words, JSON.stringify(c));
+  }
+  for (const bad of ["100", true, NaN, Infinity, [100], {}]) assert.equal(D.ratioWords(bad, 100), null, String(bad));
+});
+
+test("charityUrl builds the register's charity page with the number mid-URL (contract C9)", () => {
+  // Act / Assert
+  assert.equal(D.charityUrl(1103834), CC_LINK);
+  assert.equal(D.charityUrl("1103834"), CC_LINK);
+  assert.equal(D.charityUrl(null), "https://register-of-charities.charitycommission.gov.uk/");
+  // Every deck link and source to the register uses it; no old prefix + number link is left.
+  const { s, sx, council } = livePatten();
+  const deck = D.ptfaDeck(D.adapt(s, sx, council, ENGLAND), CTXT);
+  const all = strings(deck).join("\n");
+  assert.ok(all.includes(CC_LINK));
+  assert.ok(!/charity-details\/\d/.test(all), "no prefix + number links");
+});
+
+test("PTFA pack on the live William Patten shape: £48,547 in 2024-25 is £111 per pupil with 437.5 pupils", () => {
+  // Arrange
+  const { s, sx, council } = livePatten();
+  // Act
+  const m = D.adapt(s, sx, council, ENGLAND);
+  const deck = D.ptfaDeck(m, CTXT);
+  // Assert
+  const latest = m.pta[0].years.at(-1);
+  assert.deepEqual([latest.y, latest.income, latest.pupils, Math.round(latest.incomePp)], ["2024-25", 48547, 437.5, 111]);
+  for (const e of m.pta[0].years) {
+    assert.equal(e.pupils, sx.pupils[e.y], "the same school year's pupils, never a year out of step: " + e.y);
+    assert.ok(Math.abs(e.incomePp * e.pupils - e.income) <= e.income * 0.01, e.y);
+  }
+  assert.deepEqual(m.pta[0].years.map((e) => e.y), ["2020-21", "2021-22", "2022-23", "2023-24", "2024-25"], "September-to-August years for a council-run school too");
+  const money = findSlide(deck, "pta_money");
+  const fig = money.figures.find((f) => f.key === "pta_income");
+  assert.equal(fig.pp, 111);
+  assert.ok(fig.text.startsWith("£111 per pupil (£49k in total), year to Aug 2025 (school year 2024-25)"), fig.text);
+  assert.ok(money.bullets.some((b) => b.startsWith("Year to Aug 2025: raised £111 per pupil (£49k)") && b.includes("437.5 pupils")), money.bullets.join("\n"));
+  const msgs = findSlide(deck, "summary").messages;
+  assert.equal(msgs[0], "Year to Aug 2025: raised £48,547, £111 per pupil, up 48% on the year before");
+  assert.ok(msgs[1].startsWith("£111 per pupil in the year to Aug 2025: about double the median among Hackney schools with a registered parents' association (£62)"), msgs[1]);
+  const cmp = findSlide(deck, "pta_compare");
+  assert.ok(cmp.bullets[0].startsWith("Year to Aug 2025: this association raised £111 per pupil, about double the median among 12 schools in Hackney"), cmp.bullets[0]);
+  assert.equal(cmp.chart.series[0].points[0].v, 111);
+  assert.ok(findSlide(deck, "school_brief").figures.find((f) => f.key === "pta_income").year.startsWith("year to Aug 2025"));
+  assertClean(deck, "live ptfa");
+});
+
+test("an academy's PTA return counts in the same September-to-August year as a council-run school's", () => {
+  // Arrange: the same charity history under an academy with AAR years.
+  const { s, sx, council } = livePatten();
+  const acad = { ...s, academy: true, tags: { governance: "academy" } };
+  const asx = { ...sx, source: Object.fromEntries(sx.years.map((y) => [y, "AAR"])) };
+  // Act
+  const a = D.adapt(acad, asx, council, ENGLAND), c = D.adapt(s, sx, council, ENGLAND);
+  // Assert
+  assert.deepEqual(a.pta[0].years.map((e) => [e.y, Math.round(e.incomePp)]), c.pta[0].years.map((e) => [e.y, Math.round(e.incomePp)]));
+});
+
+test("per pupil comes from the return's own total and its year's pupils, not a published figure from another year", () => {
+  // Arrange: sx.pta carries a stale per-pupil figure (one year out of step) for 2024-25.
+  const { s, sx, council } = livePatten();
+  sx.pta["2024-25"].income_pp = 75;
+  // Act
+  const e = D.adapt(s, sx, council, ENGLAND).pta[0].years.at(-1);
+  // Assert
+  assert.equal(Math.round(e.incomePp), Math.round(48547 / 437.5));
+});
+
+test("sources are read per year: an academy cites AAR, a converter cites CFR then AAR (persona fix 7)", () => {
+  // Arrange
+  const { s, sx, council } = livePatten();
+  const acad = { ...s, academy: true, tags: { governance: "academy" } };
+  const aar = { ...sx, source: Object.fromEntries(sx.years.map((y) => [y, "AAR"])) };
+  const conv = { ...sx, source: Object.fromEntries(sx.years.map((y) => [y, y < "2024-25" ? "CFR" : "AAR"])) };
+  // Act
+  const academyDeck = D.schoolDeck(D.adapt(acad, aar, council, ENGLAND), CTXT);
+  const convM = D.adapt(acad, conv, council, ENGLAND);
+  const convDeck = D.schoolDeck(convM, CTXT);
+  // Assert
+  const figs = academyDeck.slides.flatMap((x) => x.figures).filter((f) => /^DfE /.test(f.source || ""));
+  assert.ok(figs.length && figs.every((f) => f.source === "DfE AAR return"), figs.map((f) => f.source).join(","));
+  assert.ok(!strings(academyDeck).some((t) => t.includes("DfE CFR return")), "no CFR citation for an academy");
+  assert.ok(findSlide(convDeck, "title").sources[0].startsWith("DfE CFR returns, 2018-19 to 2023-24; DfE AAR returns, 2024-25 to 2025-26"), findSlide(convDeck, "title").sources[0]);
+  assert.ok(!strings(academyDeck).some((t) => t.includes("[object Object]")));
+});
+
+test("only genuine per-year suspect entries mark a year", () => {
+  for (const [suspect, marked] of [[{}, []], [{ "2024-25": [] }, []], [{ "2024-25": ["pupils"] }, ["2024-25"]], [{ "2023-24": ["total_income"], "2025-26": null }, ["2023-24"]]]) {
+    // Arrange
+    const { s, sx, council } = livePatten();
+    sx.flags = { ...sx.flags, suspect };
+    // Act
+    const m = D.adapt(s, sx, council, ENGLAND);
+    // Assert
+    assert.deepEqual(m.rows.filter((r) => r.suspect).map((r) => r.y), marked, JSON.stringify(suspect));
+  }
+});
+
+test("reserve_basis: every year shows the series basis, labelled, with no own/trust-share mixing (contract C3)", () => {
+  // Arrange: /data/s years carry other figures; /data/sx revenue_reserve is on the trust-share basis in every year.
+  const { s, sx, council } = livePatten();
+  const acad = { ...s, academy: true, trust: "Example Learning Trust", tags: { governance: "academy" }, status: "healthy", label: "Healthy", reason: "",
+    years: s.years.map((r) => ({ ...r, reserve: 5 })) };
+  const reserve = { "2023-24": 150000, "2024-25": 170000, "2025-26": 160000 };
+  const basisSx = { ...sx, reserve_basis: "incl_trust_share",
+    m: { ...sx.m, revenue_reserve: Object.fromEntries(Object.entries(reserve).map(([y, v]) => [y, { v, pp: v / sx.pupils[y] }])),
+      revenue_reserve_own: { "2025-26": { v: 0 } } } };
+  // Act
+  const m = D.adapt(acad, basisSx, council, ENGLAND);
+  const gov = D.schoolDeck(m, CTXT), review = D.reviewDeck(m, CTXT);
+  // Assert
+  assert.deepEqual(m.rows.filter((r) => r.metrics.revenue_reserve).map((r) => r.metrics.revenue_reserve.v), [150000, 170000, 160000]);
+  assert.ok(m.rows.filter((r) => r.metrics.revenue_reserve).every((r) => r.trustShare));
+  const fig = findSlide(gov, "budget").figures.find((f) => f.key === "revenue_reserve");
+  assert.equal(fig.v, 160000);
+  assert.match(fig.label, /including its share of the trust's reserve/);
+  assert.ok(findSlide(gov, "budget").note.includes("Reserves in every year shown include this academy's share of its trust's reserve") &&
+    findSlide(gov, "budget").note.includes("the academy's own reserve was £0 in 2025-26"));
+  assert.ok(findSlide(review, "reserve_trajectory").lead.startsWith("The reserve fell from £170,000 in 2024-25 to £160,000 in 2025-26"), findSlide(review, "reserve_trajectory").lead);
+  // Without reserve_basis, today's per-year handling stands: /data/s's figure replaces a differing own reserve.
+  const old = D.adapt(acad, sx, council, ENGLAND);
+  assert.ok(old.rows.filter((r) => r.metrics.revenue_reserve).every((r) => r.metrics.revenue_reserve.v === 5));
+  // An 'own' basis for a council-run school changes nothing.
+  assert.ok(D.adapt(s, { ...sx, reserve_basis: "own" }, council, ENGLAND).rows.every((r) => !r.trustShare));
+});
+
+test("reserve held by the trust: its own label, icon and grey tone, never 'Tight' or a deficit (contract C4)", () => {
+  // Arrange
+  const { s, sx, council } = livePatten();
+  const zero = Object.fromEntries(sx.years.slice(-3).map((y) => [y, { v: 0, pp: 0 }]));
+  const held = { ...s, academy: true, trust: "Example Learning Trust", tags: { governance: "academy" }, status: "reserve_held_by_trust", label: "Reserve held by the trust",
+    reason: "", years: s.years.map((r) => ({ ...r, reserve: 0 })) };
+  const hsx = { ...sx, m: { ...sx.m, revenue_reserve: zero } };
+  // Act
+  const m = D.adapt(held, hsx, council, ENGLAND);
+  const decks = [D.schoolDeck(m, CTXT), D.reviewDeck(m, CTXT), D.ptfaDeck(m, CTXT)];
+  // Assert
+  assert.equal(D.ORDER.at(-1), "reserve_held_by_trust");
+  assert.equal(D.LABELS.reserve_held_by_trust, "Reserve held by the trust");
+  assert.equal(D.ICONS.reserve_held_by_trust, "◇");
+  assert.equal(D.TONES.reserve_held_by_trust, "held");
+  assert.equal(m.status.key, "reserve_held_by_trust");
+  const rating = findSlide(decks[0], "summary").ratings.find((r) => r.measure === "Reserve");
+  assert.deepEqual([rating.icon, rating.word, rating.tone], ["◇", "Reserve held by the trust", "held"]);
+  assert.ok(findSlide(decks[0], "summary").messages[0].startsWith("◇ Reserve held by the trust at the end of 2025-26: example Learning Trust pools") ||
+    findSlide(decks[0], "summary").messages[0].includes("pools its academies' reserves"), findSlide(decks[0], "summary").messages[0]);
+  for (const d of decks) {
+    const text = D.deckText(d);
+    assert.ok(!/\bTight\b/.test(text) && !/In deficit by/.test(text), text.match(/.{0,60}(Tight|In deficit by).{0,30}/));
+    assertClean(d, "held");
+  }
+  assert.ok(findSlide(decks[0], "questions").bullets.some((b) => b.includes("Example Learning Trust's pooled reserve is held for William Patten Primary School")));
+  // An area deck lists it on its own, after the five.
+  const area = areaDoc("council-204", "council", "Hackney");
+  area.statuses_latest.reserve_held_by_trust = 4;
+  const counts = findSlide(D.areaDeck(area, ENGLAND, CTX), "deficits").bullets[0];
+  assert.ok(counts.endsWith("▲ Large reserves: 10 · ◇ Reserve held by the trust: 4."), counts);
+});
+
+test("similar_meta: School Money's similar schools with their count and year (contract C2)", () => {
+  // Arrange
+  const s = sFixture();
+  s.similar_meta = { year: LATEST, peers: 17, method: "Schools of the same phase, a similar size and a similar share of pupils eligible for free school meals." };
+  // Act
+  const m = D.adapt(s, sxFixture(), COUNCIL, ENGLAND);
+  const gov = D.schoolDeck(m, CTXT), review = D.reviewDeck({ ...m, similarSchools: [{ name: "Neighbour Primary", urn: "1", p: "/school/1/" }] }, CTXT);
+  // Assert
+  assert.ok(findSlide(gov, "summary").messages[1].includes("the median of School Money's similar schools (17 schools, " + LATEST + ")"), findSlide(gov, "summary").messages[1]);
+  assert.ok(findSlide(gov, "where_money_goes").table.columns.includes("Similar schools' median (17 schools), " + LATEST));
+  assert.ok(findSlide(gov, "where_money_goes").note.includes("School Money's similar schools (17 schools, " + LATEST + "): Schools of the same phase"));
+  assert.ok(findSlide(gov, "funding").bullets[0].startsWith("The median spending of School Money's similar schools (17 schools, " + LATEST + ")"));
+  for (const d of [gov, review]) assert.ok(!/DfE('s)? (similar|comparison)/.test(D.deckText(d)), "never DfE's similar schools");
+  assert.ok(findSlide(review, "similar_schools").lead.includes("School Money counts as most like this one"));
+  // Without similar_meta, today's words stay.
+  assert.ok(findSlide(D.schoolDeck(schoolModel(), CTXT), "summary").messages[1].includes("the median of similar schools ("));
+});
+
+test("DSG figures carry the one name, the year, the denominator and 'provisional' (contract C8)", () => {
+  // Arrange
+  const council = areaDoc("council-" + gold.la.code, "council", gold.la.name);
+  council.dsg[LATEST].provisional = true;
+  // Act
+  const sl = findSlide(D.schoolDeck(schoolModel({ council }), CTXT), "council");
+  const area = findSlide(D.areaDeck(council, ENGLAND, CTX), "dsg");
+  // Assert
+  const fig = sl.figures.find((f) => f.key === "dsg");
+  assert.equal(fig.label, "Council's Dedicated Schools Grant balance (all four blocks) at 31 March (provisional)");
+  assert.equal(fig.year, LATEST);
+  assert.ok(sl.bullets.some((b) => b.includes("per pupil divides the council's balance by the pupils at the council's schools on this site in " + LATEST)));
+  assert.equal(area.title, "Dedicated Schools Grant balance (all four blocks)");
+  assert.ok(area.lead.includes(LATEST + ", provisional"));
+  for (const d of [D.schoolDeck(schoolModel({ council }), CTXT), D.areaDeck(council, ENGLAND, CTX)]) {
+    assert.ok(!/high-needs (\(DSG\) )?balance|schools budget balance|High-needs money/i.test(D.deckText(d)));
+  }
+});
+
+test("comparison slides say the ratio in words: nearby median and area against England", () => {
+  // Act
+  const sl = findSlide(D.schoolDeck(schoolModel({ nearby: true }), CTXT), "nearby");
+  const area = findSlide(D.areaDeck(COUNCIL, ENGLAND, CTX), "medians");
+  // Assert
+  const nb = nearbyFixture();
+  assert.ok(sl.bullets[0].includes("this school's " + D.fmtExact(nb.self.spend_pp) + " is " + D.ratioWords(nb.self.spend_pp, nb.medians.spend_pp) + " the median of " + D.fmtExact(nb.medians.spend_pp)), sl.bullets[0]);
+  assert.ok(area.bullets[0].startsWith("Income: median £8,900 per pupil here, about the same as England's £8,900"), area.bullets[0]);
+});
+
+test("a nearby federation lead's row says its figures are the whole federation's (contract C5)", () => {
+  // Arrange
+  const nb = nearbyFixture();
+  nb.schools[0].federation = "The Example Federation";
+  nb.schools[1].federation = "";
+  // Act
+  const deck = D.schoolDeck(schoolModel({ nearby: nb }), CTXT);
+  const t = findSlide(deck, "nearby_table");
+  // Assert
+  assert.ok(t.table.rows[1].cells[0].text.endsWith("(figures for the whole The Example Federation)"), t.table.rows[1].cells[0].text);
+  assert.ok(t.table.rows[2].cells[0].text.endsWith("(figures for the whole federation)"));
+  assert.ok(t.note.includes("reports one return for every school in it"));
+});
+
+test("with reserve_basis, a year the series leaves out has no reserve rather than /data/s's figure (contract C3)", () => {
+  // Arrange
+  const { s, sx, council } = livePatten();
+  const basisSx = { ...sx, reserve_basis: "incl_trust_share", m: { ...sx.m, revenue_reserve: { ...sx.m.revenue_reserve } } };
+  delete basisSx.m.revenue_reserve["2024-25"];
+  const acad = { ...s, academy: true, tags: { governance: "academy" } };
+  // Act
+  const m = D.adapt(acad, basisSx, council, ENGLAND);
+  // Assert
+  assert.equal(m.rows.find((r) => r.y === "2024-25").metrics.revenue_reserve, undefined);
+  assert.ok(m.rows.find((r) => r.y === "2025-26").trustShare);
 });

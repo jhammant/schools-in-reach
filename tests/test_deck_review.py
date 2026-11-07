@@ -6,7 +6,7 @@ import subprocess
 
 import pytest
 
-from pipeline.money import pta
+from pipeline.money import pta, series
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -79,23 +79,25 @@ for (const [key, field] of [['pta_income', 'income'], ['pta_spend', 'expenditure
 """)
 
 
-def test_december_charity_year_keeps_matching_per_pupil_values():
-    run_node(r"""
-// Arrange: contract year labels and an actual calendar-year charity return.
+def test_december_charity_year_sits_in_the_school_year_it_ends_in():
+    # Arrange: a calendar-year charity return; one rule for every school (series.pta_year), as the producer keys sx.pta.
+    year = series.pta_year("2025-12-31", "CFR")
+    run_node("const want = " + json.dumps(year) + ";\n" + r"""
 const s = school();
 s.pta = [{charity_number: '1234567', name: 'Parents association', history: [
   {period_end: '2025-12-31', income: 40000, expenditure: 30000},
 ]}];
 const sx = series();
-sx.pta = {'2024-25': {income: 40000, spend: 30000,
-  income_pp: 40000 / fin('2024-25').pupils,
-  spend_pp: 30000 / fin('2024-25').pupils, charity_number: '1234567'}};
+sx.pta = {[want]: {income: 40000, spend: 30000,
+  income_pp: 40000 / fin(want).pupils,
+  spend_pp: 30000 / fin(want).pupils, charity_number: '1234567'}};
 // Act.
 const deck = D.ptfaDeck(D.adapt(s, sx, null, null));
-// Assert: December must match the same end-year school row, like other months.
+// Assert: December sits in the September-to-August year it ends in, with that year's pupils.
 const figure = deck.slides.find(s => s.id === 'pta_money').figures[0];
-assert.equal(figure.pp, Math.round(sx.pta['2024-25'].income_pp),
-  'A December charity period must not lose its available per-pupil value');
+assert.ok(figure.year.startsWith('year to Aug ' + (Number(want.slice(0, 4)) + 1) + ' (school year ' + want + ', accounts to 31 Dec 2025)'), figure.year);
+assert.equal(figure.pp, Math.round(40000 / fin(want).pupils),
+  'A December charity period must keep its same-year per-pupil value');
 """)
 
 

@@ -119,6 +119,8 @@
 .rag.tone-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, var(--card)); } .rag.tone-warning .rag-icon { color: var(--warning); }
 .rag.tone-good { border-color: var(--good); background: color-mix(in srgb, var(--good) 12%, var(--card)); } .rag.tone-good .rag-icon { color: var(--good); }
 .rag.tone-plenty { border-color: var(--plenty); background: color-mix(in srgb, var(--plenty) 12%, var(--card)); } .rag.tone-plenty .rag-icon { color: var(--plenty); }
+/* reserve held by the trust: neutral grey (app.css defines --held; the fallback keeps it grey without it) */
+.rag.tone-held { border-color: var(--held, #6b7280); background: color-mix(in srgb, var(--held, #6b7280) 12%, var(--card)); } .rag.tone-held .rag-icon { color: var(--held-text, var(--held, #6b7280)); }
 
 /* tables: full width under the lead; long ones are split across slides by the model, never shrunk */
 .slide-body.has-table { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; align-content: start; }

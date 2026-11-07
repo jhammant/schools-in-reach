@@ -807,7 +807,7 @@ test("PTFA mode without England figures sets nearby PTAs beside this PTFA's own 
   assert.equal(without, undefined, "no England figures and no contract: no card, as before");
   assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
   assert.equal(c.big.text, MW.fmtExact(c.bars[0].v));
-  assert.match(c.big.unit, /2024-25/);
+  assert.match(c.big.unit, /year to Aug 2025/);
   assert.match(c.lines.join(" "), /Elm Lane PTA was matched with lower confidence/);
 });
 
@@ -822,7 +822,7 @@ test("PTFA mode treats undated England PTA figures as missing and uses this PTFA
   assert.equal(without, undefined, "undated England figures and no contract: no card, never 'in null'");
   assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
   assert.match(c.barsNote, /2024-25/);
-  assert.match(c.big.unit, /2024-25/);
+  assert.match(c.big.unit, /year to Aug 2025/);
   assert.ok(!c.figures.some((f) => /^pta_band|^pta_pp_median$/.test(f.key)), "undated England figures are left out");
   assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN/);
 });
@@ -891,4 +891,228 @@ test("short school names drop the phase and type words but never empty a name", 
     // Assert
     assert.equal(c.bars[1].label, want);
   }
+});
+
+// ---------------------------------------------------------------- fix wave 1: comparisons in words, years, bases, links
+const PHRASING = JSON.parse(readFileSync(process.env.PHRASING_CASES || join(here, "data", "phrasing_cases.json"), "utf8"));
+const CC_LINK = "https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet" +
+  "&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_regId=1103834" +
+  "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0";
+// Every line of a card is drawn in full: no ellipsis, and each line's closing words appear (a URL may wrap mid-word).
+function assertFits(c, label) {
+  const f = fakeCanvas();
+  MW.drawCard(f.g, c, 1, PALETTE, { index: 0, count: 10, reducedMotion: true });
+  const texts = f.calls.filter((x) => x.op === "fillText").map((x) => x.t);
+  const drawn = texts.join(" ");
+  assert.ok(!texts.some((t) => t.endsWith("…")), `${label}: cut ${texts.filter((t) => t.endsWith("…")).join(" | ")}`);
+  for (const l of c.lines) if (!/https?:/.test(l)) assert.ok(drawn.includes(l.split(" ").slice(-2).join(" ")), `${label}: not drawn: ${l}`);
+}
+// Hackney's PTA medians from the live council file: 2024-25 is the PTFA's latest school year.
+function withCouncilPta(f, years = { "2024-25": 62.46205357142857, "2023-24": 59.738435453138855 }) {
+  for (const [y, v] of Object.entries(years)) (f.council.by_year[y] ||= { all: {} }).all = { ...(f.council.by_year[y].all || {}), schools: 60, pta_pp_median: v, pta_schools: 12 };
+  return f;
+}
+
+test("ratioWords matches the shared phrasing table (contract C1)", () => {
+  // Arrange
+  assert.ok(PHRASING.length >= 30);
+  for (const c of PHRASING) {
+    // Act / Assert
+    assert.equal(MW.ratioWords(c.a, c.b), c.words, JSON.stringify(c));
+  }
+  for (const bad of ["100", true, NaN, Infinity, [100], {}]) assert.equal(MW.ratioWords(bad, 100), null, String(bad));
+});
+
+test("charityUrl puts the number mid-URL and the PTFA card links the register (contract C9)", () => {
+  // Act
+  const c = card(model({}, "ptfa").m, "pta-money");
+  // Assert
+  assert.equal(MW.charityUrl(1103834), CC_LINK);
+  assert.equal(MW.charityUrl(undefined), "https://register-of-charities.charitycommission.gov.uk/");
+  assert.equal(c.link, CC_LINK);
+  assert.equal(c.linkText, "Charity 1103834 on the Charity Commission register");
+});
+
+test("the PTFA comparison card headlines this PTFA's own per pupil, in the money card's year, with the ratio in words", () => {
+  // Arrange: the PTFA money card's year is the latest return, 2024-25 (the year to Aug 2025).
+  const f = withCouncilPta(fixture());
+  // Act
+  const m = MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "ptfa");
+  const money = card(m, "pta-money"), gap = card(m, "pta-gap");
+  // Assert
+  const want = Math.round(gold.ptfa.years["2024-25"].income / pupilsOf("2024-25"));
+  assert.equal(money.big.v, want);
+  assert.deepEqual([gap.big.v, gap.big.text, gap.big.unit], [want, MW.fmtExact(want), "raised per pupil, year to Aug 2025"], "this PTFA's figure, not England's");
+  assert.equal(gap.lines[0], "Year to Aug 2025: this PTFA raised " + MW.fmtExact(want) + " per pupil, " + MW.ratioWords(want, 62.46205357142857) +
+    " Hackney's typical PTA (£62) and " + MW.ratioWords(want, 31) + " England's (£31).");
+  assert.ok(gap.bars.some((b) => b.label === "Hackney's middle PTA" && b.v === 62.46205357142857));
+  assert.match(gap.barsNote, /year to Aug 2025 \(2024-25\)/);
+  assert.ok(money.lines[0].startsWith("Year to Aug 2025: " + MW.fmtExact(gold.ptfa.years["2024-25"].income) + " raised"), money.lines[0]);
+  assert.match(money.source, /^year to Aug 2025, Charity Commission register/);
+  assertFits(gap, "pta-gap");
+});
+
+test("a council PTA median for another year is never set beside this PTFA's year", () => {
+  // Arrange: Hackney has a median only for 2023-24.
+  const f = withCouncilPta(fixture(), { "2023-24": 59.7 });
+  // Act
+  const gap = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "ptfa"), "pta-gap");
+  // Assert
+  assert.ok(!gap.bars.some((b) => /Hackney/.test(b.label)));
+  assert.doesNotMatch(gap.lines.join(" "), /Hackney's typical PTA/);
+  assert.match(gap.lines[0], /^Year to Aug 2025: this PTFA raised £\d+ per pupil, .+ England's typical PTA \(£31\)\.$/);
+});
+
+test("a PTFA matched with lower confidence says so", () => {
+  // Arrange
+  const f = fixture();
+  f.s.pta[0].match = { method: "llm" };
+  // Act
+  const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "ptfa"), "pta-money");
+  // Assert
+  assert.ok(c.lines.some((l) => l.includes("matched with lower confidence")));
+  assert.ok(!card(model({}, "ptfa").m, "pta-money").lines.some((l) => l.includes("lower confidence")));
+});
+
+test("the similar-schools card is School Money's, with its count and year from similar_meta (contract C2)", () => {
+  // Arrange
+  const f = fixture();
+  f.s.similar_meta = { year: LATEST, peers: 17, method: "Same phase, similar size and intake." };
+  // Act
+  const withMeta = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "similar");
+  const without = card(model().m, "similar");
+  // Assert
+  assert.equal(withMeta.barsNote, "School Money's similar schools (17 schools, " + LATEST + "): the closest in phase, size and free school meals.");
+  assert.match(without.barsNote, /^Per pupil in .+\. School Money's similar schools: /);
+  for (const c of [withMeta, without]) {
+    assert.ok(!textOf(c).includes("DfE similar"), "never the DfE's comparison");
+    assert.ok(c.figures.filter((x) => /^similar_/.test(x.key)).every((x) => x.source === "School Money's similar schools"));
+    const spend = c.lines.find((l) => l.startsWith("Spending:"));
+    const mine = Math.round(pf(LATEST).total_expenditure / pf(LATEST).pupils);
+    assert.equal(spend, "Spending: " + MW.fmtExact(mine) + " per pupil, " + MW.ratioWords(mine, 8650) + " the middle of similar schools (£8,650).");
+    assertFits(c, "similar");
+  }
+});
+
+test("the nearby and council cards say the comparison in words", () => {
+  // Arrange
+  const f = fixture();
+  f.council.by_year[LATEST].all.spend_pp_median = 7900;
+  // Act
+  const nb = card(nearbyModel(nearbyContract()), "nearby");
+  const council = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "council");
+  // Assert
+  const c = nearbyContract(), words = MW.ratioWords(c.self.spend_pp, c.medians.spend_pp);
+  assert.ok(nb.lines[0].endsWith("That is " + words + " the middle value, " + MW.fmtExact(c.medians.spend_pp) + "."), nb.lines[0]);
+  const mine = Math.round(pf(LATEST).total_expenditure / pf(LATEST).pupils);
+  assert.ok(council.lines.includes("This school spent " + MW.ratioWords(mine, 7900) + " Hackney's middle school per pupil in " + LATEST + "."), council.lines.join("\n"));
+  assert.match(council.barsNote, /mix primary and secondary/);
+  assertFits(nb, "nearby");
+  assertFits(council, "council");
+});
+
+test("deficit cards add one calm line: schools in deficit keep running while a plan brings the budget back", () => {
+  // Act
+  const { m } = model();
+  const reserve = card(m, "reserve"), council = card(m, "council");
+  // Assert
+  assert.ok(reserve.lines.includes("Schools in deficit keep running: the council agrees a plan to bring the budget back into balance."), reserve.lines.join("\n"));
+  assert.ok(council.lines.includes("Schools in deficit keep running: the council or trust agrees a plan to bring the budget back into balance."));
+  assertFits(reserve, "reserve");
+  assertFits(council, "council");
+  // A healthy school's reserve card has no deficit line.
+  const f = fixture();
+  for (const y of YEARS) f.sx.m.revenue_reserve[y] = { v: 300000, pp: 300000 / pupilsOf(y) };
+  f.s.status = "healthy";
+  const healthy = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "reserve");
+  assert.ok(!healthy.lines.some((l) => /keep running/.test(l)));
+});
+
+test("the council card names the DSG measure with its year, denominator and provisional status (contract C8)", () => {
+  // Arrange
+  const f = fixture();
+  f.council.dsg[LATEST].provisional = true;
+  // Act
+  const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "council");
+  // Assert
+  assert.ok(c.lines.includes("Council's Dedicated Schools Grant balance (all four blocks), " + LATEST + " (provisional): -£21.5m (-£640 per pupil at its schools on this site)."), c.lines.join("\n"));
+  assert.equal(c.figures.find((x) => x.key === "dsg_balance").label, "Dedicated Schools Grant balance (all four blocks)");
+  assert.doesNotMatch(textOf(c), /high needs \(Dedicated Schools Grant\) balance|High needs balance/);
+});
+
+test("reserve_basis labels the reserve the series shows; without it the card reads as before (contract C3)", () => {
+  // Arrange
+  const f = fixture();
+  f.s.academy = true; f.s.tags.governance = "academy"; f.s.trust = "Example Learning Trust";
+  f.sx.reserve_basis = "incl_trust_share";
+  // Act
+  const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "reserve");
+  const plain = card(model().m, "reserve");
+  // Assert
+  assert.ok(c.lines[0].startsWith("Reserve at the end of " + LATEST + ", including its share of the trust's reserve: "), c.lines[0]);
+  assert.equal(c.big.unit, "reserve, including its share of the trust's");
+  assert.equal(c.figures[0].v, pf(LATEST).revenue_reserve, "the series figure, as /data/sx gives it");
+  assert.ok(c.lines.includes("Schools in deficit keep running: Example Learning Trust agrees a plan to bring the budget back into balance."));
+  assert.ok(plain.lines[0].startsWith("Reserve at the end of " + LATEST + ": "));
+  assert.equal(plain.big.unit, "reserve");
+});
+
+test("reserve held by the trust: its own grey badge and a supportive story, never 'Tight' or a deficit (contract C4)", () => {
+  // Arrange: an academy in a pooling trust, own reserve £0 every year.
+  const f = fixture();
+  Object.assign(f.s, { academy: true, trust: "Example Learning Trust", status: "reserve_held_by_trust", label: "Reserve held by the trust", reason: "" });
+  f.s.tags.governance = "academy";
+  for (const y of YEARS) f.sx.m.revenue_reserve[y] = { v: 0, pp: 0 };
+  // Act
+  const m = MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school");
+  const reserve = card(m, "reserve");
+  // Assert
+  assert.deepEqual(MW.STATUS.reserve_held_by_trust, { label: "Reserve held by the trust", icon: "◇", colour: "held", fallback: "#6b7280" });
+  assert.ok(MW.PALETTE_KEYS.includes("held"));
+  assert.equal(reserve.status.key, "reserve_held_by_trust");
+  assert.ok(reserve.lines.some((l) => l.startsWith("Example Learning Trust keeps the reserves of all its academies together") && l.includes("not a shortfall")));
+  assert.ok(!reserve.lines.some((l) => /keep running|recovery plan/.test(l)));
+  for (const c of m.cards) assert.doesNotMatch(textOf(c), /\bTight\b/, c.id);
+  const helps = card(m, "helps");
+  // wrapped.context_doc() carries the held story (the pytest wrapper passes it in); without it the healthy wording stands.
+  const held = (CTX.what_helps || {}).reserve_held_by_trust;
+  if (held) assert.equal(helps.lines[0], held.text);
+  assert.doesNotMatch(helps.lines[0], /recovery|deficit/);
+  // The badge outline is the neutral grey when the palette has no --held.
+  const fc = fakeCanvas();
+  const strokes = [];
+  const g = new Proxy(fc.g, { set: (o, k, v) => { if (k === "strokeStyle") strokes.push(v); o[k] = v; return true; } });
+  MW.drawCard(g, reserve, 1, {}, { index: 4, count: m.cards.length });
+  assert.ok(strokes.includes("#6b7280"), strokes.join(","));
+  assertFits(reserve, "held reserve");
+});
+
+test("only genuine per-year entries in sx.flags.suspect mark a year (the series shape)", () => {
+  for (const [flags, marked] of [
+    [{ falling_rolls: null, pass_through: null, high_send: { ehcp_pct: 5.5 }, suspect: {}, not_reported: {} }, []],
+    [{ falling_rolls: null, suspect: { "2024-25": ["pupils"] }, not_reported: {} }, ["2024-25"]],
+    [{ suspect: { "2023-24": [], "2022-23": ["total_income"] } }, ["2022-23"]],
+    [{ "2023-24": [] }, []],
+  ]) {
+    // Arrange
+    const f = fixture();
+    f.sx.flags = flags;
+    // Act
+    const data = MW.adapt(f.s, f.sx, f.council, f.england, CTX);
+    // Assert
+    assert.deepEqual(data.years.filter((r) => r.suspect).map((r) => r.y), marked, JSON.stringify(flags));
+  }
+});
+
+test("with reserve_basis, a year the series leaves out has no reserve rather than another basis's figure (contract C3)", () => {
+  // Arrange: the trust-share basis has no figure for 2024-25, which /data/s still carries.
+  const f = fixture();
+  f.sx.reserve_basis = "incl_trust_share";
+  delete f.sx.m.revenue_reserve["2024-25"];
+  // Act
+  const data = MW.adapt(f.s, f.sx, f.council, f.england, CTX);
+  const without = MW.adapt(f.s, { ...f.sx, reserve_basis: undefined }, f.council, f.england, CTX);
+  // Assert
+  assert.equal(data.years.find((r) => r.y === "2024-25").reserve, null);
+  assert.equal(without.years.find((r) => r.y === "2024-25").reserve, pf("2024-25").revenue_reserve, "today's fallback without reserve_basis");
 });

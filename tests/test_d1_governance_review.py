@@ -239,3 +239,29 @@ def test_pta_target_does_not_use_suspect_pupil_numbers():
     # Assert: omit the illustration or use a clearly labelled trustworthy year.
     assert result["target"] is None or result["target"]["year"] != suspect_year, result
     assert all(f["year"] != suspect_year for f in result["figures"])
+
+
+def test_deck_latest_reserve_is_the_published_status_reserve_on_either_basis():
+    # Arrange: an academy whose status counts its share of the trust's reserve, three years running. With contract C3
+    # series.school_series says so in reserve_basis; without it the deck falls back to /data/s year by year.
+    rows = [finance_row(y, source="AAR", revenue_reserve=10_000, revenue_reserve_incl_trust_share=v)
+            for y, v in (("2022-23", 40_000), ("2023-24", 45_000), ("2024-25", 50_000))]
+    assessed = status.assess(rows)
+    sx = series.school_series(rows)
+
+    # Act.
+    result = run_model("""
+      const m = D.adapt(p.s, p.sx);
+      const pack = D.reviewDeck(m);
+      return {
+        figure: pack.slides.find(s => s.id === 'reserve_trajectory').figures[0],
+        years: m.rows.map(r => r.metrics.revenue_reserve && r.metrics.revenue_reserve.v),
+        basis: m.reserveBasis,
+      };
+    """, s=school_doc(rows), sx=sx)
+
+    # Assert: the headline reserve and the year rows share one basis.
+    assert result["figure"]["v"] == round(assessed["reserve"])
+    assert result["years"][-1] == round(assessed["reserve"])
+    assert result["basis"] == sx.get("reserve_basis")
+    assert "trust" in result["figure"]["label"]
