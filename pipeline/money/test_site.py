@@ -5,12 +5,17 @@ import shutil
 import subprocess
 import sys
 import unittest
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from pipeline.money import site
 
 REPO = Path(__file__).resolve().parents[2]
+# deck.js views a school presentation link may name; governors and review are being added beside school and ptfa,
+# and until then deck.js shows the school presentation for them.
+DECK_VIEWS = {"school", "ptfa", "governors", "review"}
 VOID = {"meta", "link", "br", "hr", "img", "input", "path", "circle", "rect", "line", "source", "wbr"}
 
 NATIONAL_FIXTURE = (
@@ -288,6 +293,163 @@ class AppJsTest(unittest.TestCase):
         # Assert
         self.assertEqual(proc.returncode, 0, proc.stdout[-3000:] + proc.stderr[-3000:])
         self.assertRegex(proc.stdout, r"# fail 0")
+
+
+
+class AudiencePickerTest(unittest.TestCase):
+    """The "Show me what matters to a" picker, the panel slot under the header and the head script that restores a choice."""
+
+    def setUp(self):
+        # Arrange
+        self.html = site.page("t", "d", "/school/100001-example-primary/", "<h1>Body</h1>", [("School Money", "/")])
+
+    def test_picker_wording_chips_and_clear(self):
+        # Assert
+        self.assertIn("<legend>Show me what matters to a</legend>", self.html)
+        chips = re.findall(r'<button type="button" data-audience="([a-z]+)" aria-pressed="(true|false)">', self.html)
+        self.assertEqual(chips, [(key, "false") for key, _ in site.AUDIENCES])  # nothing chosen until the reader picks
+        self.assertIn('</span><button type="button" class="aud-clear">Clear</button></fieldset>', self.html)
+        # its own row under the header's grid, so the search box keeps its width
+        self.assertIn('</nav></div><div class="aud-bar"><fieldset class="audience">', self.html)
+
+    def test_panel_slot_follows_the_header_and_assets_load_after_app_css(self):
+        # Assert
+        self.assertIn('</header><div id="for-you"></div><main id="main"', self.html)
+        head = self.html.split("</head>", 1)[0]
+        boot, app_css, aud_css = (head.index(x) for x in (site.AUDIENCE_BOOT, 'href="/assets/app.css"', 'href="/assets/audience.css"'))
+        self.assertLess(boot, app_css)
+        self.assertLess(app_css, aud_css)
+        p = parse(self.html)
+        self.assertEqual(p.errors, [])
+        self.assertEqual(len(set(p.ids)), len(p.ids), "duplicate ids")
+
+    def test_boot_script_knows_every_reader_and_app_js_storage_key(self):
+        # Arrange
+        js = (site.ASSETS / "app.js").read_text(encoding="utf-8")
+        readers = json.loads(re.search(r"var READERS = (\[[^\]]*\]);", js).group(1))
+        # Assert
+        self.assertEqual(readers, [key for key, _ in site.AUDIENCES])
+        self.assertIn('KEY_AUD = "moneyAudience"', js)
+        self.assertIn('localStorage.getItem("moneyAudience")', site.AUDIENCE_BOOT)
+        self.assertIn("/^(" + "|".join(readers) + ")$/", site.AUDIENCE_BOOT)
+        self.assertLess(len(site.AUDIENCE_BOOT), 260)  # every page carries it; school pages are near their size budget
+
+    def test_audience_css_uses_the_design_tokens_and_tags_every_reader(self):
+        # Arrange
+        css = (site.ASSETS / "audience.css").read_text(encoding="utf-8")
+        rules = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        # Assert
+        self.assertIn("audience.css", {p.name for p in site.asset_files()})
+        self.assertIsNone(re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", rules), "colours come from app.css's tokens")
+        for token in ("var(--accent)", "var(--accent-soft)", "var(--accent-ink)", "var(--ink)", "var(--card)"):
+            self.assertIn(token, rules)
+        for key, _ in site.AUDIENCES:
+            self.assertIn(f'html[data-reader="{key}"] .sp-sec[data-readers~="{key}"] > h2::after', rules)
+            self.assertIn(f'html[data-reader="{key}"] header.top button[data-audience="{key}"]', rules)
+        self.assertIn("html:not(.js) .aud-bar { display: none; }", rules)
+
+
+@unittest.skipUnless(shutil.which("node"), "node not installed")
+class AudienceBootScriptTest(unittest.TestCase):
+    """site.AUDIENCE_BOOT run under node against a stub <html> and localStorage."""
+
+    def run_boot(self, storage):
+        script = site.AUDIENCE_BOOT.removeprefix("<script>").removesuffix("</script>")
+        harness = ("const attrs = {}, classes = [];"
+                   "globalThis.document = {documentElement: {classList: {add: c => classes.push(c)}, setAttribute: (k, v) => { attrs[k] = v; }}};"
+                   f"const stored = {json.dumps(storage)};"
+                   "globalThis.localStorage = {getItem: k => { if (stored === 'THROW') throw new Error('blocked'); return stored[k] ?? null; }};"
+                   f"{script};console.log(JSON.stringify({{attrs, classes}}));")
+        proc = subprocess.run(["node", "-e", harness], capture_output=True, text=True, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def test_saved_reader_is_restored_before_first_paint(self):
+        # Act / Assert
+        self.assertEqual(self.run_boot({"moneyAudience": '"governor"'}), {"attrs": {"data-reader": "governor"}, "classes": ["js"]})
+
+    def test_nothing_saved_cleared_or_unknown_sets_no_reader(self):
+        for storage in ({}, {"moneyAudience": "null"}, {"moneyAudience": '"teacher"'}, {"moneyAudience": "{not json"}, "THROW"):
+            with self.subTest(storage=storage):
+                # Act / Assert
+                self.assertEqual(self.run_boot(storage), {"attrs": {}, "classes": ["js"]})
+
+
+@unittest.skipUnless(shutil.which("node"), "node not installed")
+class AudienceLinksResolveTest(unittest.TestCase):
+    """Every link the panel offers, for every reader, resolves on a fixture site built with every real unit."""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from pipeline.money import build_money
+        from pipeline.money.test_build_money import full_rows, make_site, row, school
+        cls.tmp = tempfile.TemporaryDirectory()
+        root = Path(cls.tmp.name)
+        schools = [school(100000 + i, f"Peer {i}", constituency="Hackney North and Stoke Newington") for i in range(8)]
+        schools.append(school(140001, "Good Academy", type="Academy converter", trust="Good Trust"))
+        rows = [r for i in range(8) for r in full_rows(str(100000 + i), reserve=40_000 + 5_000 * i)]
+        rows += [row("140001", end, 2_000_000, 2_100_000, -50_000, source="AAR", trust="Good Trust") for end in ("2024-08", "2025-08")]
+        site_dir, history, links, pta = make_site(root, [("204", "Hackney")], {"204": schools}, rows)
+        cls.out = root / "site_money"
+        summary = build_money.build(site_dir, history, links, pta, out=cls.out, dsg_path=root / "no-dsg.json")
+        assert summary["skipped_extensions"] == [], summary["skipped_extensions"]
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def page(self, path):
+        """What app.js reads from a built page: its path, the ids in <main> and the first pin in <main>."""
+        html = (self.out / path.lstrip("/") / "index.html").read_text(encoding="utf-8")
+        main = html.split('<main id="main"', 1)[1]
+        ids = re.findall(r'\sid="([^"]+)"', main)
+        if "<table data-sortable" in main and not path.startswith("/school/"):
+            ids.append("schools")  # app.js gives the schools table this id on council, constituency and trust pages
+        pin = re.search(r"data-pin='([^']+)'", main)
+        return {"path": path, "sections": ids, "pin": json.loads(unescape(pin.group(1))) if pin else None}
+
+    def links(self, pages):
+        script = ("require(process.argv[1]); const M = globalThis.MoneyApp;"
+                  "const out = JSON.parse(process.argv[2]).map(pg => { const page = Object.assign(M.pageOf(pg.path), {sections: pg.sections});"
+                  " if (pg.pin && pg.pin.type === 'area' && (page.kind === 'council' || page.kind === 'constituency')) page.areaId = pg.pin.id;"
+                  " return [pg.path, M.READERS.map(r => [r, M.audienceLinks(r, page)])]; });"
+                  "console.log(JSON.stringify(out));")
+        proc = subprocess.run(["node", "-e", script, str(site.ASSETS / "app.js"), json.dumps(pages)], capture_output=True, text=True, timeout=30)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout)
+
+    def resolves(self, href, sections):
+        parts = urlsplit(href)
+        if not parts.path:
+            return parts.fragment in sections
+        if not (self.out / parts.path.lstrip("/") / "index.html").is_file():
+            return False
+        query = parse_qs(parts.query)
+        if "urn" in query:
+            return (self.out / "data/s" / f"{query['urn'][0]}.json").is_file() and query.get("view", ["school"])[0] in DECK_VIEWS
+        if "area" in query:
+            return (self.out / "data/a" / f"{query['area'][0]}.json").is_file()
+        return True
+
+    def test_every_panel_link_resolves(self):
+        # Arrange
+        paths = ["/school/100001-peer-1/", "/school/140001-good-academy/", "/council/hackney/",
+                 "/constituency/hackney-north-and-stoke-newington/", "/trust/good-trust/", "/", "/guides/governors/", "/tools/", "/map/"]
+        pages = [self.page(p) for p in paths]
+        # Act
+        results = self.links(pages)
+        # Assert
+        for (path, per_reader), page in zip(results, pages):
+            for reader, links in per_reader:
+                with self.subTest(path=path, reader=reader):
+                    self.assertTrue(3 <= len(links) <= 5, links)
+                    bad = [link["href"] for link in links if not self.resolves(link["href"], page["sections"])]
+                    self.assertEqual(bad, [])
+        school_links = dict(results[0][1])
+        self.assertIn("/school/100001-peer-1/video/?mode=ptfa", [link["href"] for link in school_links["ptfa"]])
+        council_links = dict(results[2][1])
+        self.assertIn("/deck/?area=council-204", [link["href"] for link in council_links["governor"]])
 
 
 if __name__ == "__main__":

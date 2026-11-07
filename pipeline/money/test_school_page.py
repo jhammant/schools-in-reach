@@ -1215,5 +1215,30 @@ class WilliamPattenGoldTest(unittest.TestCase):
                 self.assertEqual(series["m"][key][year]["pp"], round(t[key] / t["pupils"]), (key, year))
 
 
+
+class ReaderTagsTest(unittest.TestCase):
+    """Sections carry data-readers, the readers audience.css tags them for once one is chosen in the header."""
+
+    def test_sections_list_their_readers(self):
+        for name, (item, ctx) in every_fixture().items():
+            with self.subTest(name):
+                # Act
+                body = school_page.render(item, ctx)["body"]
+                tagged = dict(re.findall(r'<section id="([a-z-]+)" class="sp-sec" data-readers="([a-z ]+)">', body))
+                # Assert
+                self.assertEqual(tagged["status"], "parent pupil")
+                for ident in ("funding", "spending", "questions"):
+                    self.assertEqual(tagged.get(ident), school_page.READERS[ident], ident)
+                self.assertNotIn("data-for=", body)  # app.css hides [data-for] blocks that are not the chosen reader's
+
+    def test_every_reader_has_sections_and_every_key_is_a_picker_reader(self):
+        # Arrange
+        keys = {key for key, _ in site.AUDIENCES}
+        # Act
+        used = {r for readers in school_page.READERS.values() for r in readers.split()}
+        # Assert
+        self.assertEqual(used, keys)
+
+
 if __name__ == "__main__":
     unittest.main()

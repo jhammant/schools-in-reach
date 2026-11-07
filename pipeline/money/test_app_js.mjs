@@ -24,7 +24,7 @@ const M = globalThis.MoneyApp;
 
 test("MoneyApp exports the helpers", () => {
   for (const k of ["fmtMoney", "perPupil", "parsePostcode", "rankSearch", "pinLimits", "togglePin", "importShortlist", "postcodeLookup",
-                   "seriesDrill", "parseTags", "rowShown", "pinnedFirst"]) {
+                   "seriesDrill", "parseTags", "rowShown", "pinnedFirst", "READERS", "READER_TITLES", "pageOf", "audienceLinks"]) {
     assert.ok(M[k], k);
   }
 });
@@ -359,15 +359,15 @@ const appSource = readFileSync(join(here, "assets", "app.js"), "utf8");
 const glossary = JSON.parse(readFileSync(join(here, "assets", "glossary.json"), "utf8"));
 async function settle() { for (let n = 0; n < 40; n++) await Promise.resolve(); }
 
-function boot({ storage = {}, data = {}, setup = () => {} } = {}) {
-  // Arrange (shared): a fake page, storage and fetch, then app.js runs against them.
+function boot({ storage = {}, data = {}, setup = () => {}, path = "/" } = {}) {
+  // Arrange (shared): a fake page at path, storage and fetch, then app.js runs against them.
   const document = new Doc();
   const memory = new Map(Object.entries(storage).map(([k, v]) => [k, JSON.stringify(v)]));
   const calls = [];
   const fixtures = { "/assets/glossary.json": glossary, ...data };
-  const url = new URL("https://money.schoolsinreach.com/");
+  const url = new URL(path, "https://money.schoolsinreach.com/");
   const ctx = vm.createContext({
-    document, console, URL, URLSearchParams, location: { href: url.href, search: "", pathname: "/" },
+    document, console, URL, URLSearchParams, location: { href: url.href, search: "", pathname: url.pathname },
     history: { replaceState() {} },
     localStorage: { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => memory.set(k, String(v)) },
     setTimeout: () => 0, clearTimeout() {},
@@ -487,4 +487,192 @@ test("milesBetween is a great-circle distance in miles", () => {
   const d = M.milesBetween({ lat: 51, lon: 0 }, { lat: 52, lon: 0 });
   // Assert
   assert.ok(Math.abs(d - 69.09) < 0.1, String(d));
+});
+
+// ---------------------------------------------------------------- readers: "Show me what matters to a"
+const SCHOOL_PAGE = { kind: "school", path: "/school/100001-example-primary/", urn: "100001",
+                      sections: ["status", "funding", "reserve", "income", "spending", "ptfa", "split", "questions", "check"] };
+const VIDEO = "/school/100001-example-primary/video/";
+const hrefs = (reader, page) => M.audienceLinks(reader, page).map((l) => l.href);
+const area = (path, extra = {}) => ({ ...M.pageOf(path), sections: ["schools"], ...extra });
+
+test("pageOf tells a school page, an area page and anything else apart by its path", () => {
+  // Act / Assert
+  assert.deepEqual(M.pageOf("/school/100001-example-primary/"), { kind: "school", path: "/school/100001-example-primary/", urn: "100001" });
+  assert.equal(M.pageOf("/council/hackney/").kind, "council");
+  assert.equal(M.pageOf("/council/hackney/2/").kind, "council");
+  assert.equal(M.pageOf("/constituency/hackney-north-and-stoke-newington/").kind, "constituency");
+  assert.equal(M.pageOf("/trust/good-trust/").kind, "trust");
+  for (const p of ["/", "/council/", "/trust/", "/school/100001-example-primary/video/", "/guides/governors/", "/deck/", undefined]) {
+    assert.equal(M.pageOf(p).kind, "other", String(p));
+  }
+});
+
+test("audienceLinks on a school page points each reader at that school's own pages and sections", () => {
+  // Act / Assert
+  assert.deepEqual(hrefs("parent", SCHOOL_PAGE), ["#status", "#questions", VIDEO, "#ptfa", "#split"]);
+  assert.deepEqual(hrefs("governor", SCHOOL_PAGE), ["/deck/?urn=100001&view=governors", "#spending", "#questions", "/tools/budget-check/", "#reserve"]);
+  assert.deepEqual(hrefs("ptfa", SCHOOL_PAGE), ["/deck/?urn=100001&view=ptfa", VIDEO + "?mode=ptfa", "#ptfa", "/tools/pta-planner/", "/guides/ptfa/"]);
+  assert.deepEqual(hrefs("leader", SCHOOL_PAGE), ["/deck/?urn=100001&view=review", "#spending", "/tools/", "/compare/", "#funding"]);
+  assert.deepEqual(hrefs("pupil", SCHOOL_PAGE), [VIDEO, "#split", "/guides/pupils/", "#income", "/map/"]);
+  assert.deepEqual(M.audienceLinks("pupil", SCHOOL_PAGE)[1], { text: "How my school's money is split", href: "#split" });
+  assert.equal(M.audienceLinks("governor", SCHOOL_PAGE)[0].text, "Governors' presentation");
+  assert.equal(M.READER_TITLES.governor, "For governors");
+});
+
+test("audienceLinks uses #nearby for governors and leaders once the page has it", () => {
+  // Arrange
+  const withNearby = { ...SCHOOL_PAGE, sections: [...SCHOOL_PAGE.sections, "nearby"] };
+  // Act / Assert
+  assert.deepEqual(hrefs("governor", withNearby).slice(0, 3), ["/deck/?urn=100001&view=governors", "#spending", "#nearby"]);
+  assert.deepEqual(hrefs("leader", withNearby).slice(0, 3), ["/deck/?urn=100001&view=review", "#spending", "#nearby"]);
+});
+
+test("audienceLinks never links a missing section, a video that was not made or the page itself", () => {
+  // Arrange: a school page without a full-year return has no sections, video or presentation
+  const plain = { ...SCHOOL_PAGE, sections: [] };
+  for (const reader of M.READERS) {
+    // Act
+    const hs = hrefs(reader, plain);
+    // Assert
+    assert.ok(hs.length >= 3, reader);
+    assert.ok(hs.every((h) => !h.startsWith("#") && !h.startsWith("/school/") && !h.startsWith("/deck/")), `${reader}: ${hs}`);
+  }
+  assert.ok(!hrefs("parent", { ...SCHOOL_PAGE, sections: ["status"] }).includes("#questions"));
+  assert.ok(!hrefs("governor", M.pageOf("/guides/governors/")).includes("/guides/governors/"));
+  assert.ok(!hrefs("parent", M.pageOf("/")).includes("/"));
+  // A path that is not a real school path gets no school links at all.
+  const forged = { kind: "school", path: '/school/1-x/"><b>', urn: "1", sections: ["status"] };
+  assert.ok(hrefs("parent", forged).every((h) => !h.includes("<") && !h.startsWith("/school/")));
+  assert.deepEqual(M.audienceLinks("teacher", SCHOOL_PAGE), []);
+  assert.deepEqual(M.audienceLinks(null, SCHOOL_PAGE), []);
+});
+
+test("audienceLinks on area pages: the area's presentation, its table and the map", () => {
+  // Arrange
+  const council = area("/council/hackney/", { areaId: "council-204" });
+  const constituency = area("/constituency/hackney-north/", { areaId: "constituency-hackney-north" });
+  // Act / Assert
+  assert.deepEqual(hrefs("governor", council).slice(0, 3), ["/deck/?area=council-204", "#schools", "/map/"]);
+  assert.deepEqual(hrefs("parent", council).slice(0, 3), ["#schools", "/map/", "/deck/?area=council-204"]);
+  assert.ok(hrefs("leader", constituency).includes("/map/?g=constituency"));
+  assert.equal(M.audienceLinks("governor", council)[0].text, "Present this area");
+  // Trusts have no area document, and a later page of a table has no pin: no presentation for either.
+  for (const page of [area("/trust/good-trust/", { areaId: "trust-good-trust" }), area("/council/hackney/2/")]) {
+    assert.ok(hrefs("governor", page).every((h) => !h.startsWith("/deck/")), page.path);
+    assert.ok(hrefs("governor", page).includes("#schools"), page.path);
+  }
+});
+
+test("every reader gets three to five different links on every kind of page", () => {
+  // Arrange
+  const pages = [SCHOOL_PAGE, { ...SCHOOL_PAGE, sections: [] }, area("/council/hackney/", { areaId: "council-204" }),
+                 area("/constituency/x/", { areaId: "constituency-x" }), area("/trust/t/"), M.pageOf("/"),
+                 M.pageOf("/guides/parents/"), M.pageOf("/tools/"), M.pageOf("/map/"), M.pageOf("/video/")];
+  for (const page of pages) {
+    for (const reader of M.READERS) {
+      // Act
+      const links = M.audienceLinks(reader, page);
+      // Assert
+      assert.ok(links.length >= 3 && links.length <= 5, `${reader} on ${page.path}: ${links.length}`);
+      assert.equal(new Set(links.map((l) => l.href)).size, links.length, `${reader} on ${page.path}`);
+      assert.ok(links.every((l) => l.text && l.text.length <= 30), `${reader} on ${page.path}`);
+    }
+  }
+});
+
+function readerPage(doc, { slot = true } = {}) {
+  // The shell's picker (site.py) and panel slot, then an empty <main>.
+  const fieldset = add(add(doc.body, "header", { class: "top" }), "fieldset", { class: "audience" });
+  add(fieldset, "legend", {}, "Show me what matters to a");
+  const chips = add(fieldset, "span", { class: "aud-chips" });
+  for (const r of M.READERS) add(chips, "button", { type: "button", "data-audience": r, "aria-pressed": "false" }, r);
+  add(fieldset, "button", { type: "button", class: "aud-clear" }, "Clear");
+  if (slot) add(doc.body, "div", { id: "for-you" });
+  return add(doc.body, "main", { id: "main" });
+}
+const schoolPin = JSON.stringify({ type: "school", id: "100001", name: "Example Primary", p: "/school/100001-example-primary/" });
+
+test("choosing a reader presses its chip, saves it and shows that reader's links under the header", () => {
+  // Arrange
+  const h = boot({ path: "/school/100001-example-primary/", setup(doc) {
+    const main = readerPage(doc);
+    add(add(main, "section", { id: "status", class: "sp-sec" }), "button", { type: "button", class: "pin", "data-pin": schoolPin, "aria-pressed": "false" });
+    for (const id of ["spending", "questions", "reserve"]) add(main, "section", { id, class: "sp-sec" });
+  } });
+  const html = h.document.documentElement, panel = h.document.getElementById("for-you");
+  const chip = (r) => h.document.querySelector(`button[data-audience="${r}"]`);
+  assert.equal(panel.children.length, 0);
+  assert.equal(html.getAttribute("data-reader"), null);
+  assert.ok(M.READERS.every((r) => chip(r).getAttribute("aria-pressed") === "false"));
+  // Act
+  chip("governor").click();
+  // Assert
+  assert.deepEqual(M.READERS.map((r) => chip(r).getAttribute("aria-pressed")), ["false", "true", "false", "false", "false"]);
+  assert.equal(html.getAttribute("data-reader"), "governor");
+  assert.equal(html.getAttribute("data-audience"), "governor");
+  assert.equal(h.memory.get("moneyAudience"), '"governor"');
+  assert.equal(panel.querySelector(".fy-title").textContent, "For governors");
+  assert.equal(panel.querySelector("nav").getAttribute("aria-labelledby"), "fy-title");
+  assert.equal(panel.querySelector(".fy-sub").textContent, "Quick links for Example Primary");
+  assert.deepEqual(panel.querySelectorAll("a").map((a) => a.getAttribute("href")),
+    ["/deck/?urn=100001&view=governors", "#spending", "#questions", "/tools/budget-check/", "#reserve"]);
+  assert.equal(h.document.querySelector('[role="status"]').textContent, "For governors: 5 quick links below the header");
+  // Act: another chip, then the chosen chip again
+  chip("pupil").click();
+  assert.equal(panel.querySelector(".fy-title").textContent, "For pupils");
+  assert.equal(panel.querySelectorAll("nav").length, 1);
+  chip("pupil").click();
+  // Assert: cleared
+  assert.ok(M.READERS.every((r) => chip(r).getAttribute("aria-pressed") === "false"));
+  assert.equal(panel.children.length, 0);
+  assert.equal(html.getAttribute("data-reader"), null);
+  assert.equal(html.getAttribute("data-audience"), "parent");
+  assert.equal(h.memory.get("moneyAudience"), "null");
+});
+
+test("a saved reader shows on load, and Clear empties the panel and keeps focus in the picker", () => {
+  // Arrange / Act
+  const h = boot({ storage: { moneyAudience: "ptfa" }, setup: (doc) => readerPage(doc) });
+  const panel = h.document.getElementById("for-you");
+  // Assert
+  assert.equal(h.document.querySelector('button[data-audience="ptfa"]').getAttribute("aria-pressed"), "true");
+  assert.equal(panel.querySelector(".fy-title").textContent, "For PTFA committees");
+  assert.equal(panel.querySelector(".fy-sub").textContent, "Quick links");
+  assert.deepEqual(panel.querySelectorAll("a").map((a) => a.getAttribute("href")),
+    ["/guides/ptfa/", "/tools/pta-planner/", "/ptfa/", "/video/"]);
+  assert.equal(h.document.querySelector('[role="status"]').textContent, "");  // nothing announced on load
+  // Act
+  h.document.querySelector("button.aud-clear").click();
+  // Assert
+  assert.equal(panel.children.length, 0);
+  assert.equal(h.document.querySelectorAll('button[data-audience][aria-pressed="true"]').length, 0);
+  assert.equal(h.document.activeElement, h.document.querySelector('button[data-audience="parent"]'));
+  assert.equal(h.document.querySelector('[role="status"]').textContent, "Choice cleared");
+  assert.equal(h.memory.get("moneyAudience"), "null");
+});
+
+test("an unknown saved reader is ignored, and a page without the panel slot still presses chips", () => {
+  // Arrange / Act
+  const h = boot({ storage: { moneyAudience: "<b>teacher</b>" }, setup: (doc) => readerPage(doc, { slot: false }) });
+  // Assert
+  assert.equal(h.document.documentElement.getAttribute("data-reader"), null);
+  h.document.querySelector('button[data-audience="leader"]').click();
+  assert.equal(h.document.querySelector('button[data-audience="leader"]').getAttribute("aria-pressed"), "true");
+  assert.equal(h.document.querySelector('[role="status"]').textContent, "For school leaders chosen");
+});
+
+test("on a council page the schools table gets an id and the panel links the area's presentation", () => {
+  // Arrange / Act
+  const h = boot({ storage: { moneyAudience: "governor" }, path: "/council/hackney/", setup(doc) {
+    const main = readerPage(doc);
+    add(main, "button", { type: "button", class: "pin", "aria-pressed": "false",
+                          "data-pin": JSON.stringify({ type: "area", id: "council-204", name: "Hackney", p: "/council/hackney/" }) });
+    add(main, "table", { "data-sortable": "" });
+  } });
+  // Assert
+  assert.equal(h.document.querySelector("table").id, "schools");
+  assert.equal(h.document.querySelector(".fy-sub").textContent, "Quick links for Hackney");
+  assert.deepEqual(h.document.querySelectorAll("#for-you a").map((a) => a.getAttribute("href")),
+    ["/deck/?area=council-204", "#schools", "/map/", "/guides/governors/", "/tools/budget-check/"]);
 });

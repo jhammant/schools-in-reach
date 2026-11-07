@@ -418,8 +418,19 @@ def toggles(basis=True, unit=True) -> str:
 
 # ----------------------------------------------------------------- sections
 
+# Who each section matters most to, as site.AUDIENCES keys: when a reader is chosen, audience.css tags these sections
+# "For governors" and so on. Not data-for: app.css hides every [data-for] block except the chosen reader's.
+READERS = {"status": "parent pupil", "funding": "governor leader", "reserve": "governor leader", "income": "ptfa pupil",
+           "spending": "governor leader", "pupils": "leader", "ptfa": "parent ptfa", "split": "parent pupil",
+           "questions": "parent governor ptfa"}
+
+
+def _readers(ident) -> str:
+    return f' data-readers="{READERS[ident]}"' if ident in READERS else ""
+
+
 def _section(ident, heading, html) -> str:
-    return f'<section id="{ident}" class="sp-sec"><h2>{heading}</h2>{html}</section>' if html else ""
+    return f'<section id="{ident}" class="sp-sec"{_readers(ident)}><h2>{heading}</h2>{html}</section>' if html else ""
 
 
 def _overseer(item) -> str:
@@ -511,7 +522,7 @@ def status_section(item, view) -> str:
             before = t["status"]
         items = "".join(items)
         html += f'<h3>Status by year</h3><ol class="sp-timeline">{items}</ol>'
-    return f'<section id="status" class="sp-sec">{html}{_share_links(item)}</section>'
+    return f'<section id="status" class="sp-sec"{_readers("status")}>{html}{_share_links(item)}</section>'
 
 
 def _gap_values(view, gov_key, spend_key, basis):

@@ -7,7 +7,7 @@
           /data/postcodes/<district>.json (optional, 404 = no suggestions).
    Tables: table[data-sortable] sorts by column; a preceding .table-filters[data-filters] filters rows by
           their [data-tags] (group:value slugs); rows of pinned schools move to the top on load.
-   Stores: localStorage moneyAudience ("parent"|...), moneyPinned ([{type,id,name,p}]).
+   Stores: localStorage moneyAudience ("parent"|... or null once cleared), moneyPinned ([{type,id,name,p}]).
    Imports: Schools in Reach's localStorage "shortlist" and "plan" (arrays of URNs). */
 (function (root) {
   "use strict";
@@ -237,12 +237,90 @@
     return top.concat(rest);
   }
 
+  // Readers ("Show me what matters to a ..."): the panel of one-tap links under the header, and the tags on a
+  // school page's sections. A link is [text, target]; a target is a site path, "#id" on this page, "video" or
+  // "video:ptfa" (the school's 30-second videos), "deck:<view>" (the school's presentation), "deck" (the area's)
+  // or "map".
+  var READERS = ["parent", "governor", "ptfa", "leader", "pupil"];
+  var READER_TITLES = { parent: "For parents", governor: "For governors", ptfa: "For PTFA committees",
+                        leader: "For school leaders", pupil: "For pupils" };
+  var SCHOOL_LINKS = {
+    parent: [["What the status means", "#status"], ["Questions to ask the school", "#questions"], ["Share the 30-second video", "video"],
+             ["What the PTFA raises", "#ptfa"], ["How the money is split", "#split"]],
+    governor: [["Governors' presentation", "deck:governors"], ["Spending vs similar schools", "#spending"], ["Nearby schools compared", "#nearby"],
+               ["Questions for the head", "#questions"], ["Budget health check", "/tools/budget-check/"], ["Reserves by year", "#reserve"]],
+    ptfa: [["PTFA presentation", "deck:ptfa"], ["The PTFA's 30-second video", "video:ptfa"], ["How the PTFA compares", "#ptfa"],
+           ["PTA planner", "/tools/pta-planner/"], ["Fundraising guide", "/guides/ptfa/"]],
+    leader: [["School review presentation", "deck:review"], ["Spending vs similar schools", "#spending"], ["Nearby schools compared", "#nearby"],
+             ["Budget and PTA tools", "/tools/"], ["Compare with other schools", "/compare/"], ["Funding vs spending", "#funding"]],
+    pupil: [["Watch the 30-second video", "video"], ["How my school's money is split", "#split"], ["Where school money goes", "/guides/pupils/"],
+            ["Where the money comes from", "#income"]]
+  };
+  var AREA_LINKS = {
+    parent: [["Your school in the table", "#schools"], ["See it on the map", "map"], ["Present this area", "deck"]],
+    governor: [["Present this area", "deck"], ["Every school in the table", "#schools"], ["See it on the map", "map"]],
+    ptfa: [["Every school in the table", "#schools"], ["Present this area", "deck"], ["See it on the map", "map"]],
+    leader: [["Present this area", "deck"], ["Every school in the table", "#schools"], ["See it on the map", "map"]],
+    pupil: [["See it on the map", "map"], ["Your school in the table", "#schools"]]
+  };
+  // Anywhere on the site; they also top up a school's or an area's own links to five. Labels stay short enough for
+  // two lines on a 360px phone.
+  var GENERAL_LINKS = {
+    parent: [["Guide for parents", "/guides/parents/"], ["30-second school videos", "/video/"], ["What PTFAs raise", "/ptfa/"],
+             ["Schools on the map", "/map/"], ["Find a school", "/"]],
+    governor: [["Guide for governors", "/guides/governors/"], ["Budget health check", "/tools/budget-check/"], ["Compare schools", "/compare/"],
+               ["Schools in deficit", "/debts/"], ["Schools on the map", "/map/"]],
+    ptfa: [["Fundraising guide", "/guides/ptfa/"], ["PTA planner", "/tools/pta-planner/"], ["What PTFAs raise", "/ptfa/"],
+           ["30-second PTFA videos", "/video/"], ["Find a school", "/"]],
+    leader: [["Guide for school leaders", "/guides/school-leaders/"], ["Budget and PTA tools", "/tools/"], ["Compare schools", "/compare/"],
+             ["Schools in deficit", "/debts/"], ["Schools on the map", "/map/"]],
+    pupil: [["Where school money goes", "/guides/pupils/"], ["Schools on the map", "/map/"], ["30-second school videos", "/video/"],
+            ["Find a school", "/"]]
+  };
+  var SCHOOL_PATH = /^\/school\/(\d{1,8})-[a-z0-9-]+\/$/;
+  // What a page is from its path: a school's page (with its urn), a council, constituency or trust page (any page of
+  // its table), or "other".
+  function pageOf(pathname) {
+    var p = String(pathname == null ? "/" : pathname), m = SCHOOL_PATH.exec(p);
+    if (m) return { kind: "school", path: p, urn: m[1] };
+    m = /^\/(council|constituency|trust)\/[a-z0-9-]+\/(?:\d+\/)?$/.exec(p);
+    return { kind: m ? m[1] : "other", path: p };
+  }
+  // The panel's links for a reader on a page, best first, at most five ([] for an unknown reader). page is pageOf's
+  // result plus sections (the ids on the page) and, on a council or constituency page, areaId from its pin. An in-page
+  // link needs its id in sections; a school's videos and presentations need its #status (a school without a return has
+  // neither); an area presentation needs the area's id (trusts have none); nothing links to the page itself.
+  function audienceLinks(reader, page) {
+    if (READERS.indexOf(reader) === -1) return [];
+    var p = page || {}, ids = p.sections || [], out = [], seen = {};
+    var school = p.kind === "school" && SCHOOL_PATH.test(String(p.path)) && /^\d{1,8}$/.test(String(p.urn)) && ids.indexOf("status") !== -1;
+    var area = p.kind === "council" || p.kind === "constituency" || p.kind === "trust";
+    function href(target) {
+      if (target.charAt(0) === "/") return target;
+      if (target.charAt(0) === "#") return ids.indexOf(target.slice(1)) !== -1 ? target : null;
+      if (target === "video" || target === "video:ptfa") return school ? p.path + "video/" + (target === "video:ptfa" ? "?mode=ptfa" : "") : null;
+      if (target.indexOf("deck:") === 0) return school ? "/deck/?urn=" + p.urn + "&view=" + target.slice(5) : null;
+      if (target === "deck") return area && p.kind !== "trust" && p.areaId ? "/deck/?area=" + encodeURIComponent(p.areaId) : null;
+      if (target === "map") return p.kind === "constituency" ? "/map/?g=constituency" : "/map/";
+      return null;
+    }
+    var own = school ? SCHOOL_LINKS[reader] : area ? AREA_LINKS[reader] : [];
+    own.concat(GENERAL_LINKS[reader]).forEach(function (l) {
+      var h = out.length < 5 ? href(l[1]) : null;
+      if (!h || seen[h] || h.split(/[?#]/)[0] === p.path) return;
+      seen[h] = true;
+      out.push({ text: l[0], href: h });
+    });
+    return out;
+  }
+
   var API = {
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     milesBetween: milesBetween, nearestRows: nearestRows, schoolsNear: schoolsNear,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
     slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
-    rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF
+    rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF,
+    READERS: READERS, READER_TITLES: READER_TITLES, pageOf: pageOf, audienceLinks: audienceLinks
   };
   root.MoneyApp = API;
   if (typeof document === "undefined") return;
@@ -253,7 +331,6 @@
   var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves" };
   var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲" };
   var KEY_AUD = "moneyAudience", KEY_PIN = "moneyPinned";
-  var AUDIENCES = ["parent", "governor", "ptfa", "leader", "pupil"];
 
   function el(tag, cls, text) {
     var e = document.createElement(tag);
@@ -305,23 +382,71 @@
   }
 
   // ---------------------------------------------------------------- audience
+  // The chosen reader sets html[data-reader] (the panel's space, the pressed chip and the section tags in
+  // audience.css; site.page's head script sets it before first paint) and html[data-audience] (which [data-for]
+  // copy shows: the reader, else "parent"). The panel goes in #for-you, under the header.
   (function audience() {
-    var current = storeGet(KEY_AUD, null);
-    if (AUDIENCES.indexOf(current) === -1) current = document.documentElement.getAttribute("data-audience") || "parent";
-    function apply(a) {
-      document.documentElement.setAttribute("data-audience", a);
-      $$("[data-audience]").forEach(function (b) {
-        if (b.tagName === "BUTTON") b.setAttribute("aria-pressed", b.getAttribute("data-audience") === a ? "true" : "false");
-      });
+    var html = document.documentElement, slot = document.getElementById("for-you"), picker = $("fieldset.audience"), live = null;
+    var page = pageOf(typeof location !== "undefined" ? location.pathname : "/");
+    var table = page.kind !== "school" && page.kind !== "other" ? $("main table[data-sortable]") : null;
+    if (table && !table.id && !document.getElementById("schools")) table.id = "schools";  // the panel's "in the table" link
+    var pin = $("main button.pin[data-pin]"), d = null;
+    try { d = pin && JSON.parse(pin.getAttribute("data-pin")); } catch (e) { d = null; }
+    if (d && page.kind === "school" && d.type === "school" && String(d.id) === page.urn) page.name = String(d.name || "");
+    if (d && (page.kind === "council" || page.kind === "constituency") && d.type === "area") {
+      page.areaId = String(d.id || "");
+      page.name = String(d.name || "");
     }
-    apply(current);
+    page.sections = $$("main [id]").map(function (n) { return n.id; });
+    if (picker) {
+      live = el("span", "visually-hidden");
+      live.setAttribute("role", "status");
+      picker.appendChild(live);
+    }
+    function render(reader) {
+      if (!slot) return 0;
+      slot.textContent = "";
+      var links = reader ? audienceLinks(reader, page) : [];
+      if (!links.length) return 0;
+      var box = el("nav", "fy"), head = el("p", "fy-head"), title = el("strong", "fy-title", READER_TITLES[reader]), list = el("ul");
+      box.setAttribute("aria-labelledby", "fy-title");
+      title.id = "fy-title";
+      head.appendChild(title);
+      head.appendChild(el("span", "fy-sub", page.name ? "Quick links for " + page.name : "Quick links"));
+      links.forEach(function (l) {
+        var li = el("li"), a = el("a", null, l.text);
+        a.setAttribute("href", l.href);
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      box.appendChild(head);
+      box.appendChild(list);
+      slot.appendChild(box);
+      return links.length;
+    }
+    function apply(reader) {
+      html.setAttribute("data-audience", reader || "parent");
+      if (reader) html.setAttribute("data-reader", reader); else html.removeAttribute("data-reader");
+      $$("button[data-audience]").forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-audience") === reader ? "true" : "false");
+      });
+      return render(reader);
+    }
+    var saved = storeGet(KEY_AUD, null);
+    apply(READERS.indexOf(saved) === -1 ? null : saved);
     document.addEventListener("click", function (e) {
-      var b = e.target.closest && e.target.closest("button[data-audience]");
+      var b = e.target.closest && e.target.closest("button[data-audience], button.aud-clear");
       if (!b) return;
       var a = b.getAttribute("data-audience");
-      if (AUDIENCES.indexOf(a) === -1) return;
-      storeSet(KEY_AUD, a);
-      apply(a);
+      if (a !== null && READERS.indexOf(a) === -1) return;
+      // A chip chooses its reader; pressing the chosen chip again, or Clear, clears the choice.
+      var next = a !== null && b.getAttribute("aria-pressed") !== "true" ? a : null;
+      storeSet(KEY_AUD, next);
+      var shown = apply(next);
+      if (live) live.textContent = !next ? "Choice cleared"
+        : READER_TITLES[next] + (shown ? ": " + shown + " quick links below the header" : " chosen");
+      // Clear hides itself once nothing is chosen, so keep the keyboard in the picker.
+      if (!next && b.classList.contains("aud-clear")) { var first = $("button[data-audience]", picker); if (first) first.focus(); }
     });
   })();
 
