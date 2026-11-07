@@ -176,12 +176,14 @@
   // ======================================================================
   // adapt(): the single reader of the data contracts
   // ======================================================================
+  // [SERIES keys in /data/sx (first found wins; series.METRICS names first), /data/s years-row key]
   var METRICS = {
-    income: ["total_income", "income"], spend: ["total_expenditure", "spend"], balance: ["in_year_balance", "balance"],
-    reserve: ["revenue_reserve", "reserve"], grant: ["grant_funding", "grant"], staff: ["staff_total", "staff"],
-    donations: ["donations_revenue", "donations"], premises: ["premises", "premises"], energy: ["energy", "energy"],
-    supplies: ["educational_supplies", "supplies"], services: ["bought_in_services", "services"],
-    sen: ["sen_funding", "sen"], self: ["self_generated", "self"]
+    income: [["total_income"], "income"], spend: [["total_expenditure"], "spend"], balance: [["in_year_balance"], "balance"],
+    reserve: [["revenue_reserve"], "reserve"], grant: [["grant_funding_government", "grant_funding"], "grant"],
+    staff: [["total_staff", "staff_total"], "staff"], donations: [["donations_revenue"], "donations"],
+    premises: [["premises"], "premises"], energy: [["energy"], "energy"], supplies: [["educational_supplies"], "supplies"],
+    services: [["bought_in_services"], "services"], sen: [["sen_funding"], "sen"],
+    self: [["self_generated_income", "self_generated"], "self"]
   };
 
   function areaView(a, wantYear) {
@@ -295,7 +297,12 @@
       var out = { y: y, pupils: num(obj(sx.pupils)[y]), suspect: !!suspect[y], notes: suspect[y] || [], real: {} };
       if (out.pupils == null) out.pupils = num(row.pupils);
       Object.keys(METRICS).forEach(function (k) {
-        var cell = obj(obj(m[METRICS[k][0]])[y]), v = num(cell.v);
+        var cell = {};
+        for (var j = 0; j < METRICS[k][0].length; j++) {
+          var found = obj(m[METRICS[k][0][j]])[y];
+          if (found) { cell = obj(found); break; }
+        }
+        var v = num(cell.v);
         if (v == null) v = num(row[METRICS[k][1]]);
         out[k] = v;
         if (num(cell.rpp) != null || num(cell.r) != null) out.real[k] = { r: num(cell.r), rpp: num(cell.rpp) };

@@ -7,7 +7,7 @@ from pipeline.money import map_page
 
 
 class MapDefaultYearReviewTest(unittest.TestCase):
-    def test_default_year_is_latest_even_when_default_measure_is_missing(self):
+    def test_default_year_is_the_latest_with_the_default_measure(self):
         # Arrange: newer-year pupils are published before the deficit percentage.
         measures = map_page.build_measures({
             "england": {
@@ -26,8 +26,10 @@ class MapDefaultYearReviewTest(unittest.TestCase):
             measures, {}, has_councils=False, has_constituencies=False
         )
 
-        # Assert: initial controls must select the latest available year, as specified.
+        # Assert: the map opens on the latest year that has the default measure, never on a blank map (2025-26 has
+        # council-run returns only, so area measures stop at 2024-25); a later year stays selectable by hand.
         default_year = re.search(r'data-default-year="([^"]*)"', html).group(1)
         label = re.search(r'for="mx-year">([^<]*)</output>', html).group(1)
-        self.assertEqual(default_year, "2025-26")
-        self.assertEqual(label, "2025-26")
+        self.assertEqual(default_year, "2024-25")
+        self.assertEqual(label, "2024-25")
+        self.assertIn("2025-26", measures["years"])

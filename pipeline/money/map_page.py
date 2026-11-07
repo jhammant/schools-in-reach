@@ -418,9 +418,12 @@ def _area_id(prefix, key):
     return key if key.startswith(prefix) else prefix + key
 
 
-def build_measures(areas_doc):
+def build_measures(areas_doc, paths=None):
     """measures.json from the areas document (build_areas output, bare or wrapped in {"areas": ...}).
-    Missing or None values are omitted, never written as 0; an area with no values is still listed."""
+    Missing or None values are omitted, never written as 0; an area with no values is still listed.
+    `paths` maps an area name to its page path where the page isn't at site.page_path's guess: constituency pages
+    live at /constituency/<name slug>/, but areas.json keys constituencies by ONS code."""
+    paths = paths or {}
     A = _areas_block(areas_doc)
     england = A.get("england") if isinstance(A.get("england"), dict) else {}
     councils = A.get("councils") if isinstance(A.get("councils"), dict) else {}
@@ -439,7 +442,8 @@ def build_measures(areas_doc):
             area = named[key]
             ident = _area_id(prefix, key)
             name = str(area.get("name") or key)
-            out[ident] = {"name": name, "p": site.page_path("area", ident, name), "m": _area_values(area, candidates, level)}
+            path = paths.get(name) if level == "constituency" else None
+            out[ident] = {"name": name, "p": path or site.page_path("area", ident, name), "m": _area_values(area, candidates, level)}
         return out
 
     doc = {
@@ -461,9 +465,13 @@ def build_measures(areas_doc):
 
 
 def default_year(measures):
-    """The latest year in the document. A measure missing for that year shows as not published, not as an older year."""
+    """The latest year England has a value for the default measure, so the map never opens blank: 2025-26 has
+    council-run returns only, so area measures stop at 2024-25. Picking a later year by hand still shows it as not
+    published, never as an older year."""
     years = measures.get("years") or []
-    return years[-1] if years else None
+    england = (measures.get("england") or {}).get(DEFAULT_MEASURE) or {}
+    filled = [y for y in years if england.get(y) is not None]
+    return filled[-1] if filled else (years[-1] if years else None)
 
 
 # ----------------------------------------------------------------- schools
@@ -761,7 +769,9 @@ def _boundaries(path, rel):
 def write_pages(env, *, councils_path=None, constituencies_path=None):
     """Write the map pages and /data/map/*; returns [(path, indexable)] in write order."""
     out = Path(env["out"])
-    measures = build_measures(env.get("areas") or {})
+    constituency_paths = {i.get("constituency"): i.get("constituency_path") for i in env.get("items") or []
+                          if i.get("constituency") and i.get("constituency_path")}
+    measures = build_measures(env.get("areas") or {}, constituency_paths)
     _write_data(out, "measures.json", _dumps(dict(measures, generated=env.get("today"))))
     _write_data(out, "schools.json", _dumps(build_schools(env.get("items") or [])))
 

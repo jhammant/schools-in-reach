@@ -297,6 +297,23 @@ class BuildMeasuresTest(unittest.TestCase):
         self.assertEqual(doc["council"]["council-201"]["m"], {})
         self.assertEqual(doc["council"]["council-201"]["p"], "/council/city-of-london/")
 
+    def test_constituency_links_use_the_page_path_not_the_ons_code(self):
+        # Arrange: areas.json keys constituencies by ONS code; their pages are named after the constituency
+        areas = make_areas()
+        paths = {"Hackney North and Stoke Newington": "/constituency/hackney-north-and-stoke-newington/"}
+        # Act
+        doc = M.build_measures(areas, paths)
+        # Assert
+        self.assertEqual(doc["constituency"]["constituency-E14001272"]["p"], "/constituency/hackney-north-and-stoke-newington/")
+
+    def test_the_map_opens_on_the_latest_year_england_has_figures_for(self):
+        # Arrange: 2025-26 has council-run returns only, so the combined measure stops at 2024-25
+        measures = {"years": ["2023-24", "2024-25", "2025-26"],
+                    "england": {M.DEFAULT_MEASURE: {"2023-24": 12.7, "2024-25": 14.3}, "dsg_pp": {"2025-26": -848}}}
+        # Act / Assert
+        self.assertEqual(M.default_year(measures), "2024-25")
+        self.assertEqual(M.default_year({"years": ["2024-25"]}), "2024-25")
+
     def test_years_before_2018_19_are_dropped(self):
         # Arrange
         areas = make_areas()

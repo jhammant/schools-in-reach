@@ -221,6 +221,22 @@ test("school deck: staff share from the 'Staff Total' column, beside the IFS 80%
   seriesOf(sl, "staff_total").points.forEach((p) => assert.equal(p.v, ppOf(staffTotal(p.y), p.y)));
 });
 
+test("school deck reads the SERIES names the build writes (total_staff, grant_funding_government, self_generated_income)", () => {
+  // Arrange: /data/sx from series.py, not the deck's own names
+  const sx = sxFixture();
+  for (const [from, to] of [["staff_total", "total_staff"], ["grant_funding", "grant_funding_government"], ["self_generated", "self_generated_income"]]) {
+    sx.m[to] = sx.m[from];
+    delete sx.m[from];
+  }
+  // Act
+  const deck = D.schoolDeck(D.adapt(sFixture(), sx, COUNCIL, ENGLAND), CTX);
+  const staff = findSlide(deck, "spending").figures.find((f) => f.key === "staff_total");
+  const grant = findSlide(deck, "income").figures.find((f) => f.key === "grant_funding");
+  // Assert
+  assert.equal(staff.v, Math.round(staffTotal(LATEST)));
+  assert.equal(grant.v, Math.round(fin(LATEST).grant_funding));
+});
+
 test("school deck: the deficit is named with its reasons (IFS pages) and what helps", () => {
   // Arrange / Act
   const deck = D.schoolDeck(schoolModel(), CTX);

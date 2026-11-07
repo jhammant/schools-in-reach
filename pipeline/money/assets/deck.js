@@ -28,6 +28,8 @@
   var METRICS = ["total_income", "total_expenditure", "in_year_balance", "revenue_reserve", "grant_funding", "self_generated",
     "sen_funding", "pupil_premium", "donations_revenue", "staff_total"];
   var S_FALLBACK = { total_income: "income", total_expenditure: "spend", in_year_balance: "balance", revenue_reserve: "reserve" };
+  // The deck's metric names, as /data/sx names them (series.METRICS); the deck name is read when the SERIES name is absent.
+  var SX_NAMES = { grant_funding: "grant_funding_government", self_generated: "self_generated_income", staff_total: "total_staff" };
   var SPEND_LINES = [["teaching_staff", "Teachers"], ["education_support_staff", "Support staff (e.g. TAs)"], ["supply_staff", "Supply staff"],
     ["admin_clerical_staff", "Admin and clerical"], ["premises", "Premises"], ["energy", "Energy"],
     ["educational_supplies", "Learning resources and ICT"], ["bought_in_services", "Bought-in services"]];
@@ -229,7 +231,8 @@
       if (pupils == null) pupils = n(sr.pupils);
       var row = { y: y, pupils: pupils, suspect: y in flagged, flag: flagged[y] || "", metrics: {}, status: str(sr.status) };
       METRICS.forEach(function (k) {
-        var cell = isObj(sxm[k]) ? sxm[k][y] : null;
+        var src = isObj(sxm[SX_NAMES[k]]) ? sxm[SX_NAMES[k]] : sxm[k];
+        var cell = isObj(src) ? src[y] : null;
         var v = null, pp = null, r = null, rpp = null;
         if (isObj(cell)) { v = n(cell.v); pp = n(cell.pp); r = n(cell.r); rpp = n(cell.rpp); } else if (n(cell) != null) v = n(cell);
         if (v == null && S_FALLBACK[k]) v = n(sr[S_FALLBACK[k]]);

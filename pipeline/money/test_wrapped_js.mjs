@@ -162,6 +162,23 @@ test("every £ figure in the card model equals the gold file, per pupil = round(
   assert.match(funding.source, /2025-26, DfE CFR return/);
 });
 
+test("SERIES key names (total_staff, grant_funding_government, self_generated_income) are read too", () => {
+  // Arrange: the build's /data/sx uses series.METRICS names
+  const f = fixture();
+  for (const [from, to] of [["staff_total", "total_staff"], ["grant_funding", "grant_funding_government"], ["self_generated", "self_generated_income"]]) {
+    f.sx.m[to] = f.sx.m[from];
+    delete f.sx.m[from];
+  }
+  // Act
+  const data = MW.adapt(f.s, f.sx, f.council, f.england, CTX);
+  const staff = card(MW.buildCards(data, "school"), "staff");
+  // Assert
+  assert.equal(data.latest.staff, staffTotal(LATEST));
+  assert.equal(data.latest.grant, pf(LATEST).grant_funding);
+  assert.ok(staff.big, "the staff card has a headline figure");
+  assert.ok(!strings(staff).some((x) => /isn't published yet/.test(x)), strings(staff).join(" | "));
+});
+
 test("the reserve chart is exactly the published reserves, every year in order", () => {
   // Act
   const pts = card(model().m, "reserve").chart.points;
