@@ -146,6 +146,15 @@ class AcceptanceTest(unittest.TestCase):
         self.assertFalse(self.judge_with('{"urn": "1", "confidence": 0.95, "reason": "x"}', junior)["accepted"])
         self.assertFalse(self.judge_with('{"urn": "1", "confidence": 0.95, "reason": "x"}', orchestra)["accepted"])
 
+    def test_shared_reason_is_never_accepted_even_with_an_urn(self):
+        # Arrange: prompt v1 rule 6 says urn null, but a model may fill it in anyway
+        r = row(name="WOODLEA SCHOOLS PTA", candidates=[cand("1", "Woodlea Infant School"), cand("2", "Woodlea Junior School")])
+        # Act
+        got = self.judge_with('{"urn": "1", "confidence": 0.99, "reason": "shared: 1 and 2"}', r)
+        # Assert: left for pta.py's deterministic shared step, reason prefix intact
+        self.assertFalse(got["accepted"])
+        self.assertTrue(got["reason"].startswith("shared:"))
+
     def test_null_answer_is_not_accepted(self):
         got = self.judge_with('{"urn": null, "confidence": 0.9, "reason": "shared: 1 2"}')
         self.assertIsNone(got["urn"])
@@ -255,6 +264,33 @@ class ModelCheckTest(unittest.TestCase):
         with self.assertRaisesRegex(adj.ModelRefused, "blocklisted"):
             adj.check_model("http://fake/v1", "mistral-medium-3.5-128b")
         self.assertEqual(adj.post_json.calls, [], "a blocklisted model is refused before the server is asked anything")
+
+    def test_loaded_state_must_be_confirmed(self):
+        # Arrange: /v1/models lists the model, but the model-state endpoint is down, or answers without it
+        listed = {"data": [{"id": adj.MODEL}]}
+
+        def no_state_api(url, payload=None, timeout=120):
+            if url.endswith("/api/v0/models"):
+                raise adj.urllib.error.URLError("404")
+            return listed
+
+        def state_api_without_model(url, payload=None, timeout=120):
+            return {"data": [{"id": "laguna-xs-2.1", "state": "loaded"}]} if url.endswith("/api/v0/models") else listed
+
+        for fake in (no_state_api, state_api_without_model):
+            adj.post_json = fake
+            # Act / Assert
+            with self.assertRaisesRegex(adj.ModelRefused, "cannot confirm"):
+                adj.check_model("http://fake/v1", adj.MODEL)
+        # a 'loaded' state from either listing is confirmation; a contrary one in either refuses
+        adj.post_json = lambda url, payload=None, timeout=120: (
+            {"data": [{"id": adj.MODEL, "state": "loaded"}]} if url.endswith("/api/v0/models") else listed)
+        self.assertEqual(adj.check_model("http://fake/v1", adj.MODEL)["id"], adj.MODEL)
+        adj.post_json = lambda url, payload=None, timeout=120: (
+            {"data": [{"id": adj.MODEL, "state": "loaded"}]} if url.endswith("/api/v0/models")
+            else {"data": [{"id": adj.MODEL, "state": "not-loaded"}]})
+        with self.assertRaisesRegex(adj.ModelRefused, "not loaded"):
+            adj.check_model("http://fake/v1", adj.MODEL)
 
     def test_run_refuses_before_asking_anything(self):
         # Arrange
@@ -390,7 +426,7 @@ class RunTest(unittest.TestCase):
 class ImportPilotTest(unittest.TestCase):
     def test_pilot_answers_keep_the_pilots_acceptance(self):
         # Arrange: one line per acceptance rule, a duplicate (the later line wins) and a half-written last line
-        rows = [row(n) for n in range(1, 11)]
+        rows = [row(n) for n in range(1, 12)]
         lines = [pilot_line(1, "1"),                                              # accepted
                  pilot_line(2, "1", confidence=0.85),                             # under 0.9
                  pilot_line(3, "1", name_consistent=False, name_check="leftover: orchestra"),
@@ -400,8 +436,9 @@ class ImportPilotTest(unittest.TestCase):
                  pilot_line(7, "1", error="URLError: timed out"),
                  pilot_line(8, None, reason="shared: 1 2 infant and junior on one site", name_consistent=None),
                  pilot_line(9, "1", confidence=0.5), pilot_line(9, "1", confidence=0.96),
+                 pilot_line(10, "1", reason="shared: 1 and 2"),                   # shared, even with an urn
                  pilot_line(99, "1"),                                             # not in the rows
-                 '{"charity_number": 10, "model": "qwen/qw']
+                 '{"charity_number": 11, "model": "qwen/qw']
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "full_qwen38.jsonl"
             path.write_text("\n".join(lines), encoding="utf-8")
@@ -409,7 +446,7 @@ class ImportPilotTest(unittest.TestCase):
             got = adj.import_pilot(path, rows)
         answers = got["answers"]
         # Assert
-        self.assertEqual(sorted(answers, key=int), ["1", "2", "3", "4", "5", "8", "9"])
+        self.assertEqual(sorted(answers, key=int), ["1", "2", "3", "4", "5", "8", "9", "10"])
         self.assertEqual({k for k, a in answers.items() if a["accepted"]}, {"1", "9"})
         self.assertEqual(answers["1"], {"urn": "1", "confidence": 0.95, "reason": "fits", "name_consistent": True, "accepted": True})
         self.assertIn("[guard: leftover: orchestra]", answers["3"]["reason"])

@@ -8,7 +8,8 @@ pilot's deterministic guard (name_consistent, copied verbatim from llm_pilot.py)
 found the model's confidence useless as a filter and this guard doing the real work. Answers
 checkpoint to a JSONL file as they arrive, so a stopped run resumes where it left off.
 
-Safety: the model must already be loaded (never JIT); mistral-medium-3.5-128b and anything whose id or
+Safety: the model must already be loaded, as LM Studio's model-state endpoint confirms (never JIT; a server
+that cannot confirm it is refused); mistral-medium-3.5-128b and anything whose id or
 metadata says more than 40B parameters or 40 GB is refused; the run stops below 15% free memory,
 checked every 10 answers.
 
@@ -186,7 +187,11 @@ def _lmstudio_entry(server, model):
 
 def check_model(server, model):
     """Confirm the model is listed by /v1/models, loaded, not blocklisted and under the size cap; raise ModelRefused
-    otherwise. Never asks the server to load anything."""
+    otherwise. Never asks the server to load anything.
+
+    Fails closed: with JIT loading on, /v1/models also lists models that are only downloaded, so a listing alone is
+    no proof. LM Studio's model-state endpoint (/api/v0/models) must answer and list the model too, and every state
+    either listing reports must be 'loaded'. A server without that endpoint, or one that is down, is refused."""
     if model in BLOCKLIST:
         raise ModelRefused(f"refusing blocklisted model {model}")
     try:
@@ -196,14 +201,17 @@ def check_model(server, model):
     models = {str(m.get("id")): m for m in (data or {}).get("data", []) if isinstance(m, dict)}
     if model not in models:
         raise ModelRefused(f"{model} is not on the server (have: {', '.join(sorted(models)) or 'none'}); load it first, never JIT")
-    extra = _lmstudio_entry(server, model) or {}
-    for info in (models[model], extra):
+    extra = _lmstudio_entry(server, model)
+    for info in (models[model], extra or {}):
         reason = model_too_big(info)
         if reason:
             raise ModelRefused(f"refusing {model}: {reason}, over the ~{MAX_PARAMS_B}B / {MAX_BYTES // 10**9} GB cap")
-    state = models[model].get("state") or extra.get("state")
-    if state is not None and state != "loaded":
-        raise ModelRefused(f"{model} is {state}, not loaded; load it first (lms load {model} --parallel {SLOTS}), never JIT")
+    if extra is None:
+        raise ModelRefused(f"cannot confirm {model} is loaded: the model-state endpoint (/api/v0/models) is unavailable "
+                           "or does not list it; refusing rather than risk a JIT load")
+    for state in (models[model].get("state"), extra.get("state")):
+        if state is not None and state != "loaded":
+            raise ModelRefused(f"{model} is {state}, not loaded; load it first (lms load {model} --parallel {SLOTS}), never JIT")
     return models[model]
 
 
@@ -513,13 +521,13 @@ def is_initialism(token, name):
 
 
 def judge(answer, row, threshold):
-    """Decorate a parsed answer with name_consistent and accepted. 'shared:' answers have urn null and are never
-    accepted here; pta.py's deterministic shared step decides them."""
+    """Decorate a parsed answer with name_consistent and accepted. A 'shared:' answer is never accepted here, even when
+    the model also filled in an urn: pta.py's deterministic shared step decides it."""
     out = {"urn": None, "confidence": None, "reason": "unparseable answer", "name_consistent": False, "accepted": False}
     if not answer:
         return out
     out.update(urn=answer.get("urn"), confidence=valid_confidence(answer.get("confidence")), reason=answer.get("reason") or "")
-    if out["urn"] is None or out["confidence"] is None:
+    if out["urn"] is None or out["confidence"] is None or pta.is_shared_answer(out):
         return out
     ok, why = name_consistent(row, out["urn"])
     out["name_consistent"] = ok
@@ -696,8 +704,9 @@ def import_pilot(pilot_path, rows, *, model=MODEL, prompt_version=PROMPT_VERSION
     """pta_llm.json contents from an llm_pilot.py run file, with the pilot's acceptance and nothing recomputed.
 
     An answer is accepted when its urn is one of the row's candidates, its confidence is a real number in 0..1 of at
-    least threshold, and the pilot recorded name_consistent true. The file may still be growing: an unreadable last
-    line is skipped, and a later line for the same charity wins. Rows not in `rows` are left out.
+    least threshold, and the pilot recorded name_consistent true; a 'shared:' answer never is, whatever its urn (pta.py's
+    shared step decides it). The file may still be growing: an unreadable last line is skipped, and a later line for
+    the same charity wins. Rows not in `rows` are left out.
     """
     by_number = {int(r["charity_number"]): r for r in rows}
     records, bad = _jsonl_records(pilot_path)
@@ -719,8 +728,9 @@ def import_pilot(pilot_path, rows, *, model=MODEL, prompt_version=PROMPT_VERSION
         reason = str(ans.get("reason") or "")
         if urn is not None and not consistent:
             reason = f"{reason} [guard: {rec.get('name_check') or 'urn not a candidate'}]".strip()
+        shared = pta.is_shared_answer(ans)
         answers[str(number)] = {"urn": urn, "confidence": conf, "reason": reason, "name_consistent": consistent,
-                                "accepted": bool(consistent and conf is not None and conf >= threshold)}
+                                "accepted": bool(consistent and not shared and conf is not None and conf >= threshold)}
     return {"generated": date.today().isoformat(), "model": model, "server": None, "prompt_version": prompt_version,
             "threshold": threshold, "answers": answers,
             "source": {"pilot": str(pilot_path), "lines": len(records), "unreadable_lines": bad}}

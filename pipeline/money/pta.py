@@ -10,9 +10,10 @@ predecessor names, a name unique within the charity's council area, the school n
 the charitable objects, and the address town. Every pass-2 rule runs through the same
 guards (independent schools block but are never targets, removed-before-opened, activity
 words, risk flags that need a postcode or domain to agree, rule conflicts). Wider supporters'
-names ('Friends of X', P.T.A., Parent/Teacher, Families & Staff, Supporters of) are placed
-only by an exact postcode or a shared domain. A PTA serving an infant and a junior school
-goes to both, with shared_with. Charities that still fit several schools go to
+names ('Friends of X', P.T.A., Parent/Teacher, Families & Staff, Supporters of) and the broad
+tier (a school fund or society whose activities say parents raise money for the school) are
+placed only by an exact postcode or a shared domain. A PTA serving an infant and a junior
+school goes to both, with shared_with. Charities that still fit several schools go to
 pta_ambiguous.jsonl for pta_adjudicate.py, whose accepted answers merge back with method
 "llm" only once a person's spot check of 50 found none wrong; a school-website crawl merges
 with method "website-crawl", or adds 'website' to the evidence of a match it confirms.
@@ -227,6 +228,19 @@ WIDE_VETO = re.compile(r"\bchurch\b|chapel|parish|hospital|hospice|library|museu
 WIDE_NOT_PTA = re.compile(r"supplementary|\bcarers?\b|parent\s+and\s+(?:child|toddler)|foster|adopt|deaf|blind|disab|"
                           r"autis|bereave|\bmusic|\bband\b|orchestra|choir|sport|swim|minibus|bursar|scholarship|alumni|"
                           r"old\s+(?:boys|girls)", re.I)
+# Wording that names a parent-teacher association outright, unlike 'Friends of' or 'Supporters of': dotted P.T.A.,
+# Parent/Teacher, a PTA acronym, Families & Staff. A wider name carrying one may rest on a saint's name, as pass 1's do.
+EXPLICIT_PTA = re.compile(r"\bp\.\s?t\.\s?(?:f\.\s?)?a\b|\bparents?\s*[/&+]\s*teachers?\b|\b(?:pta|ptfa|pfa|psa|hsa|fsa|ptsa)\b|"
+                          r"famil(?:y|ies)\s*(?:and|&)\s*staff", re.I)
+# Broad tier (crawl_spec.md section 5): a supporters' word in a school-ish name, and activities about parents raising
+# money for a school or its pupils. Like the web tier, matched only through rule (f) or (d).
+BROAD_NAME = re.compile(r"\b(?:friends|parents?|supporters|association|fund|society|committee)\b", re.I)
+BROAD_VETO = re.compile(r"pre\s*-?\s*school|supplementary|carers?\b|parent\s+and\s+(?:child|toddler)|\bchurch\b|parish|"
+                        r"sunday|\bmusic|\bband\b|orchestra|choir|sport|swim|minibus|bursar|scholarship|alumni|"
+                        r"old\s+(?:boys|girls)|foster|adopt|deaf|blind|disab|autis|bereave", re.I)
+ACTIVITY_PARENTS = re.compile(r"\bparents?\b|\bp\.?t\.?a\b|\bptfa\b|\bfriends\s+of\b", re.I)
+ACTIVITY_MONEY = re.compile(r"fund|rais|event|social|donat|equipment|resources", re.I)
+ACTIVITY_SCHOOL = re.compile(r"\bschool|\bpupil|\bacademy|\bchildren", re.I)
 
 
 def excluded_leftover(r, ctok) -> bool:
@@ -255,6 +269,23 @@ def is_widened_name(name) -> bool:
     if is_parent_association(text) or NOT_PTA.search(text) or WIDE_NOT_PTA.search(text) or not WIDE_NAME.search(text):
         return False
     return bool(SCHOOL_WORDS.search(text) or not WIDE_VETO.search(text))
+
+
+def is_broad_candidate(charity) -> bool:
+    """True for the broad tier (crawl_spec.md section 5) that neither is_parent_association nor is_widened_name takes:
+    'Woodlea School Fund' whose charity_activities say parents raise money for the school or its pupils."""
+    name = str(charity.get("charity_name") or "")
+    if is_parent_association(name) or NOT_PTA.search(name) or BROAD_VETO.search(name):
+        return False
+    if not (BROAD_NAME.search(name) and (SCHOOL_WORDS.search(name) or WEAK_MARKERS.search(name))):
+        return False
+    activities = str(charity.get("charity_activities") or "")
+    return bool(ACTIVITY_PARENTS.search(activities) and ACTIVITY_MONEY.search(activities) and ACTIVITY_SCHOOL.search(activities))
+
+
+def is_widened(charity) -> bool:
+    """A wider-name charity (web or broad tier): matched only by an exact postcode or a shared domain."""
+    return is_widened_name(charity.get("charity_name")) or is_broad_candidate(charity)
 
 
 def is_state_funded(school) -> bool:
@@ -510,6 +541,15 @@ def _fits(r, tokens, phase, ctok, cphase) -> bool:
             and not excluded_leftover({"tokens": tokens, "gender": r.get("gender")}, ctok))
 
 
+def fits_at_postcode(r, ctok, cphase) -> bool:
+    """Rule (f)'s name test for a school at the charity's own postcode: the names fit either way round (the school's
+    words all in the charity's, or the charity's all in the school's name and place), with no phase clash or activity
+    word."""
+    tokens = set(r["tokens"])
+    return bool(tokens and not conflict(school_phase(r), cphase) and not excluded_leftover(r, ctok)
+                and (tokens <= ctok or (ctok <= tokens | r["place"] and ctok & tokens)))
+
+
 def pick(entries, ctok, cphase):
     """Pass-1 tie logic over (record, tokens, phase, label) entries: the most specific fit wins, the charity's
     phase may settle a tie (a school with no phase words cannot be ruled out). Returns (chosen, tied)."""
@@ -599,7 +639,7 @@ def match_pass2(schools, charities, unmatched, areas_by_charity, objects_by_char
     unmatched: charity numbers pass 1 did not place; areas_by_charity: {number: [CC 'Local Authority' descriptions]};
     objects_by_charity: {number: (charitable_objects, area_of_benefit)}; predecessors: {urn: [former names]};
     matched_urns: schools already covered (for the ambiguous rows' already_matched flag); widened: numbers of
-    wider-name charities (is_widened_name), which only the anchor rules (f) and (d) may place and which are never
+    wider-name charities (is_widened: web or broad tier), which only the anchor rules (f) and (d) may place and which are never
     exported as ambiguous.
     """
     councils = councils or {str(s.get("la_code")): s.get("council") for s in schools if s.get("la_code") and s.get("council")}
@@ -713,19 +753,22 @@ def match_pass2(schools, charities, unmatched, areas_by_charity, objects_by_char
             per_charity[number][rule] = (tuple(sorted(r["urn"] for r in targets)), evidence, flags(targets[0], toks))
 
         def wide_ok(r):
-            """A wider name without a school word ('Friends of Bousfield') must share a word with the school that is
-            neither a saint's nor a place name, so a church or village friends group at the same postcode never fits."""
-            if SCHOOL_WORDS.search(name):
+            """A wider name with neither a school word nor explicit PTA wording ('Friends of Bousfield') must share a
+            word with the school that is neither a saint's nor a place name, so a church or village friends group at
+            the same postcode never fits. 'St Johns P.T.A.' names a parent-teacher association outright."""
+            if SCHOOL_WORDS.search(name) or EXPLICIT_PTA.search(name):
                 return True
             shared = ctok & set(r["tokens"])
             return bool(shared - RELIGIOUS - r["place"] - set(normalise(r["town"])))
 
-        # (f) exact postcode: the school at the charity's address, name either way round
+        # (f) exact postcode: the school at the charity's address, name either way round; or an infant/junior pair on
+        # one site, for a charity whose name is not one-sided
         if pc and ctok and pc in by_pc:
-            here = [r for r in by_pc[pc] if r["tokens"] and not conflict(school_phase(r), cphase) and not excluded_leftover(r, ctok)
-                    and (set(r["tokens"]) <= ctok or (ctok <= set(r["tokens"]) | r["place"] and ctok & set(r["tokens"])))]
-            if len(here) == 1 and (not wide or wide_ok(here[0])):
-                add("f", targets_for(here[0], [], cphase), f"postcode-exact {pc}")
+            here = [r for r in by_pc[pc] if fits_at_postcode(r, ctok, cphase)]
+            targets = (targets_for(here[0], [], cphase) if len(here) == 1
+                       else targets_for(None, [(r,) for r in here], cphase) if len(here) == 2 else [])
+            if targets and (not wide or all(wide_ok(r) for r in here)):  # the anchored schools, not a twin riding along
+                add("f", targets, f"postcode-exact {pc}")
 
         # (d) web or email domain shared with exactly one school; the names must not contradict
         for dom, kind in ((host, "website"), (edom, "email")):
@@ -927,22 +970,63 @@ def llm_gate(llm) -> str | None:
 SHARED_URN = re.compile(r"(?<!\d)\d{5,7}(?!\d)")
 
 
-def shared_targets(answer, charity, schools_by_urn, state_urns):
-    """The two schools a 'shared:' adjudicator answer names, when the deterministic check agrees: both are state-funded,
-    open and in one postcode district, and the charity's name fits each of them. Otherwise []."""
+def is_shared_answer(answer) -> bool:
+    """True for an adjudicator answer whose reason starts 'shared:' (prompt v1 rule 6), whatever its urn says: it goes
+    to the deterministic shared step, never to one school."""
+    return str((answer or {}).get("reason") or "").strip().lower().startswith("shared:")
+
+
+def school_index(schools_by_urn):
+    """(records by urn, records by postcode district, records by council, records by postcode) of the open schools
+    with a distinctive name, state and independent: what shared_targets checks blockers against."""
+    recs = {urn: _school_record(s) for urn, s in schools_by_urn.items() if not _closed(s)}
+    recs = {urn: r for urn, r in recs.items() if r["tokens"]}
+    by_district, by_la, by_pc = defaultdict(list), defaultdict(list), defaultdict(list)
+    for r in recs.values():
+        if r["district"]:
+            by_district[r["district"]].append(r)
+            by_pc[r["postcode"]].append(r)
+        if r["la"]:
+            by_la[r["la"]].append(r)
+    return recs, by_district, by_la, by_pc
+
+
+def shared_targets(answer, charity, schools_by_urn, state_urns, index=None):
+    """The two schools a 'shared:' adjudicator answer names, when the deterministic check agrees, else [].
+
+    Both must be state-funded, open and an infant/junior pair in one postcode district (pass 2's _sibling); the
+    charity's name must fit each with no word left unexplained by the school's name or place; and no other school,
+    independent ones included, may explain the name better: none in the district or council fits it with more
+    distinctive words, and none at the charity's own postcode fits it unless it is one of the pair. An answer whose urn
+    is set but is not one of the pair is self-contradictory and is dropped. index: school_index(schools_by_urn), built
+    once by merge_llm."""
     reason = str(answer.get("reason") or "").strip()
-    if answer.get("urn") is not None or not reason.lower().startswith("shared:"):
+    if not is_shared_answer(answer):
         return []
     urns = list(dict.fromkeys(SHARED_URN.findall(reason)))
     if len(urns) != 2 or any(u not in state_urns or u not in schools_by_urn for u in urns):
         return []
-    recs = [_school_record(schools_by_urn[u]) for u in urns]
+    if answer.get("urn") is not None and str(answer["urn"]).strip() not in urns:
+        return []
+    recs_by_urn, by_district, by_la, by_pc = index or school_index(schools_by_urn)
+    if any(u not in recs_by_urn for u in urns):
+        return []  # closed, or no distinctive name to check
+    recs = [recs_by_urn[u] for u in urns]
     name = charity.get("charity_name") or ""
     ctok, cphase = set(normalise(name)), phase_words(name)
-    if any(_closed(schools_by_urn[u]) for u in urns) or not recs[0]["district"] or recs[0]["district"] != recs[1]["district"]:
+    if not recs[0]["district"] or _sibling(recs[0], by_district) is not recs[1]:
         return []
-    if not all(_fits(r, r["tokens"], school_phase(r), ctok, cphase) and not out_of_scope_words(name, r) for r in recs):
+    if not all(_fits(r, r["tokens"], school_phase(r), ctok, cphase) and not out_of_scope_words(name, r)
+               and not ctok - set(r["tokens"]) - r["place"] for r in recs):
         return []
+    best = max(len(r["tokens"]) for r in recs)
+    nearby = {o["urn"]: o for r in recs for o in by_district.get(r["district"], []) + by_la.get(r["la"], [])}
+    if any(set(o["tokens"]) <= ctok and len(o["tokens"]) > best and not conflict(school_phase(o), cphase)
+           for urn, o in nearby.items() if urn not in urns):
+        return []  # 'Friends of Woodlea Park School' beside independent Woodlea Park School
+    pc = norm_postcode(charity.get("charity_contact_postcode"))
+    if pc and any(o["urn"] not in urns and fits_at_postcode(o, ctok, cphase) for o in by_pc.get(pc, [])):
+        return []  # the charity's address is another school's, which its name fits (rule f's test)
     return urns
 
 
@@ -950,12 +1034,14 @@ def merge_llm(matches, llm, charities_by_number, state_urns, schools_by_urn=None
     """Add accepted adjudicator answers (pta_llm.json) as method 'llm', confidence 'medium'. Returns the count added.
 
     Nothing merges until llm_gate passes (a person judged 50 or more accepted picks and found none wrong). 'shared:'
-    answers go through shared_targets, given the raw register by urn, and attach to both schools with shared_with.
+    answers, whatever their urn, go only through shared_targets, given the raw register by urn, and attach to both
+    schools with shared_with.
     """
     if llm_gate(llm):
         return 0
     placed = _placed(matches)
     added = 0
+    index = None
     for key, answer in sorted((llm or {}).get("answers", {}).items()):
         if not isinstance(answer, dict) or not str(key).isdigit():
             continue
@@ -964,10 +1050,13 @@ def merge_llm(matches, llm, charities_by_number, state_urns, schools_by_urn=None
         if not charity or number in placed:
             continue
         urn = str(answer.get("urn") or "")
-        if answer.get("accepted") and urn in state_urns:
+        if is_shared_answer(answer):
+            if schools_by_urn is None:
+                continue
+            index = index or school_index(schools_by_urn)
+            urns = shared_targets(answer, charity, schools_by_urn, state_urns, index)
+        elif answer.get("accepted") and urn in state_urns:
             urns = [urn]
-        elif schools_by_urn is not None:
-            urns = shared_targets(answer, charity, schools_by_urn, state_urns)
         else:
             urns = []
         for u in urns:
@@ -987,7 +1076,7 @@ def merge_llm(matches, llm, charities_by_number, state_urns, schools_by_urn=None
 def merge_crawl(matches, crawl, charities_by_number, state_urns, counts=None, school_names=None) -> int:
     """Add charity numbers found on school websites (pta_crawl.json) as method 'website-crawl'. Returns the count added.
 
-    A hit counts only when the charity's name reads as a parents' association, or is a wider name (is_widened_name)
+    A hit counts only when the charity's name reads as a parents' association, or is a wider name (is_widened)
     sharing a distinctive word with the school's name (school_names: {urn: name}), or the page evidence uses real PTA
     wording; and the charity is not already attached to another school (it is never moved). A hit that confirms an
     existing match only adds 'website <url>' to that match's evidence. Unknown keys ('meta') are ignored; counts, when
@@ -1020,7 +1109,7 @@ def merge_crawl(matches, crawl, charities_by_number, state_urns, counts=None, sc
             if not charity or charity.get("linked_charity_number", 0) not in (0, 1):
                 continue
             name = charity.get("charity_name")
-            wide_fits = bool(school_names and is_widened_name(name)
+            wide_fits = bool(school_names and is_widened(charity)
                              and set(normalise(name)) & set(normalise(school_names.get(urn))))
             if not (is_parent_association(name) or wide_fits or CRAWL_WORDS.search(str(hit.get("evidence") or ""))):
                 continue
@@ -1107,12 +1196,12 @@ def load_schools(site_data, all_schools=False):
 
 def iter_candidates(charity_path, extra_numbers=(), widened=False):
     """Main charities whose name reads as a parents' association, plus any numbers in extra_numbers and, with
-    widened=True, the wider supporters' name forms (is_widened_name)."""
+    widened=True, the wider supporters' names and the activity-backed broad tier (is_widened)."""
     extra = set(extra_numbers)
     for obj in iter_json_array(charity_path):
         name = obj.get("charity_name")
         if obj.get("linked_charity_number", 0) in (0, 1) and (is_parent_association(name) or obj.get("registered_charity_number") in extra
-                                                              or (widened and is_widened_name(name))):
+                                                              or (widened and is_widened(obj))):
             yield obj
 
 
@@ -1216,11 +1305,11 @@ REGENERATE = """\
 ## Regenerating
 
 Real inputs live in the main checkout (`M=/Users/jhammant/dev/personal/SchoolCatchmentArea`) and are never committed.
-Back up the live output first, then write through a temp file so readers never see half a file (pta.py does the temp
-file and `os.replace` itself):
+Back up the live output first (`-n`: the first, pre-Wave-B backup is never overwritten), then write through a temp
+file so readers never see half a file (pta.py does the temp file and `os.replace` itself):
 
 ```bash
-cp "$M/pipeline/.cache/money/pta.json" "$M/pipeline/.cache/money/pta.json.before-wave-b"
+cp -n "$M/pipeline/.cache/money/pta.json" "$M/pipeline/.cache/money/pta.json.before-wave-b"
 python3 -m pipeline.money.pta                      # ~30 s; writes pta.json, pta_ambiguous.jsonl and this report
 ```
 
@@ -1263,7 +1352,8 @@ def report(matches, rejections, stats, schools_by_urn, seed, seconds):
         f"Generated {date.today().isoformat()} by `pipeline/money/pta.py` (seed {seed}, {seconds:.0f}s).", "",
         f"- Candidate charities (main, parents' association by name): {stats.get('candidates', 0):,}",
         f"- Wider-name candidates (Friends of X, P.T.A., Parent/Teacher, Families & Staff, Supporters of; rules f and d "
-        f"only): {stats.get('widened', 0):,}, of which {len(wide):,} matched to {len({s for s, _ in wide}):,} schools",
+        f"only): {stats.get('widened', 0):,}, of which {len(wide):,} matched to {len({s for s, _ in wide}):,} schools; "
+        f"{stats.get('broad', 0):,} of the candidates are the activity-backed broad tier (a school fund or society)",
         f"- Schools matched: {len(matches):,}",
         f"- Charities matched: {len(pairs):,} ({shared:,} shared infant/junior attributions)",
         "- By method: " + ", ".join(f"{m} {n:,}" for m, n in sorted(methods.items())),
@@ -1351,8 +1441,9 @@ def main(argv=None):
                      if isinstance(hits, list) for h in hits if isinstance(h, dict) and str(h.get("charity_number", "")).isdigit()}
     candidates = list(iter_candidates(args.charity_dir / "publicextract.charity.json", crawl_numbers, widened=True))
     by_number = {int(c["registered_charity_number"]): c for c in candidates}
-    widened = {n for n, c in by_number.items() if is_widened_name(c.get("charity_name"))}
-    stats = {"candidates": sum(1 for c in candidates if is_parent_association(c.get("charity_name"))), "widened": len(widened)}
+    widened = {n for n, c in by_number.items() if is_widened(c)}
+    stats = {"candidates": sum(1 for c in candidates if is_parent_association(c.get("charity_name"))), "widened": len(widened),
+             "broad": sum(1 for n in widened if not is_widened_name(by_number[n].get("charity_name")))}
     tick(f"{len(schools):,} schools ({len(state_urns):,} state-funded), {stats['candidates']:,} candidate charities, "
          f"{len(widened):,} wider names")
 
