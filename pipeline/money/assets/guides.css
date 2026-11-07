@@ -5,7 +5,7 @@
 
 /* ---------- guide articles ---------- */
 .guide, .guide-index { max-width: 44rem; min-width: 0; }
-.guide .kicker { margin: 1.2em 0 0; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.guide .kicker { margin: 1.2em 0 0; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
 .guide h1 { margin-top: .2em; }
 .guide-body h2 { scroll-margin-top: 16px; }
 .guide-body h3 { color: var(--ink); }
@@ -28,6 +28,9 @@
 .guide-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0 28px; }
 .guide-group, .tool-strip { min-width: 0; }
 .guide-group h2, .tool-strip h2 { font-size: 1.15rem; margin: 1.6em 0 .4em; }
+/* Each group wears its audience's colour, the same as the "I am a" chips (app.css sets --aud). */
+.guide-group h2 { padding: 6px 12px; border-left: 5px solid var(--aud, var(--accent)); border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  background: var(--aud-soft, var(--accent-soft)); color: var(--aud, var(--accent)); }
 .guide-list { list-style: none; padding: 0; margin: 0; }
 .guide-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
 .guide-list a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 700; }
@@ -35,7 +38,10 @@
 
 /* ---------- tools ---------- */
 .tool-cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; }
-.tool-cards .card { min-width: 0; }
+.tool-cards .card { min-width: 0; border-top: 4px solid var(--accent); }
+.tool-cards .card:nth-child(4n+2) { border-top-color: var(--indigo); }
+.tool-cards .card:nth-child(4n+3) { border-top-color: var(--plum); }
+.tool-cards .card:nth-child(4n+4) { border-top-color: var(--berry); }
 .tool-cards h2 { margin: .2em 0 .4em; font-size: 1.15rem; }
 .tool-cards h2 a { display: inline-flex; align-items: center; min-height: var(--tap); }
 .tool-private { padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); }
@@ -62,7 +68,8 @@
 .tool-status:empty { display: none; }
 
 /* results */
-.tool-result { min-width: 0; margin: 1.5em 0; padding: 4px 18px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--card); }
+.tool-result { min-width: 0; margin: 1.5em 0; padding: 4px 18px 12px; border: 1px solid var(--line-strong); border-left: 5px solid var(--accent);
+  border-radius: var(--radius); background: var(--card); }
 .tool-result h2 { margin-top: .8em; }
 .tool-result h3 { font-size: 1rem; }
 .tool-result .note { margin: 1em 0; }
