@@ -5,8 +5,9 @@ server {
   # (/school/x -> /school/x/) would send visitors to http://host:8080/. Keep it relative.
   absolute_redirect off;
 
-  # money.schoolsinreach.com is a short alias for the Money section: one canonical home at /money/.
-  if ($host ~* ^money\.) { return 301 https://www.schoolsinreach.com/money$request_uri; }
+  # money.schoolsinreach.com opens on the Money section's own home page (no redirect); every /money/ page
+  # also works on that host. Build #2 moves Money to its own service with clean URLs on this host.
+  if ($host ~* ^money\.) { rewrite ^/$ /money/ last; }
 
   # The per-council JSON and GeoJSON files compress very well.
   gzip on;
