@@ -38,7 +38,6 @@ EXTRA_HEAD = '<link rel="stylesheet" href="/assets/areas.css"><script src="/asse
 SUFFIX = " | School Money"
 FROM_YEAR = "2018-19"
 PAGE_TEXT_BUDGET = 22_000    # intro + outro bytes on any page
-CHART_RESERVE = 9_000        # bytes kept back for the copy around the charts
 TOP_LIST = 10
 IFS_YEAR = "2025-26"         # IFS figures are in 2025-26 prices
 GOV_LABELS = {"council-run": "Council-run", "academy": "Academy"}
@@ -282,7 +281,7 @@ def deflator_label(ctx):
 
 def _fmt(value, unit):
     if unit == "%":
-        return f"{value:.0f}%"
+        return f"{value:.0f}%" if float(value).is_integer() or abs(value) >= 10 else f"{value:.1f}%"
     if unit == "pupils":
         return f"{value / 1e6:.1f}m" if abs(value) >= 1e6 else f"{value / 1e3:.0f}k" if abs(value) >= 1e4 else f"{value:,.0f}"
     return money(value) if abs(value) >= 100_000 else exact(value)
@@ -292,13 +291,32 @@ def _ticks(lo, hi):
     return charts._ticks(lo, hi)
 
 
+LABEL_CHARS = 20   # direct labels in the fallback chart are cut to this many characters
+
+
+def line_label(text):
+    """A direct label short enough for the chart's margin. A trailing measure word ("funding",
+    "spending", "academies") is kept, so cutting a long place name never hides which line it is."""
+    text = " ".join(str(text or "").split())
+    if len(text) <= LABEL_CHARS:
+        return text
+    head, _, tail = text.rpartition(" ")
+    if head and tail.islower() and len(tail) < LABEL_CHARS - 4:
+        return shorten(head, LABEL_CHARS - len(tail) - 1) + " " + tail
+    return shorten(text, LABEL_CHARS)
+
+
 def fallback_trend(lines, *, years, unit="£", title, desc, height=220, suspect=(), partial=()):
-    """A compact line chart with the TREND DOM markers (used until charts.trend_chart exists)."""
+    """A compact line chart with the TREND DOM markers (used until charts.trend_chart exists).
+    Each line is one path per stroke style, and ticks and labels share a group, so a dashboard
+    holds every measure within the page budget."""
     years = list(years)
     vals = [v for line in lines for v in (line.get("values") or {}).values() if _num(v) is not None]
     if not vals or not years:
         return ""
-    width, left, right, top, bottom = 400, 44, 98, 10, 20
+    names = [line_label(line.get("label")) for line in lines]
+    width, left, top, bottom = 400, 44, 10, 20
+    right = min(max(60, 10 + 6 * max(len(n) for n in names)), 140)  # room for the longest direct label
     lo, hi = min(vals), max(vals)
     if unit == "%" and lo > 0:
         lo = 0
@@ -314,52 +332,56 @@ def fallback_trend(lines, *, years, unit="£", title, desc, height=220, suspect=
 
     out = [f'<svg class="chart trend-chart" viewBox="0 0 {width} {height}" role="img"><title>{esc(title)}</title>'
            f'<desc>{esc(desc)}</desc>']
-    for t in (ticks[0], ticks[len(ticks) // 2], ticks[-1]) if len(ticks) > 2 else ticks:
-        y = xy(0, t)[1]
-        out.append(f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y:.0f}" y2="{y:.0f}"/>'
-                   f'<text class="tick" x="{left - 4}" y="{y + 3:.0f}" text-anchor="end">{esc(_fmt(t, unit))}</text>')
+    shown = [(t, xy(0, t)[1]) for t in ((ticks[0], ticks[len(ticks) // 2], ticks[-1]) if len(ticks) > 2 else ticks)]
+    out.append(f'<path class="grid" d="{"".join(f"M{left},{y:.0f}H{width - right}" for _, y in shown)}"/>')
     if lo < 0 < hi:
-        y = xy(0, 0)[1]
-        out.append(f'<line class="axis" x1="{left}" x2="{width - right}" y1="{y:.0f}" y2="{y:.0f}"/>')
+        out.append(f'<path class="axis" d="M{left},{xy(0, 0)[1]:.0f}H{width - right}"/>')
+    out.append('<g class="tick" text-anchor="end">' + "".join(
+        f'<text x="{left - 4}" y="{y + 3:.0f}">{esc(_fmt(t, unit))}</text>' for t, y in shown) + "</g>")
     groups = {"cash": [], "real": [], None: []}
+    colour = Counter()  # colour by position within a basis, so cash and real lines match
     ends = []
-    for n, line in enumerate(lines):
+    for line, name in zip(lines, names):
+        basis = line.get("basis") if line.get("basis") in ("cash", "real") else None
+        n = colour[basis]
+        colour[basis] += 1
         values = line.get("values") or {}
         pts = [(i, _num(values.get(y))) for i, y in enumerate(years)]
-        solid, dashed, marks = [], [], []
+        runs, marks, prev = {False: [], True: []}, [], None
         for (i0, v0), (i1, v1) in zip(pts, pts[1:]):
             if v0 is None or v1 is None:
+                prev = None
                 continue
+            dashed = line.get("style") == "dashed" or years[i1] in partial
             (x0, y0), (x1, y1) = xy(i0, v0), xy(i1, v1)
-            seg = f"M{x0:.0f},{y0:.0f}L{x1:.0f},{y1:.0f}"
-            (dashed if line.get("style") == "dashed" or years[i1] in partial else solid).append(seg)
+            if prev != (dashed, i0):  # a new run: after a gap or a change of stroke
+                runs[dashed].append(f"M{x0:.0f},{y0:.0f}")
+            runs[dashed].append(f"L{x1:.0f},{y1:.0f}")
+            prev = (dashed, i1)
         for i, v in pts:
             lone = v is not None and all(v2 is None for i2, v2 in pts if abs(i2 - i) == 1)
             if v is not None and (years[i] in suspect or lone):
                 x, y = xy(i, v)
                 marks.append(f'<circle class="{"hollow" if years[i] in suspect else "dot"}" cx="{x:.0f}" cy="{y:.0f}" r="3"/>')
         cls = f'tl l{n}{" emph" if line.get("emph") else ""}'
-        body = (f'<path class="{cls}" d="{"".join(solid)}"/>' if solid else "") + \
-               (f'<path class="{cls} dash" d="{"".join(dashed)}"/>' if dashed else "") + "".join(marks)
+        body = "".join(f'<path class="{cls}{" dash" if dashed else ""}" d="{"".join(runs[dashed])}"/>'
+                       for dashed in (False, True) if runs[dashed]) + "".join(marks)
         last = next(((i, v) for i, v in reversed(pts) if v is not None), None)
         if last and body:
-            ends.append([xy(*last)[1], xy(*last)[0], line.get("label") or "", line.get("basis"), n])
-        groups[line.get("basis") if line.get("basis") in ("cash", "real") else None].append(body)
-    labels = {"cash": [], "real": [], None: []}
-    for basis in labels:
-        mine = sorted((e for e in ends if e[3] == basis or (basis is None and e[3] not in ("cash", "real"))), key=lambda e: e[0])
+            ends.append([xy(*last)[1], xy(*last)[0], name, basis])
+        groups[basis].append(body)
+    for basis, attrs in (("cash", ' data-basis="cash"'), ("real", ' data-basis="real" display="none"'), (None, "")):
+        mine = sorted((e for e in ends if e[3] == basis), key=lambda e: e[0])
         for a, b in zip(mine, mine[1:]):  # keep direct labels apart
             if b[0] - a[0] < 11:
                 b[0] = a[0] + 11
-        for y, x, text, _basis, n in mine:
-            labels[basis].append(f'<text class="lab" x="{x + 5:.0f}" y="{y + 3:.0f}">{esc(shorten(text, 17))}</text>')
-    for basis, attrs in (("cash", ' data-basis="cash"'), ("real", ' data-basis="real" display="none"'), (None, "")):
+        labels = "".join(f'<text x="{x + 5:.0f}" y="{y + 3:.0f}">{esc(text)}</text>' for y, x, text, _ in mine)
         if groups[basis]:
-            out.append(f"<g{attrs}>{''.join(groups[basis])}{''.join(labels[basis])}</g>")
+            out.append(f"<g{attrs}>{''.join(groups[basis])}" + (f'<g class="lab">{labels}</g>' if labels else "") + "</g>")
     every = 1 if len(years) <= 5 else 2
-    for i, y in enumerate(years):
-        if (len(years) - 1 - i) % every == 0:  # always label the newest year
-            out.append(f'<text class="tick" x="{xy(i, lo)[0]:.0f}" y="{height - 6}" text-anchor="middle">{esc(y)}</text>')
+    out.append(f'<g class="tick" text-anchor="middle">' + "".join(
+        f'<text x="{xy(i, lo)[0]:.0f}" y="{height - 6}">{esc(y)}</text>'
+        for i, y in enumerate(years) if (len(years) - 1 - i) % every == 0) + "</g>")  # always label the newest year
     out.append("</svg>")
     return "".join(out)
 
@@ -480,11 +502,35 @@ def dsg_values(area, years, field):
     return out
 
 
+def pupil_change(area, base, years):
+    """{year: % change in pupils since base}: areas of very different sizes share one axis."""
+    pupils = (area or {}).get("pupils_by_year") or {}
+    start = _num(pupils.get(base))
+    if not start:
+        return {}
+    return {y: (pupils[y] / start - 1) * 100 for y in years if _num(pupils.get(y)) is not None}
+
+
+def pupils_text(value):
+    return f"{value:,.0f}" if float(value).is_integer() else f"{value:,.1f}"
+
+
 def dashboard_charts(kind, name, area, others, ctx, budget):
-    """The measures as chart cards, most useful first, while they fit in budget bytes."""
+    """Every measure as a chart card, most useful first. Each measure is always drawn; when the
+    cards would pass budget bytes, notes the page already carries are left off the cards."""
+    full = measure_cards(kind, name, area, others, ctx, brief=False)
+    if len("".join(full).encode("utf-8")) > budget:
+        full = measure_cards(kind, name, area, others, ctx, brief=True)
+    kept = [html for html in full if html]
+    return f'<div class="chart-grid">{"".join(kept)}</div>' if kept else ""
+
+
+def measure_cards(kind, name, area, others, ctx, brief):
+    """The dashboard's chart cards in order. brief drops the sector note, which the page states
+    beside the charts, and trims the high-needs note to its first sentence."""
     years = dashboard_years(area, others)
     if not years:
-        return ""
+        return []
 
     def chart(*args, **kwargs):
         return chart_card(*args, where=name, **kwargs)
@@ -492,7 +538,7 @@ def dashboard_charts(kind, name, area, others, ctx, budget):
     last = area.get("combined_last_year") or (combined_years(area) or [None])[-1]
     partial = [y for y in years if last and y > last]
     real = deflator_label(ctx)
-    sector = esc(SECTOR_NOTE.format(last=last or "the latest year"))
+    sector = "" if brief else esc(SECTOR_NOTE.format(last=last or "the latest year"))
     cards = []
     deficit_lines = [{"label": "All schools", "values": series(area, "in_deficit_pct", years), "emph": True},
                      {"label": "Council-run", "values": series(area, "in_deficit_pct", years, "council-run"),
@@ -505,13 +551,14 @@ def dashboard_charts(kind, name, area, others, ctx, budget):
     for basis, gkey, skey in (("cash", "gov_pp_median", "spend_pp_median"), ("real", "gov_rpp_median", "spend_rpp_median")):
         if basis == "real" and not real:
             continue
-        gov.append({"label": "Funding", "values": series(area, gkey, years), "emph": True, "basis": basis})
-        gov.append({"label": "Spending", "values": series(area, skey, years), "style": "dashed", "basis": basis})
-        if others:
-            label, other = others[-1]
-            gov.append({"label": f"{label} funding", "values": series(other, gkey, years), "basis": basis})
-            gov.append({"label": f"{label} spending", "values": series(other, skey, years), "style": "dashed", "basis": basis})
-    note = esc(GOV_NOTE) + (f" Real terms are {esc(real)}." if real else "") + " " + academy_note(ctx)
+        for label, source in [(None, area)] + list(others):  # the area (heavier), its region, England
+            own = label is None
+            gov.append({"label": "Funding" if own else f"{label} funding", "values": series(source, gkey, years),
+                        "emph": own, "basis": basis})
+            gov.append({"label": "Spending" if own else f"{label} spending", "values": series(source, skey, years),
+                        "style": "dashed", "emph": own, "basis": basis})
+    note = (esc(GOV_NOTE) + " Solid lines are funding, dashed lines spending."
+            + (f" Real terms are {esc(real)}." if real else "") + " " + academy_note(ctx))
     cards.append(chart("Government funding and spending per pupil", gov, years, note=note, toggles=True))
     cards.append(chart("Median reserve per pupil", measure_lines(name, area, others, "reserve_median_pp", years),
                             years, partial=partial, note="The dashed line is council-run schools only."))
@@ -520,32 +567,35 @@ def dashboard_charts(kind, name, area, others, ctx, budget):
     if kind in ("council", "england") and (area.get("dsg") or {}):
         dyears = sorted(y for y in area["dsg"] if y >= FROM_YEAR)
         pp_lines = [{"label": name, "values": dsg_values(area, dyears, "per_pupil"), "emph": True}]
-        pp_lines += [{"label": label, "values": dsg_values(other, dyears, "per_pupil")} for label, other in others
-                     if label == "England"]
+        pp_lines += [{"label": label, "values": dsg_values(other, dyears, "per_pupil")} for label, other in others]
         title = "Council high-needs (DSG) balance"
         pp_svg = trend_svg(pp_lines, years=dyears, title=f"{title} per pupil, {name}", desc=describe(pp_lines, "£"))
         total_lines = [{"label": name, "values": dsg_values(area, dyears, "balance"), "emph": True}]
         total_svg = trend_svg(total_lines, years=dyears, title=f"{title}, {name}", desc=describe(total_lines, "£"))
         if pp_svg:
             body = f'<div data-unit="pp">{pp_svg}</div>' + (f'<div data-unit="total" hidden>{total_svg}</div>' if total_svg else "")
-            cards.append(card(title, body, "Negative is a deficit carried forward, in cash terms. Per pupil divides by "
-                              "pupils at the schools on this site; a school whose return for the year is not yet "
-                              "published counts its previous year's roll.", unit_toggle() if total_svg else ""))
+            note = "Negative is a deficit carried forward, in cash terms."
+            if not brief:
+                note += (" Per pupil divides by pupils at the schools on this site; a school whose return for the year "
+                         "is not yet published counts its previous year's roll.")
+            cards.append(card(title, body, esc(note), unit_toggle() if total_svg else ""))
     cards.append(chart("Median parents' association income per pupil",
                             measure_lines(name, area, others, "pta_pp_median", years, council_run=False), years,
-                            note="Among schools with a registered parents' association, in the school year each charity "
-                                 "return falls in."))
+                            note=esc("Among schools with a registered parents' association, in the school year each "
+                                     "charity return falls in.")))
     cards.append(chart("Pupils eligible for free school meals (median school)",
                             measure_lines(name, area, others, "fsm_pct", years, council_run=False), years, unit="%"))
-    pupils = {y: v for y, v in ((area.get("pupils_by_year") or {}).items()) if y >= FROM_YEAR and _num(v)}
-    cards.append(chart("Pupils in schools with a full-year return",
-                            [{"label": name, "values": pupils, "emph": True}], sorted(pupils), unit="pupils"))
-    kept, used = [], 0
-    for html in cards:
-        if html and used + len(html) <= budget:
-            kept.append(html)
-            used += len(html)
-    return f'<div class="chart-grid">{"".join(kept)}</div>' if kept else ""
+    own = {y: v for y, v in ((area.get("pupils_by_year") or {}).items()) if y >= FROM_YEAR and _num(v)}
+    if own:
+        base, newest = min(own), max(own)
+        pupil_lines = [{"label": label, "values": pupil_change(source, base, years), "emph": label == name}
+                       for label, source in [(name, area)] + list(others)]
+        pyears = sorted({y for line in pupil_lines for y in line["values"]})
+        cards.append(chart("Pupils in schools with a full-year return", pupil_lines, pyears, unit="%",
+                           note=esc(f"Change in pupils since {base}, so areas of different sizes can be compared. "
+                                    f"{name} had {pupils_text(own[newest])} pupils in schools with a full-year return "
+                                    f"in {newest}.")))
+    return cards
 
 
 def academy_note(ctx):
@@ -678,9 +728,10 @@ def history_status(charity):
     return status, last, int(removed) if removed.isdigit() else None
 
 
-def school_pta(item):
-    """The school's latest PTA year: {"label", "income", "spend", "pupils", "confidence", "number"},
-    or {"note": wording} when it has none to show."""
+def school_pta(item, window=None):
+    """The school's latest PTA year, or with window [first, newest] its latest year inside it:
+    {"label", "income", "spend", "pupils", "confidence", "number"}, or {"note": wording} when it
+    has none to show."""
     charities = [c for c in item.get("pta") or [] if not c.get("review")]
     if not charities:
         return {"note": NOT_FOUND}
@@ -693,6 +744,8 @@ def school_pta(item):
         return {"note": f"Had a registered PTA until {until}" if until else "Registered, no income filed yet"}
     years = item.get("years") or []
     slots = agg.school_pta(years, usable)
+    if window:
+        slots = {key: slot for key, slot in slots.items() if window[0] <= key[0] <= window[1]}
     if not slots:
         return {"note": "Registered, no income filed yet"}
     (label, source), slot = max(slots.items(), key=lambda kv: kv[0][0])
@@ -702,14 +755,19 @@ def school_pta(item):
             "confidence": slot["confidence"], "number": max(slot["by_charity"], key=slot["by_charity"].get)}
 
 
+RESERVE_SUSPECT = {"pupils", "revenue_reserve", "revenue_reserve_incl_trust_share"}
+
+
 def reserve_spark(item):
+    """Reserve per pupil by year. The sparkline cannot mark a point hollow, so a year whose
+    pupils or either reserve figure is suspect (as the table cell beside it shows) is left out."""
     values = []
     for r in item.get("years") or []:
         suspect = set(r.get("suspect") or [])
         pupils = r.get("pupils")
         reserve = r.get("revenue_reserve_incl_trust_share")
         reserve = r.get("revenue_reserve") if reserve is None else reserve
-        if pupils and _num(reserve) is not None and not suspect & {"pupils", "revenue_reserve"}:
+        if pupils and _num(reserve) is not None and not suspect & RESERVE_SUSPECT:
             values.append((agg.label_of(r), reserve / pupils))
     return spark(values, "Reserve per pupil by year")
 
@@ -892,9 +950,10 @@ def render_area(kind, area_id, area, items, ctx):
     context = ifs_context(ctx, council=kind in ("council", "england"))
     extras = (charts.status_bar(status_counts) if status_counts else "") + dsg_text
     notes = table_note() if kind in ("council", "constituency") else ""
-    room = PAGE_TEXT_BUDGET - base - len(context.encode("utf-8")) - len(extras) - len(notes) - 600
+    room = PAGE_TEXT_BUDGET - base - sum(len(p.encode("utf-8")) for p in (context, extras, notes)) - 600
     grid = dashboard_charts(kind, name, area, others, ctx, max(room, 0))
-    intro = fit(fixed + [(extras, False), (grid, False), (context, True), (notes, True)], outro)
+    # Every measure is required; only the status bar and programme line give way to the budget.
+    intro = fit(fixed + [(extras, False), (grid, True), (context, True), (notes, True)], outro)
     n_def = sum(1 for i in assessed if i["status"]["status"] == "in_deficit")
     year, s = latest_combined(area)
     if kind in ("council", "constituency") and assessed:
@@ -943,25 +1002,32 @@ def render_council_league(council_areas, ctx):
 
 
 def central_compare(trust_area, ctx):
-    """The trust's central spend per pupil against the IFS average (£510, 2023-24, 2025-26 prices)."""
+    """The trust's central spend per pupil beside the IFS average (£510 per pupil in 2023-24, in
+    2025-26 prices). The IFS figure is always quoted with its own year: a trust with no 2023-24
+    figure is shown for its latest year, which is not the year the IFS observed."""
     central = (trust_area or {}).get("central_pp") or {}
     found = ifs_line(ctx, "school", "trust_central")
     ifs = ((((ctx or {}).get("ifs") or {}).get("national") or {}).get("academies") or {}).get("trust_central_spend") or {}
     ifs_value = _num(ifs.get("value")) or 510
+    ifs_year = label_of(ifs.get("year") or "2023-24").replace("–", "-")
     if not central:
         return f'<p class="ifs">{found[0]}{cite(found[1])}</p>' if found else ""
-    year = "2023-24" if "2023-24" in central else max(central)
+    year = ifs_year if ifs_year in central else max(central)
     value = central[year]
     text = (f'<p>In {esc(year)} the trust spent {pp_fig("trust_central_spend_pp", value, year)} per pupil centrally '
             '(cash), money that is not counted in its academies\' own spending')
+    real = None
     if deflator is not None:
         try:
             real = deflator.to_real(value, year, "AAR")
         except (KeyError, TypeError, ValueError):
             real = None
-        if _num(real) is not None:
-            text += (f', or {pp_fig("trust_central_spend_pp", real, year)} in 2025–26 prices. The IFS average for all '
-                     f'trusts that year was {ifs_fig(exact(ifs_value), ifs_value)} per pupil{cite(56)}')
+    if _num(real) is not None:
+        text += f', or {pp_fig("trust_central_spend_pp", real, year)} in 2025–26 prices'
+    text += (f'. The IFS average for all trusts in {esc(ifs_year)} was {ifs_fig(exact(ifs_value), ifs_value)} per pupil, '
+             f'in 2025–26 prices{cite(ifs.get("page") or 56)}')
+    if year != ifs_year:
+        text += f"; the trust's figure above is for {esc(year)}, so the two are for different years"
     return text + ".</p>"
 
 
@@ -1057,10 +1123,14 @@ def render_debts(areas_doc_, ctx):
     doc = (areas_doc_ or {}).get("areas") if isinstance((areas_doc_ or {}).get("areas"), dict) else (areas_doc_ or {})
     england = doc.get("england") or {}
     councils = doc.get("councils") or {}
-    cr_years = sorted({y for a in councils.values() for y in by_year(a) if (split_of(a, y, "council-run") or {}).get("schools")})[-DEBT_YEARS:]
-    ac_year = max((y for a in councils.values() for y in by_year(a) if (split_of(a, y, "academy") or {}).get("schools")), default=None)
+    def split_years(split):
+        return sorted({y for a in councils.values() for y in by_year(a) if (split_of(a, y, split) or {}).get("schools")})[-DEBT_YEARS:]
+
+    cr_years, ac_years = split_years("council-run"), split_years("academy")
+    ac_year = ac_years[-1] if ac_years else None
     headers = (["Council", "Council-run schools in deficit"] + [f"Council-run deficits {y}" for y in cr_years]
-               + [f"Academies in deficit {ac_year or ''}".strip(), "Academy deficits", "High-needs (DSG) balance", "DfE programme"])
+               + [f"Academies in deficit {ac_year or ''}".strip()] + [f"Academy deficits {y}" for y in ac_years]
+               + ["High-needs (DSG) balance", "DfE programme"])
     rows = []
     for code, a in sorted(councils.items(), key=lambda kv: str(kv[1].get("name"))):
         cr_year, cr = latest_split(a, "council-run")
@@ -1068,7 +1138,9 @@ def render_debts(areas_doc_, ctx):
         for year in cr_years:
             cells.append(deficit_cell(split_of(a, year, "council-run"), year))
         ac = split_of(a, ac_year, "academy") if ac_year else None
-        cells += [sort((ac or {}).get("in_deficit_pct"), pct_text(ac)), deficit_cell(ac, ac_year)]
+        cells.append(sort((ac or {}).get("in_deficit_pct"), pct_text(ac)))
+        for year in ac_years:
+            cells.append(deficit_cell(split_of(a, year, "academy"), year))
         dsg = a.get("dsg") or {}
         dyear = max((y for y, d in dsg.items() if isinstance(d, dict) and _num(d.get("balance")) is not None), default=None)
         if dyear:
@@ -1219,8 +1291,10 @@ def render_ptfa(areas_doc_, items, ctx):
             continue
         rec = per_council.setdefault(code, {"name": council.get("name") or code, "schools": 0, "with": 0, "pps": [], "total": 0.0})
         rec["schools"] += 1
-        found = school_pta(item)
-        if "note" in found or not window or not window[0] or found["label"] < window[0]:
+        if not window or not window[0]:
+            continue
+        found = school_pta(item, window)
+        if "note" in found:
             continue
         rec["with"] += 1
         rec["total"] += found["income"]

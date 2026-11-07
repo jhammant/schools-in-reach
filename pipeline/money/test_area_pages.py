@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from pipeline.money import area_pages, areas, build_money, deflator, status
 from pipeline.money.site import slug
@@ -74,7 +75,8 @@ class Fixture:
             elif n == 1:
                 charities = [charity(1_200_001, "Old PTA", [("2016-07", 4_000), ("2017-07", 3_000)], removed="2018-02-01")]
             elif n == 2:
-                charities = [charity(1_200_002, "Recent PTA", [("2025-07", 60_000)],
+                # An LLM match whose newest return is past the PTA window: /ptfa/ ranks its 2023-24 return.
+                charities = [charity(1_200_002, "Recent PTA", [("2025-07", 60_000), ("2023-07", 50_000)],
                                      match={"method": "llm", "evidence": "test", "confidence": "medium"})]
             pta[str(urn)] = charities
             self.council_items.append(make_item(urn, name, rows, reg, charities))
@@ -343,6 +345,62 @@ class AreaPagesTest(unittest.TestCase):
         self.assertIn("The gap by intake", intro)
         self.assertIn("Grammar", intro)
         self.assertEqual(len(self.pages["ptfa"]["table"]["rows"]), 1)
+        # A return after the window (2025-26, still being filed) never displaces one inside it.
+        recent = next(t for t in pta["top"] if t["urn"] == "100002")
+        self.assertEqual((recent["year_end"], recent["income"]), ("2023-24", 50_000))
+
+    def test_dashboards_keep_every_measure_and_compare_with_region_and_england(self):
+        # Arrange: record each chart's lines through the charts contract.
+        calls = {}
+
+        def capture(lines, **options):
+            calls[options["title"]] = [line["label"] for line in lines]
+            return area_pages.fallback_trend(lines, **options)
+
+        # Act
+        with patch.object(area_pages.charts, "trend_chart", capture, create=True):
+            result = area_pages.render_area("council", "204", self.fx.doc["councils"]["204"], self.fx.items, self.fx.ctx)
+        # Assert: all eight measures, within the budget, each against London and England.
+        self.assertEqual(len(re.findall(r"<figcaption>", result["intro"])), 8)
+        self.assertLessEqual(len((result["intro"] + result["outro"]).encode("utf-8")), 22_000)
+        for title, labels in calls.items():
+            if "(DSG)" in title:      # la_dsg.json has councils and England, not regions; totals are the council's own
+                self.assertTrue("per pupil" not in title or any("England" in label for label in labels), title)
+                continue
+            for place in ("London", "England"):
+                self.assertTrue(any(place in label for label in labels), (title, place))
+
+    def test_trust_quotes_the_ifs_benchmark_with_its_own_year(self):
+        # Arrange: a trust whose only central-spend figure is for 2024-25.
+        trust = dict(self.fx.doc["trusts"]["example-trust"], central_pp={"2024-25": 400})
+        # Act
+        intro = area_pages.render_trust(trust, self.fx.trust_items, self.fx.ctx)["intro"]
+        # Assert
+        self.assertIn("The IFS average for all trusts in 2023-24 was", intro)
+        self.assertIn("figure above is for 2024-25", intro)
+
+    def test_debts_lists_academy_deficits_for_each_year(self):
+        # Arrange
+        debts = self.pages["debts"]
+        cells = "".join(debts["table"]["rows"][0])
+        # Assert: the last three academy years, like council-run, each with its own figure.
+        for year in ("2022-23", "2023-24", "2024-25"):
+            self.assertIn(f"Academy deficits {year}", debts["table"]["headers"])
+            self.assertRegex(cells, rf'data-mf="deficit_total"[^>]*data-year="{year}"')
+
+    def test_reserve_sparkline_leaves_out_suspect_reserves(self):
+        # Arrange: the trust-inclusive reserve, which the sparkline plots, is flagged in 2024-25.
+        rows = [row("140001", end, 1_000_000, 990_000, 10_000, source="AAR", pupils=100,
+                    revenue_reserve_incl_trust_share=share, suspect=flags)
+                for end, share, flags in (("2023-08", 20_000, []), ("2024-08", 30_000, []),
+                                          ("2025-08", 99_000_000, ["revenue_reserve_incl_trust_share"]))]
+        drawn = []
+        # Act
+        with patch.object(area_pages.charts, "sparkline", lambda values, **_: drawn.extend(values) or "<svg></svg>",
+                          create=True):
+            area_pages.reserve_spark({"years": rows})
+        # Assert
+        self.assertEqual(drawn, [("2022-23", 200), ("2023-24", 300)])
 
     def test_debts_lists_dsg_flags_and_council_context(self):
         # Arrange

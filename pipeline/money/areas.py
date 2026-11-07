@@ -906,9 +906,9 @@ def build_pta(records):
                           "spend": round(sum(spends)) if spends else None,
                           "median_pp": median_or_none(pps, MIN_SCHOOLS)}
     first, newest = pta_window(by_year)
-    latest = []  # (record, its latest year in the window)
+    latest = []  # (record, its latest year in the window; returns after it are still being filed)
     for rec in records:
-        recent = [y for y in rec["years"] if first and y >= first]
+        recent = [y for y in rec["years"] if first and first <= y <= newest]
         if recent:
             latest.append((rec, max(recent)))
     with_pupils = [(rec, y) for rec, y in latest if rec["years"][y]["pupils"]]

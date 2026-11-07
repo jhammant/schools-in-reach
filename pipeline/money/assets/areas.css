@@ -9,6 +9,7 @@
 
 /* Trend lines: four series colours, the area's own line drawn heavier, dashes for council-run
    only and partial years. Direct labels at each line's end, so colour is never the only key. */
+.trend-chart .grid, .trend-chart .axis { fill: none; }
 .trend-chart .tl { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke: var(--ink-3); }
 .trend-chart .tl.emph { stroke-width: 3; }
 .trend-chart .tl.dash { stroke-dasharray: 5 4; }
@@ -40,6 +41,11 @@ svg.spark .zero { stroke: var(--grid); stroke-width: 1; }
 .table-filters .n { color: inherit; opacity: .75; font-size: .8em; margin-left: 2px; }
 tr.pinned td { background: var(--accent-soft); }
 .mf.suspect { opacity: .55; border-bottom-style: dashed; }
+/* Wide tables (/debts/ has a column per year): the per-pupil figure sits under its total, so a
+   money cell is one short line wide. Below 600px app.css turns rows into cards instead. */
+@media (min-width: 601px) {
+  table[data-sortable] td .mf small { display: block; }
+}
 
 /* Headline tiles and context copy. */
 .tiles.headline .tvalue small { display: block; font-size: .8rem; font-weight: 400; color: var(--ink-2); }

@@ -454,6 +454,27 @@ class PtaTest(unittest.TestCase):
         self.assertEqual(governance["academy"]["median_pp"], 800)
         self.assertEqual(self.result["by_tag"]["admissions"]["grammar"]["schools"], 1)
 
+    def test_a_partial_later_year_never_replaces_a_return_inside_the_window(self):
+        # Arrange: ten schools have 2024-25 returns; one has also filed for 2025-26, still being filed.
+        def slot(income):
+            return {"income": income, "spend": None, "by_charity": {1: income}, "names": {1: "PTA"},
+                    "confidence": "high", "pupils": 100}
+
+        records = []
+        for i in range(10):
+            years = {"2024-25": slot(10_000.0)}
+            if i == 0:
+                years["2025-26"] = slot(400_000.0)
+            records.append({"urn": str(i), "name": f"School {i}", "council": "204", "council_name": "Hackney",
+                            "band": 1, "tags": {y: {"governance": "council-run"} for y in years}, "years": years})
+        # Act
+        result = areas.build_pta(records)
+        # Assert: the partial year is counted by year but never in the window's comparisons.
+        self.assertEqual(result["window"], ["2023-24", "2024-25"])
+        self.assertEqual(result["by_year"]["2025-26"]["income"], 400_000)
+        self.assertEqual({t["year_end"] for t in result["top"]}, {"2024-25"})
+        self.assertEqual(result["by_band"]["1"]["mean_pp"], 100)
+
 
 class LoaderTest(unittest.TestCase):
     def test_msoa_income_accepts_both_shapes(self):
