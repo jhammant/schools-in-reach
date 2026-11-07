@@ -7,6 +7,7 @@ beside their icon and label, never alone.
 
 from __future__ import annotations
 
+import re
 from html import escape
 
 STATUS_ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves"]
@@ -257,3 +258,157 @@ def compare_dots(rows: list[dict], width: int = 640) -> str:
     legend = ('<p class="legend"><span class="key dot s1"></span>This school <span class="key band"></span>Middle half of similar schools '
               '<span class="key median"></span>Similar schools’ median</p>')
     return legend + "".join(parts)
+
+
+TREND_COLOURS = ("--c1", "--c2", "--c3", "--c4")
+
+
+def _axis_text(value: float, unit: str, exact: bool = False) -> str:
+    """An axis or tip value: percentages, pupil counts, or £ (to the pound when exact, e.g. per pupil)."""
+    if unit == "%":
+        return f"{value:g}%"
+    if unit == "pupils":
+        return f"{value:,.0f}"
+    if exact:
+        return f"{'-' if value < 0 else ''}£{abs(value):,.0f}"
+    return money(value)
+
+
+def _spread(ys: list[float], gap: float, top: float, bottom: float) -> list[float]:
+    """Label y positions in the given order, nudged apart so no two sit closer than gap."""
+    order = sorted(range(len(ys)), key=lambda i: ys[i])
+    out = list(ys)
+    last = None
+    for i in order:
+        y = max(out[i], top) if last is None else max(out[i], last + gap)
+        out[i] = last = y
+    overflow = (last or 0) - bottom
+    if overflow > 0:
+        out = [y - overflow for y in out]
+    return out
+
+
+def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title: str, desc: str, height: int = 220,
+                suspect=(), partial=()) -> str:
+    """Lines over years on one axis, each labelled at its end so colour is never the only key.
+    lines: [{label, values {year: number|None}, style solid|dashed, emph, basis cash|real|None}].
+    None leaves a gap; suspect years get hollow markers; segments into partial years are dashed.
+    Lines with a basis sit in <g data-basis> groups (real hidden by default) for trend.js to switch.
+    Kept lean for pages with several charts: whole-pixel coordinates, colours by class (app.css styles
+    s1 and s2; later series carry their colour inline), one colour per label in both bases, and markers
+    only at line ends, on points with no neighbour, and (hollow) in suspect years."""
+    years = [str(y) for y in years]
+    suspect, partial = {str(y) for y in suspect or ()}, {str(y) for y in partial or ()}
+    values = [v for line in lines for v in (_num((line.get("values") or {}).get(y)) for y in years) if v is not None]
+    width, left, right, top, bottom = 480, 52, 104, 10, 24
+    head = (f'<svg class="chart trend" viewBox="0 0 {width} {height}" role="img"><title>{esc(title)}</title>'
+            f'<desc>{esc(desc)}</desc>')
+    if not years or not values:
+        return head + "</svg>"
+    lo, hi = min(values), max(values)
+    if lo == hi:
+        lo, hi = lo - (abs(lo) * 0.1 or 1), hi + (abs(hi) * 0.1 or 1)
+        lo = 0 if min(values) >= 0 > lo else lo
+    ticks = _ticks(lo, hi)
+    lo, hi = min(lo, ticks[0]), max(hi, ticks[-1])
+    exact = max(abs(lo), abs(hi)) < 100_000  # per-pupil scales read better to the pound
+    plot_w, plot_h = width - left - right, height - top - bottom
+
+    def x_of(i):
+        return round(left + (i * plot_w / (len(years) - 1) if len(years) > 1 else plot_w / 2))
+
+    def y_of(v):
+        return round(top + (hi - v) / (hi - lo) * plot_h)
+
+    parts = [head]
+    for t in ticks:
+        parts.append(f'<path class="grid" d="M{left},{y_of(t)}H{width - right}"/>'
+                     f'<text class="tick" x="{left - 5}" y="{y_of(t) + 4}" text-anchor="end">{esc(_axis_text(t, unit, exact))}</text>')
+    if lo < 0 < hi:
+        parts.append(f'<path class="axis" d="M{left},{y_of(0)}H{width - right}"/>')
+    every = 1 if len(years) <= 5 else 2
+    for i, y in enumerate(years):
+        if (len(years) - 1 - i) % every == 0:
+            parts.append(f'<text class="tick" x="{x_of(i)}" y="{height - 6}" text-anchor="middle">{esc(y)}</text>')
+    groups, colour_of = {}, {}
+    for line in lines:
+        colour_of.setdefault(line.get("label", ""), len(colour_of))
+        groups.setdefault(line.get("basis"), []).append((colour_of[line.get("label", "")], line))
+    for basis, members in groups.items():
+        ends, body = [], []
+        for n, line in members:
+            colour = f"var({TREND_COLOURS[n % len(TREND_COLOURS)]})"
+            cls = f"s{n % len(TREND_COLOURS) + 1}"
+            inline = f' style="stroke:{colour}"' if n % len(TREND_COLOURS) > 1 else ""
+            pts = [(i, _num((line.get("values") or {}).get(y))) for i, y in enumerate(years)]
+            known = [i for i, v in pts if v is not None]
+            if not known:  # nothing to draw or label for this line
+                continue
+            solid, dashed = "", ""
+            for (i, a), (j, b) in zip(pts, pts[1:]):
+                if a is not None and b is not None:
+                    seg = f"M{x_of(i)},{y_of(a)}L{x_of(j)},{y_of(b)}"
+                    if years[j] in partial:
+                        dashed += seg
+                    else:
+                        solid += seg
+            solid = re.sub(r"L(\d+,\d+)M\1", r"L\1", solid)  # join touching segments into one run
+            stroke = f'fill="none"{" stroke-width=\"3\"" if line.get("emph") else ""}{inline}'
+            if solid:
+                dash = ' stroke-dasharray="6 4"' if line.get("style") == "dashed" else ""
+                body.append(f'<path class="line {cls}{" emph" if line.get("emph") else ""}" d="{solid}" {stroke}{dash}/>')
+            if dashed:
+                body.append(f'<path class="line {cls} partial" d="{dashed}" {stroke} stroke-dasharray="2 4"/>')
+            for i, v in pts:
+                if v is None:
+                    continue
+                alone = (i == 0 or pts[i - 1][1] is None) and (i == len(pts) - 1 or pts[i + 1][1] is None)
+                if years[i] in suspect:
+                    tip = f"{line.get('label', '')}, {years[i]}: {_axis_text(v, unit, exact)} (figure under review)"
+                    body.append(f'<circle class="pt hollow" cx="{x_of(i)}" cy="{y_of(v)}" r="4" stroke-width="2" '
+                                f'style="stroke:{colour};fill:var(--paper,#fff)"><title>{esc(tip)}</title></circle>')
+                elif alone or i == known[-1]:
+                    fill = f' style="fill:{colour}"' if inline else ""
+                    body.append(f'<circle class="dot {cls}" cx="{x_of(i)}" cy="{y_of(v)}" r="3"{fill}/>')
+            ends.append((y_of(pts[known[-1]][1]) + 4, x_of(known[-1]) + 7, line.get("label", "")))
+        label_ys = _spread([e[0] for e in ends], 13, top + 4, top + plot_h + 4)
+        body += [f'<text class="direct" x="{x}" y="{round(ly)}">{esc(text)}</text>' for (_, x, text), ly in zip(ends, label_ys)]
+        if basis in ("cash", "real"):
+            hidden = ' display="none"' if basis == "real" else ""
+            parts.append(f'<g data-basis="{basis}"{hidden}>{"".join(body)}</g>')
+        else:
+            parts.append("".join(body))
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+SPARK_MAX = 400
+
+
+def sparkline(values, *, width: int = 96, height: int = 24, label: str) -> str:
+    """A tiny trend line of [(year, value)] for a table cell: 400 bytes or less, labelled for screen readers.
+    None values leave a gap. The line takes the text colour; pages may restyle svg.spark path."""
+    pts = [(i, _num(v)) for i, (_, v) in enumerate(values or [])]
+    known = [v for _, v in pts if v is not None]
+    if not known:
+        return ""
+    lo, hi = min(known), max(known)
+    span = (hi - lo) or 1
+    n = max(len(pts) - 1, 1)
+    d, gap = "", True
+    for i, v in pts:
+        if v is None:
+            gap = True
+            continue
+        d += f"{'M' if gap else 'L'}{round(2 + i * (width - 4) / n)},{round(height - 2 - (v - lo) / span * (height - 4))}"
+        gap = False
+
+    def svg(text):
+        return (f'<svg class="spark" viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="{esc(text)}">'
+                f'<path d="{d}" fill="none" stroke="currentColor"/></svg>')
+
+    out, text = svg(label), str(label)
+    while len(out.encode("utf-8")) > SPARK_MAX and text:
+        text = text[:-8] if len(text) > 8 else ""
+        out = svg(text.rstrip() + "…" if text else "")
+    return out if len(out.encode("utf-8")) <= SPARK_MAX else ""

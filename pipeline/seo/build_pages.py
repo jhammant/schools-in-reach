@@ -284,6 +284,15 @@ def pupil_rows(s, census, characteristics, char_doc):
     return pupils, rows
 
 
+def money_url(path):
+    """A School Money page URL from a status.json path. Paths are clean (/school/<urn>-<slug>/) on BASE_MONEY;
+    bundles from before the move carried a /money prefix, which is dropped before the origin is added."""
+    path = str(path).removeprefix(BASE_MONEY)
+    if path == "/money" or path.startswith("/money/"):
+        path = path.removeprefix("/money") or "/"
+    return BASE_MONEY + path
+
+
 def table(headers, rows, caption="", css=""):
     if not rows:
         return ""
@@ -655,7 +664,7 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
                 council["money_path"] = f'{BASE_MONEY}/council/{slug(council["name"])}/'
             for item in items:
                 money = money_status.get(str(item["school"]["urn"]))
-                item["money"] = dict(money, path=BASE_MONEY + money["path"].removeprefix(BASE_MONEY)) if money and money.get("path") else None
+                item["money"] = dict(money, path=money_url(money["path"])) if money and money.get("path") else None
                 html = render_school(item, council, items, metadata, crosslinks)
                 if len(html.encode("utf-8")) > 26_000:
                     raise ValueError(f"School page exceeds ~25 KB: {item['path']}")
