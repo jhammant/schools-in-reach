@@ -6,6 +6,7 @@ deploy/railway/site/
 site_money/
 .site_money-build-*/
 deploy/money/site/
+deploy/money/site.tar.zst
 
 # Source PDFs, spreadsheets and scratch downloads (gigabytes; re-fetchable)
 pipeline/.cache/

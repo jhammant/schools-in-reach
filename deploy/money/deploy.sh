@@ -2,9 +2,9 @@
 # Build School Money (site_money/), check the payload, stage it into this build context and deploy
 # the "school-money" Railway service (money.schoolsinreach.com).
 #
-# --no-gitignore matters: .gitignore excludes site_money/ and this staging copy (generated from
-# open data the pipelines rebuild, deliberately kept out of git). Without the flag `railway up`
-# skips them and the image builds without a site: `"/site": not found`.
+# --no-gitignore matters: .gitignore excludes site_money/ and the site.tar.zst staged here (generated
+# from open data the pipelines rebuild, deliberately kept out of git). Without the flag `railway up`
+# skips the archive and the image builds without a site: `"site.tar.zst": not found`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
@@ -61,7 +61,15 @@ if problems:
     sys.exit("Deploy aborted: " + "; ".join(problems))
 print(f"School Money deploy check passed: {schools:,} school pages, sitemap, search index, robots and 404 present.")
 PY_CHECK
-rsync -a --delete "$REPO/site_money/" "$HERE/site/"
+# One long-window zstd archive (see the Dockerfile): loose files make an upload Railway refuses as too large.
+rm -rf "$HERE/site"
+tar cf - -C "$REPO/site_money" . | zstd -q -19 --long=30 -T0 -f -o "$HERE/site.tar.zst"
+SIZE=$(wc -c < "$HERE/site.tar.zst")
+if [ "$SIZE" -gt 140000000 ]; then
+  echo "Deploy aborted: site archive is $SIZE bytes; Railway refuses uploads much above 140 MB." >&2
+  exit 1
+fi
+echo "Site archive: $((SIZE / 1048576)) MB."
 # Name project, environment and service explicitly: the repo root is linked to another Railway
 # project, and a directory link can change under you.
 cd "$HERE" && railway up --detach --no-gitignore \

@@ -1336,8 +1336,13 @@ class DeployFilesTest(unittest.TestCase):
         self.assertIn("python3 -m pipeline.money.build_money", script)
         self.assertIn("--service school-money", script)
         self.assertIn("20_000", script)
+        self.assertIn("zstd -q -19 --long=30", script)
+        self.assertIn("140000000", script)
         docker = (ROOT / "deploy/money/Dockerfile").read_text(encoding="utf-8")
         self.assertIn("FROM nginx:1.27-alpine", docker)
+        # The archive is unpacked with the same window it was packed with, in a stage of its own.
+        self.assertIn("zstd -d --long=30", docker)
+        self.assertIn("COPY --from=site /site /usr/share/nginx/html", docker)
         www = (ROOT / "deploy/railway/deploy.sh").read_text(encoding="utf-8")
         self.assertNotIn("build_money", www.split("\n# School Money is a separate service")[-1].split("\n", 2)[-1])
         self.assertNotIn("Money payload", www)
