@@ -19,6 +19,16 @@ Besides the headline keys each row carries:
 - suspect: keys whose source values are known to be bad (fsm_pct above 100;
   a sixth-form column that is zero for every school).
 - trust_central_*: the trust's central-services return joined on company number.
+- other_dfe_grants: the container line that holds the teachers' pension and NI grants, which no
+  workbook separates out: CFR I18 additional grants up to 2024-25, I06 other government grants from
+  2025-26 (where those grants moved), AAR other DfE revenue grants. Never a pension-grant figure.
+
+Two keys are worked out from the lines so they mean what FBIT means in every year:
+- supply_staff is E02 + E26 (supply and agency supply teachers); the workbooks' column also adds E10
+  supply teacher insurance, which is written separately as supply_insurance (AAR: bae100, already
+  outside the academies' supply column).
+- CFR 2024-25 educational_supplies is E19 + (E20 - E20D) + E21: that year's column alone counts E20D
+  administration software, which 2025-26 and FBIT leave out. Changed rows list it in adjusted.
 
 Stdlib only; reuses pipeline/dfe/xlsx.py and pipeline/dfe/values.py.
 """
@@ -61,10 +71,14 @@ DETAIL_INCOME_KEYS = ["donations_revenue", "donations_capital", "facilities_inco
 COPY_KEYS = {"self_generated_income": "self_generated", "total_staff_costs": "total_staff",
              "teaching_staff_costs": "teaching_staff", "education_support_staff_costs": "education_support_staff"}
 TRUST_CENTRAL_KEYS = ["trust_central_spend_per_pupil", "trust_central_total_expenditure", "trust_central_pupils"]
+# Keys worked out from other keys or the lines after reading (see _line_fixes).
+LINE_DERIVED_KEYS = ["supply_insurance", "other_dfe_grants"]
+# E20 ICT learning resources is split into E20A-E20G from 2024-25; E20D is administration software.
+E20_CODES = ["E20A", "E20B", "E20C", "E20D", "E20E", "E20F", "E20G"]
 # Every money field a row carries; all None for federation members that did not supply a return.
 MONEY_KEYS = (["total_income", "total_expenditure", "in_year_balance", "revenue_reserve",
                "revenue_reserve_incl_trust_share"] + INCOME_KEYS + finance.EXPENDITURE_KEYS
-              + DETAIL_INCOME_KEYS + ["grant_funding_government"] + list(COPY_KEYS))
+              + DETAIL_INCOME_KEYS + ["grant_funding_government"] + list(COPY_KEYS) + LINE_DERIVED_KEYS)
 # Columns read for their own sake but not written out.
 INTERNAL_KEYS = ["e30", "trust_reserve_share", "whole_trust_reserve_share", "date_joined", "facilities_other_income"]
 EXCEL_EPOCH_ORDINAL = 693594  # date(1899, 12, 30).toordinal(): Excel serial day 0
@@ -74,7 +88,8 @@ KNOWN_ISSUES = {
     ("AAR", "2022/23"): "fsm_pct is suspect for the whole workbook: academy median 16.3% against 20.3% (2021/22) and "
                         "22.1% (2023/24), with values up to 646.2; rows above 100 carry 'fsm_pct' in suspect",
     ("CFR", "2025-26"): "I18 additional grants line removed; those grants now appear in I06 Other government grants, "
-                        "so cfr_additional_grants_i18 is null and I06 is not comparable with earlier years",
+                        "so cfr_additional_grants_i18 is null, other_dfe_grants is I06, and I06 is not comparable "
+                        "with earlier years",
 }
 
 
@@ -773,6 +788,10 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
     out: list[dict] = []
     skipped = 0
     harmonise_e30 = source == "CFR" and "e30" in index and "e30" not in used.get("total_income", "").lower()
+    # Only a workbook that splits out E20D but still counts it in its column ('(E19:E21)', i.e. 2024-25).
+    fix_e20d = source == "CFR" and "E20D" in lines_index and "E20E" not in used.get("educational_supplies", "")
+    i18_mapped = "cfr_additional_grants_i18" in index
+    fix_counts: dict[str, int] = {}
     for row in _chain(rest, rows):
         get = reader(row)
         urn = _int_str(get("urn"))
@@ -850,6 +869,7 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
             # Government-only grants need every operand; an absent column or a suppressed cell leaves it unknown.
             parts = (item["grant_funding"], item["non_government_grants"], item["income_from_academies"])
             item["grant_funding_government"] = parts[0] - parts[1] - parts[2] if None not in parts else None
+        _line_fixes(item, lines, derived, adjusted, i18_mapped=i18_mapped, fix_e20d=fix_e20d, counts=fix_counts)
         item["fsm_pct"] = num(get("fsm_pct"))
         if item["fsm_pct"] is not None and item["fsm_pct"] > 100:
             suspect.append("fsm_pct")
@@ -884,6 +904,9 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
             warnings.append(f"{key} harmonised by subtracting E30 direct revenue financing in {count} rows (later workbooks already exclude it)")
         elif key == "facilities_income":
             warnings.append(f"facilities_income derived as lettings + other facilities income in {count} rows (no total column)")
+        elif key == "educational_supplies":
+            warnings.append(f"educational_supplies recomputed as E19 + (E20 - E20D) + E21 in {count} rows: this workbook's "
+                            "column counts E20D administration software, which 2025-26 and FBIT leave out ('adjusted')")
         else:
             warnings.append(f"{key} derived in {count} rows")
     suspect_fsm = sum(1 for r in out if "fsm_pct" in r.get("suspect", []))
@@ -904,10 +927,94 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
                         "comparable with 2024-25's 'RR + share of CS RR' and revenue_reserve_incl_trust_share is left null")
     if source == "CFR" and "lead_laestab" not in index:
         warnings.append("no 'Lead school in federation' column; lead_laestab only known where the federation column holds a LAEstab")
+    staff_codes, insurance_code = SUPPLY_LINES[source]
+    if insurance_code in lines_index:
+        info["mapping"]["supply_insurance"] = f"= line {insurance_code}"
+    info["mapping"]["supply_staff"] = f"= lines {' + '.join(staff_codes)} (column {info['mapping'].get('supply_staff', 'absent')})"
+    warnings.append(f"supply_staff is {' + '.join(staff_codes)} (FBIT's supply staff); the workbook column also includes "
+                    f"{insurance_code} supply teacher insurance, written separately as supply_insurance")
+    if fix_counts.get("supply_unknown"):
+        warnings.append(f"supply_staff null in {fix_counts['supply_unknown']} workbook rows: no supply lines and no "
+                        f"{insurance_code} to take out of the column")
+    container = ("aar_other_dfe_revenue_grants" if source == "AAR"
+                 else "cfr_additional_grants_i18" if i18_mapped else "line I06" if period_end >= "2026-03" else None)
+    if container:
+        info["mapping"]["other_dfe_grants"] = f"= {container}"
+        warnings.append(f"other_dfe_grants = {container}: a container line that includes the teachers' pension and "
+                        "National Insurance grants, which cannot be separated out")
     if (source, year) in KNOWN_ISSUES:
         warnings.append(KNOWN_ISSUES[(source, year)])
     info["rows"] = len(out)
     return _ordered(out), info
+
+
+def _sum_known(values: list):
+    """Sum of values, or None when there are none or any is unknown (a blank or suppressed cell is not 0)."""
+    return sum(values) if values and None not in values else None
+
+
+# Supply staff by FBIT's definition, and supply teacher insurance, as line codes per source.
+SUPPLY_LINES = {"CFR": (["E02", "E26"], "E10"), "AAR": (["bae020", "bae240"], "bae100")}
+
+
+def supply_split(column, lines: dict, source: str) -> tuple:
+    """(supply_staff, supply_insurance) from the lines: CFR E02 + E26 and E10; AAR bae020 + bae240 and bae100.
+
+    Both sectors' workbook columns add the insurance in. Without the staff lines the column less the
+    insurance is used; when that is unknown too, supply_staff is None rather than a mixed figure.
+    """
+    staff_codes, insurance_code = SUPPLY_LINES[source]
+    insurance = lines.get(insurance_code)
+    staff = _sum_known([lines.get(code) for code in staff_codes])
+    if staff is None and column is not None and insurance is not None:
+        staff = column - insurance
+    return staff, insurance
+
+
+def cfr_educational_supplies(lines: dict):
+    """CFR learning resources on the 2025-26 and FBIT basis: E19 + (E20 - E20D) + E21, or None if a line is unknown.
+
+    E20 is the E20A-E20G total when the workbook only has the parts.
+    """
+    e20 = lines.get("E20") if "E20" in lines else _sum_known([lines.get(c) for c in E20_CODES if c in lines])
+    parts = [lines.get("E19"), e20, lines.get("E20D"), lines.get("E21")]
+    if None in parts:
+        return None
+    return parts[0] + parts[1] - parts[2] + parts[3]
+
+
+def other_dfe_grants(item: dict, lines: dict, i18_mapped: bool):
+    """The container line holding the pension and NI grants (they cannot be separated out).
+
+    CFR: I18 additional grants while the workbook has that line, then I06 other government grants from
+    2025-26, where those grants moved. AAR: other DfE revenue grants.
+    """
+    if item["source"] == "AAR":
+        return item.get("aar_other_dfe_revenue_grants")
+    if i18_mapped:
+        return item.get("cfr_additional_grants_i18")
+    return lines.get("I06") if item["period_end"] >= "2026-03" else None
+
+
+def _line_fixes(item: dict, lines: dict, derived: list, adjusted: list, *, i18_mapped: bool, fix_e20d: bool,
+                counts: dict) -> None:
+    """Supply staff, supply insurance, other_dfe_grants and (CFR 2024-25) educational supplies from the lines."""
+    if item["did_not_supply"]:
+        return
+    staff, insurance = supply_split(item["supply_staff"], lines, item["source"])
+    if staff is None and item["supply_staff"] is not None:
+        counts["supply_unknown"] = counts.get("supply_unknown", 0) + 1
+    item["supply_staff"], item["supply_insurance"] = staff, insurance
+    item["other_dfe_grants"] = other_dfe_grants(item, lines, i18_mapped)
+    if fix_e20d and lines.get("E20D"):
+        fixed = cfr_educational_supplies(lines)
+        if fixed is None and item["educational_supplies"] is not None:
+            fixed = item["educational_supplies"] - lines["E20D"]
+        if fixed is not None:
+            item["educational_supplies"] = fixed
+            derived.append("educational_supplies")
+            adjusted.append("educational_supplies")
+            counts["e20d"] = counts.get("e20d", 0) + 1
 
 
 def _null_all_zero_column(rows: list[dict], key: str, present: bool, warnings: list[str]) -> None:
@@ -961,7 +1068,7 @@ def _merge_academies(rows: list[dict]) -> list[dict]:
 
 NEW_KEYS = ["ehcp_pct", "sixth_form_pupils", "self_generated_income"] + DETAIL_INCOME_KEYS + [
     "grant_funding_government", "total_staff_costs", "teaching_staff_costs", "education_support_staff_costs",
-    "company_number"] + TRUST_CENTRAL_KEYS
+    "company_number"] + TRUST_CENTRAL_KEYS + LINE_DERIVED_KEYS
 ROW_KEYS = ["urn", "year", "period_end", "source", "la", "laestab", "name", "phase", "period_months", "pupils",
             "teachers_fte", "total_income", "total_expenditure", "in_year_balance", "revenue_reserve",
             "revenue_reserve_incl_trust_share", "trust", "trust_type", "did_not_supply", "federated", "lead_laestab",
@@ -1008,6 +1115,10 @@ def _money_bn(value) -> str:
     return f"£{value / 1e9:.2f}bn"
 
 
+def _money_m(value) -> str:
+    return f"£{value / 1e6:,.1f}m"
+
+
 def _md(text: str) -> str:
     return "`" + text.replace("|", "\\|") + "`"
 
@@ -1049,7 +1160,8 @@ def report(rows: list[dict], infos: list[dict]) -> str:
         if info["warnings"]:
             lines += ["Warnings:", ""] + [f"- {w}" for w in info["warnings"]] + [""]
         lines += ["| key | source column |", "|---|---|"]
-        keys = [k for k in ALIASES[info["source"]]] + [k for k in COPY_KEYS if k not in ALIASES[info["source"]]]
+        keys = ([k for k in ALIASES[info["source"]]] + [k for k in COPY_KEYS if k not in ALIASES[info["source"]]]
+                + LINE_DERIVED_KEYS)
         for key in keys:
             if key in INTERNAL_KEYS and key not in info["mapping"]:
                 continue
@@ -1078,6 +1190,22 @@ def report(rows: list[dict], infos: list[dict]) -> str:
         lines.append(f"| {key} | {all_counts[key]} |")
     lines.append(f"| lines (non-empty) | {sum(1 for r in rows if r.get('lines'))} |")
     lines.append("")
+    lines += ["## Supply staff, learning resources and other DfE grants", "",
+              "`supply_staff` is supply plus agency supply teachers (CFR E02 + E26, AAR bae020 + bae240), as FBIT counts "
+              "them; both sectors' workbook columns also add supply teacher insurance, which is now `supply_insurance` "
+              "(CFR E10, AAR bae100). CFR 2024-25 `educational_supplies` leaves out E20D administration software, as "
+              "2025-26 and FBIT do. `other_dfe_grants` is the container line holding the teachers' pension and NI "
+              "grants, which no workbook separates out (CFR I18 to 2024-25, I06 in 2025-26; AAR other DfE revenue grants).", "",
+              "| workbook | supply_staff | supply_insurance | educational_supplies adjusted | E20D taken out | "
+              "other_dfe_grants rows | other_dfe_grants |", "|---|---:|---:|---:|---:|---:|---:|"]
+    for info in sorted(infos, key=lambda i: i["file"]):
+        part = by_file.get((info["source"], info["year"]), [])
+        moved = [r for r in part if "educational_supplies" in r.get("adjusted", [])]
+        grants = [r["other_dfe_grants"] for r in part if r.get("other_dfe_grants") is not None]
+        lines.append(f"| {info['file']} | {_money_m(sum(r.get('supply_staff') or 0 for r in part))} "
+                     f"| {_money_m(sum(r.get('supply_insurance') or 0 for r in part))} | {len(moved)} "
+                     f"| {_money_m(sum(r['lines'].get('E20D') or 0 for r in moved))} | {len(grants)} | {_money_m(sum(grants))} |")
+    lines.append("")
     flag_counts: dict[str, dict[str, int]] = {"adjusted": {}, "suspect": {}}
     for row in rows:
         for field in flag_counts:
@@ -1092,10 +1220,17 @@ def report(rows: list[dict], infos: list[dict]) -> str:
 
 
 def write_jsonl(rows: list[dict], path: Path) -> None:
+    """Write through a temp file in the same directory, so readers never see a half-written file."""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        for row in rows:
-            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            for row in rows:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def main(argv=None) -> int:
