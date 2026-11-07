@@ -1,4 +1,4 @@
-"""Presentation decks (unit C2): one noindex shell page at /deck/ whose slides are built in the browser.
+"""Presentation decks (units C2, D1): one noindex shell page at /deck/ whose slides are built in the browser.
 
 Writes: <out>/deck/index.html through env['write'] (nothing else; site.asset_files() copies
 assets/deck.js and assets/deck.css to /assets/).
@@ -6,9 +6,15 @@ Reads: data/ifs_context.json (IFS framings, questions to ask and context lines, 
 numbers) and data/la_dsg.json (the statutory override note for council high-needs balances), both next
 to this file, falling back to the real repository like areas.py does.
 
-assets/deck.js reads the query (?urn=&view=school|ptfa, ?urns=a,b,c&view=compare, ?area=<id>), fetches
-/data/s, /data/sx and /data/a, and builds the slides, the print layout and the PowerPoint file from one
-model. This module only supplies the static context it needs, as an escaped JSON block.
+assets/deck.js reads the query and builds one of:
+  ?urn=<urn>&view=governors  the governors' finance committee pack (view=school, or no view, is the same pack)
+  ?urn=<urn>&view=ptfa       the PTFA committee pack
+  ?urn=<urn>&view=review     the school financial review (benchmarking) pack
+  ?urns=a,b,c&view=compare   a compare deck;  ?area=<id>  a council or constituency deck
+It fetches /data/s (with its optional 'nearby' block), /data/sx and /data/a, and builds the slides, the print
+layout and the PowerPoint file from one model. Packs carry an editable meeting line, a notes box on every
+slide and an actions table, kept in the browser's localStorage per school and pack. This module only
+supplies the static context deck.js needs, as an escaped JSON block, and the links school pages show.
 """
 
 from __future__ import annotations
@@ -114,8 +120,8 @@ def _toolbar() -> str:
 
 
 def _body(context: dict) -> str:
-    intro = ("Presentations are built in your browser from the published figures for one school, its parents' "
-             "association, a set of schools side by side, or a council or constituency.")
+    intro = ("Presentations are built in your browser from the published figures: a governors' finance pack, a PTFA "
+             "pack or a school review pack for one school, a set of schools side by side, or a council or constituency.")
     wait = "Slides are built in your browser. If they don't appear, every figure is on the plain pages: "
     nojs = "JavaScript is off, so the slides can't be built here. You can still read every figure on the plain pages: "
     links = '<a href="/search/">search for a school</a> or <a href="/council/">browse councils</a>.'
@@ -151,9 +157,10 @@ def write_pages(env, *, context: dict | None = None) -> list[tuple[str, bool]]:
 
 
 def deck_links(urn) -> str:
-    """Two links for a school page: its school presentation and its PTFA presentation."""
+    """Three links for a school page, in this order: governors' finance pack, PTFA pack, school review pack."""
     u = quote(str(urn), safe="")
-    school = f"{PATH}?urn={u}&view=school"
-    ptfa = f"{PATH}?urn={u}&view=ptfa"
-    return (f'<p class="deck-links"><a href="{site.esc(school)}">School presentation</a> · '
-            f'<a href="{site.esc(ptfa)}">PTFA presentation</a></p>')
+    # Constant link text (no characters that need escaping); the URN only appears in the escaped hrefs.
+    links = [("governors", "Governors' finance pack"), ("ptfa", "PTFA pack"), ("review", "School review pack")]
+    return ('<p class="deck-links">'
+            + " · ".join(f'<a href="{site.esc(f"{PATH}?urn={u}&view={view}")}">{text}</a>' for view, text in links)
+            + "</p>")

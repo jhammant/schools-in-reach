@@ -143,14 +143,17 @@ class WritePagesTest(unittest.TestCase):
 
 
 class DeckLinksTest(unittest.TestCase):
-    def test_both_views_for_a_urn(self):
+    def test_three_packs_in_order_with_their_names(self):
         # Act
         html = deck.deck_links("130932")
+        links = re.findall(r'<a href="([^"]*)">([^<]*)</a>', html)
         # Assert
-        self.assertIn('href="/deck/?urn=130932&amp;view=school"', html)
-        self.assertIn('href="/deck/?urn=130932&amp;view=ptfa"', html)
-        self.assertIn("School presentation", html)
-        self.assertIn("PTFA presentation", html)
+        self.assertTrue(html.startswith('<p class="deck-links">') and html.endswith("</p>"))
+        self.assertEqual(links, [
+            ("/deck/?urn=130932&amp;view=governors", "Governors' finance pack"),
+            ("/deck/?urn=130932&amp;view=ptfa", "PTFA pack"),
+            ("/deck/?urn=130932&amp;view=review", "School review pack"),
+        ])
 
     def test_escapes_a_hostile_urn(self):
         # Act
@@ -158,10 +161,23 @@ class DeckLinksTest(unittest.TestCase):
         # Assert
         hrefs = re.findall(r'href="([^"]*)"', html)
         self.assertNotIn("<script>", html)
-        self.assertEqual(len(hrefs), 2)
-        for href in hrefs:
+        self.assertEqual(len(hrefs), 3)
+        for href, view in zip(hrefs, ("governors", "ptfa", "review")):
             self.assertTrue(href.startswith("/deck/?urn=1%22%3E%3Cscript%3E"), href)
+            self.assertTrue(href.endswith("&amp;view=" + view), href)
             self.assertNotRegex(href, r"[<>\"]")
+
+    def test_page_names_the_three_packs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Arrange
+            env, _ = fake_env(tmp)
+            # Act
+            deck.write_pages(env)
+            html = (Path(tmp) / "deck" / "index.html").read_text(encoding="utf-8")
+        # Assert
+        lead = re.search(r'<p class="lead deck-intro">(.*?)</p>', html, re.S).group(1)
+        for name in ("governors&#x27; finance pack", "PTFA pack", "school review pack"):
+            self.assertIn(name, lead)
 
 
 class DeckCssTest(unittest.TestCase):
@@ -202,6 +218,39 @@ class DeckCssTest(unittest.TestCase):
         # Assert
         self.assertIn("aspect-ratio: 16 / 9", self.css)
         self.assertIn("prefers-reduced-motion", self.css)
+
+    def test_print_page_is_a4_landscape(self):
+        # Act
+        rule = re.search(r"@page\s*{([^}]*)}", self.print).group(1)
+        # Assert
+        self.assertRegex(rule, r"size:\s*A4 landscape;")
+
+    def test_each_pack_has_one_accent_on_the_deck_container(self):
+        # Act
+        screen = self.css[: self.css.index("@media print")]
+        accents = {pack: re.search(r"\.deck\.pack-" + pack + r"\s*{([^}]*)}", screen).group(1) for pack in ("governors", "ptfa", "review")}
+        # Assert
+        for pack, body in accents.items():
+            self.assertRegex(body, r"--pack:\s*#[0-9a-f]{6};", pack)
+            self.assertIn("--pack-soft:", body)
+        colours = {re.search(r"--pack:\s*(#[0-9a-f]{6})", body).group(1) for body in accents.values()}
+        self.assertEqual(len(colours), 3, "three different accents")
+        self.assertIn('.deck[class*="pack-"] .slide', screen)
+        # The packs print in their light colours too.
+        for pack in accents:
+            self.assertRegex(self.print, r"\.deck\.pack-" + pack + r"\s*{[^}]*--pack:")
+
+    def test_ratings_show_icon_and_word_and_status_colours_keep_their_meaning(self):
+        # Assert: one rule per tone, each tied to its status token
+        for tone in ("critical", "serious", "warning", "good", "plenty"):
+            self.assertRegex(self.css, r"\.rag\.tone-" + tone + r"\s*{[^}]*border-color:\s*var\(--" + tone + r"\)")
+            self.assertRegex(self.css, r"\.rag\.tone-" + tone + r" \.rag-icon\s*{\s*color:\s*var\(--" + tone + r"\)")
+
+    def test_editable_fields_look_editable_on_screen_and_print_plain(self):
+        # Assert
+        self.assertIn(".slide .slide-notes:empty::before", self.css)
+        self.assertRegex(self.print, r"\.slide \[contenteditable\]\s*{[^}]*outline:\s*0")
+        self.assertRegex(self.print, r"\.slide \.slide-notes:empty, \.action-tools, \.action-bar, \.deck-row-btn\s*{\s*display:\s*none")
 
 
 class SourceFilesTest(unittest.TestCase):
