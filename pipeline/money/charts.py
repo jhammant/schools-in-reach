@@ -7,7 +7,6 @@ beside their icon and label, never alone.
 
 from __future__ import annotations
 
-import re
 from html import escape
 
 STATUS_ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves"]
@@ -274,6 +273,19 @@ def _axis_text(value: float, unit: str, exact: bool = False) -> str:
     return money(value)
 
 
+def _path_data(runs: list[list[tuple[int, int]]]) -> str:
+    """SVG path data for runs of whole-pixel points: an absolute move to each run's start, then
+    relative steps (h when level), which keeps several charts on one page within budget."""
+    out = []
+    for run in runs:
+        (x, y), steps = run[0], [f"M{run[0][0]},{run[0][1]}"]
+        for nx, ny in run[1:]:
+            steps.append(f"h{nx - x}" if ny == y else f"l{nx - x},{ny - y}")
+            x, y = nx, ny
+        out.append("".join(steps))
+    return "".join(out)
+
+
 def _spread(ys: list[float], gap: float, top: float, bottom: float) -> list[float]:
     """Label y positions in the given order, nudged apart so no two sit closer than gap."""
     order = sorted(range(len(ys)), key=lambda i: ys[i])
@@ -294,8 +306,9 @@ def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title:
     lines: [{label, values {year: number|None}, style solid|dashed, emph, basis cash|real|None}].
     None leaves a gap; suspect years get hollow markers; segments into partial years are dashed.
     Lines with a basis sit in <g data-basis> groups (real hidden by default) for trend.js to switch.
-    Kept lean for pages with several charts: whole-pixel coordinates, colours by class (app.css styles
-    s1 and s2; later series carry their colour inline), one colour per label in both bases, and markers
+    Kept lean for pages with several charts: whole-pixel coordinates with relative path steps, one grid
+    path and grouped tick labels, line fill and colours by class (app.css's .chart .line sets fill:none and
+    styles s1 and s2; later series carry their colour inline), one colour per label in both bases, and markers
     only at line ends, on points with no neighbour, and (hollow) in suspect years."""
     years = [str(y) for y in years]
     suspect, partial = {str(y) for y in suspect or ()}, {str(y) for y in partial or ()}
@@ -320,16 +333,15 @@ def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title:
     def y_of(v):
         return round(top + (hi - v) / (hi - lo) * plot_h)
 
-    parts = [head]
-    for t in ticks:
-        parts.append(f'<path class="grid" d="M{left},{y_of(t)}H{width - right}"/>'
-                     f'<text class="tick" x="{left - 5}" y="{y_of(t) + 4}" text-anchor="end">{esc(_axis_text(t, unit, exact))}</text>')
+    parts = [head, f'<path class="grid" d="{"".join(f"M{left},{y_of(t)}H{width - right}" for t in ticks)}"/>',
+             '<g class="tick" text-anchor="end">' + "".join(
+                 f'<text x="{left - 5}" y="{y_of(t) + 4}">{esc(_axis_text(t, unit, exact))}</text>' for t in ticks) + "</g>"]
     if lo < 0 < hi:
         parts.append(f'<path class="axis" d="M{left},{y_of(0)}H{width - right}"/>')
     every = 1 if len(years) <= 5 else 2
-    for i, y in enumerate(years):
-        if (len(years) - 1 - i) % every == 0:
-            parts.append(f'<text class="tick" x="{x_of(i)}" y="{height - 6}" text-anchor="middle">{esc(y)}</text>')
+    parts.append('<g class="tick" text-anchor="middle">' + "".join(
+        f'<text x="{x_of(i)}" y="{height - 6}">{esc(y)}</text>'
+        for i, y in enumerate(years) if (len(years) - 1 - i) % every == 0) + "</g>")
     groups, colour_of = {}, {}
     for line in lines:
         colour_of.setdefault(line.get("label", ""), len(colour_of))
@@ -344,21 +356,22 @@ def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title:
             known = [i for i, v in pts if v is not None]
             if not known:  # nothing to draw or label for this line
                 continue
-            solid, dashed = "", ""
+            runs = {False: [], True: []}  # runs of points, solid and into partial years
             for (i, a), (j, b) in zip(pts, pts[1:]):
                 if a is not None and b is not None:
-                    seg = f"M{x_of(i)},{y_of(a)}L{x_of(j)},{y_of(b)}"
-                    if years[j] in partial:
-                        dashed += seg
+                    start, end = (x_of(i), y_of(a)), (x_of(j), y_of(b))
+                    run = runs[years[j] in partial]
+                    if run and run[-1][-1] == start:  # join touching segments into one run
+                        run[-1].append(end)
                     else:
-                        solid += seg
-            solid = re.sub(r"L(\d+,\d+)M\1", r"L\1", solid)  # join touching segments into one run
-            stroke = f'fill="none"{" stroke-width=\"3\"" if line.get("emph") else ""}{inline}'
+                        run.append([start, end])
+            solid, dashed = _path_data(runs[False]), _path_data(runs[True])
+            stroke = f'{" stroke-width=\"3\"" if line.get("emph") else ""}{inline}'
             if solid:
                 dash = ' stroke-dasharray="6 4"' if line.get("style") == "dashed" else ""
-                body.append(f'<path class="line {cls}{" emph" if line.get("emph") else ""}" d="{solid}" {stroke}{dash}/>')
+                body.append(f'<path class="line {cls}{" emph" if line.get("emph") else ""}" d="{solid}"{stroke}{dash}/>')
             if dashed:
-                body.append(f'<path class="line {cls} partial" d="{dashed}" {stroke} stroke-dasharray="2 4"/>')
+                body.append(f'<path class="line {cls} partial" d="{dashed}"{stroke} stroke-dasharray="2 4"/>')
             for i, v in pts:
                 if v is None:
                     continue

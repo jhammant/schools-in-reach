@@ -194,6 +194,25 @@ class TrendChartTest(unittest.TestCase):
         self.assertIn("stroke-dasharray", partial.attrib)
         self.assertEqual(partial.attrib["d"].count("M"), 1)
 
+    def test_path_steps_are_relative_and_level_steps_use_h(self):
+        # Arrange: a three-point run, then a second run after a gap.
+        runs = [[(52, 142), (98, 144), (145, 144)], [(237, 10), (283, 22)]]
+        # Act
+        d = charts._path_data(runs)
+        # Assert
+        self.assertEqual(d, "M52,142l46,2h47M237,10l46,12")
+
+    def test_touching_partial_segments_join_into_one_dashed_run(self):
+        # Arrange: a full line whose last two years are partial.
+        lines = [{"label": "This school", "values": {y: 5_000 + 100 * i for i, y in enumerate(YEARS)}, "basis": "cash"}]
+        # Act
+        root = svg_root(trend(lines=lines, partial=YEARS[-2:]))
+        cash = root.find(".//{*}g[@data-basis='cash']")
+        partial = [p for p in cash.findall("{*}path") if "partial" in p.attrib["class"].split()]
+        # Assert: 2023-24 to 2024-25 continues the run, so the dash pattern carries through the joint.
+        self.assertEqual(len(partial), 1)
+        self.assertEqual(partial[0].attrib["d"].count("M"), 1)
+
     def test_every_line_is_labelled_at_its_end(self):
         # Act
         root = svg_root(trend())
