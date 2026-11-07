@@ -341,6 +341,21 @@ def dsg_year(year, entry):
     return f"{year}, provisional" if isinstance(entry, dict) and entry.get("provisional") else str(year)
 
 
+def provisional_note(dsg, years):
+    """' 2025-26 is provisional, before audit.' for the years la_dsg.json marks provisional, so a DSG chart
+    says so beside itself (C8); '' when none is."""
+    found = [y for y in years if isinstance((dsg or {}).get(y), dict) and dsg[y].get("provisional")]
+    return f" {', '.join(found)} {'is' if len(found) == 1 else 'are'} provisional, before audit." if found else ""
+
+
+def dsg_table_note(per_pupil_only=False):
+    """C8 for a table of DSG figures: what the per-pupil figure divides by. A paged table repeats it on
+    every continuation page (build_money.area_result_pages), where the intro that also says it is absent."""
+    what = f"{DSG_NAME} per pupil" if per_pupil_only else f"{DSG_NAME}: the per-pupil figure"
+    return (f'<p class="muted small">{esc(what)} divides by the {esc(DSG_DENOMINATOR)}; its year, and '
+            '"provisional" where the DfE marks it, is beside each figure.</p>')
+
+
 def dsg_figure(entry, year, *, per_pupil=False):
     """A DSG figure with its year (and 'provisional') beside it; per_pupil shows the per-pupil value alone."""
     if not isinstance(entry, dict) or _num(entry.get("balance")) is None:
@@ -709,11 +724,8 @@ def measure_cards(kind, name, area, others, ctx, brief):
         total_svg = trend_svg(total_lines, years=dyears, title=f"{title}, {name}", desc=describe(total_lines, "£"))
         if pp_svg:
             body = f'<div data-unit="pp">{pp_svg}</div>' + (f'<div data-unit="total" hidden>{total_svg}</div>' if total_svg else "")
-            provisional = [y for y in dyears if (area["dsg"].get(y) or {}).get("provisional")]
             note = (DSG_NOTE if not brief else "All four blocks; negative is a deficit carried forward.")
-            note += f" Per pupil divides by the {dsg_denominator(name)}."
-            if provisional:
-                note += f" {', '.join(provisional)} {'is' if len(provisional) == 1 else 'are'} provisional, before audit."
+            note += f" Per pupil divides by the {dsg_denominator(name)}." + provisional_note(area["dsg"], dyears)
             if not brief:
                 note += " A school whose return for the year is not yet published counts its previous year's roll."
             cards.append(card(title, body, esc(note), unit_toggle() if total_svg else ""))
@@ -1146,7 +1158,7 @@ def render_council_league(council_areas, ctx):
             "description": shorten("Every council in England compared per pupil: schools in deficit, deficits, reserves, "
                                    "funding, spending and Dedicated Schools Grant balances, from DfE returns.", 160),
             "intro": intro, "table": {"headers": COUNCIL_HEADERS, "rows": rows, "caption": "Councils in England",
-                                      "filters": ""} if rows else None,
+                                      "filters": "", "note": dsg_table_note(per_pupil_only=True)} if rows else None,
             "outro": outro, "indexable": bool(rows)}
 
 
@@ -1306,7 +1318,8 @@ def render_debts(areas_doc_, ctx):
     dyears = sorted(y for y in dsg if y >= FROM_YEAR)
     grid += chart_card(f"Councils' {DSG_NAME} per pupil, England",
                        [{"label": "England", "values": dsg_values(england, dyears, "per_pupil"), "emph": True}], dyears,
-                       note=esc(f"{DSG_NOTE} Per pupil divides by the pupils at councils' schools on this site that year."))
+                       note=esc(f"{DSG_NOTE} Per pupil divides by the pupils at councils' schools on this site that year."
+                                + provisional_note(dsg, dyears)))
     framing = (((ctx or {}).get("ifs") or {}).get("framings") or {}).get("why_schools_go_into_deficit") or {}
     why = f'<p>{ifs_text(framing["text"])}{cite(", ".join(str(p) for p in framing.get("pages") or []))}</p>' if framing.get("text") else f"<p>{esc(REASONS)}</p>"
     dsg_pp = ifs_line(ctx, "council", "high_needs_deficits")
@@ -1328,7 +1341,7 @@ def render_debts(areas_doc_, ctx):
             "description": shorten("School deficits by council and year, academies apart, and councils' Dedicated Schools "
                                    "Grant deficits with the statutory override and the High Needs Stability Grant.", 160),
             "intro": intro, "table": {"headers": headers, "rows": rows, "caption": "School deficits and DSG balances by council",
-                                      "filters": ""} if rows else None,
+                                      "filters": "", "note": dsg_table_note()} if rows else None,
             "outro": outro, "indexable": bool(rows)}
 
 

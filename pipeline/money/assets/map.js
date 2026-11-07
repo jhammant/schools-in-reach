@@ -392,15 +392,20 @@
     var d = obj(s), f = obj(fallback), key = ORDER.indexOf(d.status) >= 0 ? d.status : null;
     var urn = d.urn != null ? String(d.urn) : (f.urn != null ? String(f.urn) : null), name = d.name || f.name || "";
     var pupils = isNum(d.pupils) ? d.pupils : null;
-    function pp(total, given) { return isNum(given) ? given : (isNum(total) && pupils ? Math.round(total / pupils) : null); }
+    // A document carrying the per-pupil field has settled it: null means withheld (a federation's money against one
+    // school's pupils), so only an older document without the field is filled in from total ÷ pupils.
+    function pp(total, field) {
+      if (Object.prototype.hasOwnProperty.call(d, field)) return isNum(d[field]) ? d[field] : null;
+      return isNum(total) && pupils ? Math.round(total / pupils) : null;
+    }
     return {
       urn: urn, name: name || (urn ? "School " + urn : "This school"),
       path: d.path || (urn ? schoolPath(urn, name) : null),
       status: key, label: key ? LABELS[key] : null, reason: typeof d.reason === "string" ? d.reason : null,
       year: typeof d.year === "string" ? d.year : null,
       source: d.source || (d.academy ? "DfE AAR return" : "DfE CFR return"),
-      reserve: isNum(d.reserve) ? d.reserve : null, reservePp: pp(d.reserve, d.reserve_pp),
-      income: isNum(d.income) ? d.income : null, incomePp: pp(d.income, d.income_pp),
+      reserve: isNum(d.reserve) ? d.reserve : null, reservePp: pp(d.reserve, "reserve_pp"),
+      income: isNum(d.income) ? d.income : null, incomePp: pp(d.income, "income_pp"),
       pupils: pupils
     };
   }

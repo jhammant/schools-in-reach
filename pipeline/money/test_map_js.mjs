@@ -327,6 +327,21 @@ test("school card without figures says so and never shows £0", () => {
   assert.equal(failed.pin.id, "999002");
 });
 
+test("school card keeps withheld per-pupil figures withheld and fills in only missing ones", () => {
+  // Arrange: a federation lead's money against one school's pupils, and an older document without the fields
+  const withheld = { urn: 100001, name: "Federation Lead", year: "2024-25", pupils: 300, reserve: 100000, reserve_pp: null,
+    income: 2000000, income_pp: null };
+  const older = { urn: 100002, name: "Older Document", year: "2024-25", pupils: 400, reserve: 100000, income: 2000000 };
+  // Act
+  const card = keep(MM.schoolCardModel(withheld, CTX));
+  const filled = keep(MM.schoolCardModel(older, CTX));
+  // Assert
+  assert.equal(line(card, "Reserve per pupil, 2024-25").text, "Not published for this year");
+  assert.equal(line(card, "Income per pupil, 2024-25").text, "Not published for this year");
+  assert.equal(line(filled, "Reserve per pupil, 2024-25").text, `+£250 per pupil (total ${MA.fmtMoney(100000, true)})`);
+  assert.equal(line(filled, "Income per pupil, 2024-25").text, `£5,000 per pupil (total ${MA.fmtMoney(2000000)})`);
+});
+
 test("the pin payload is exactly {type, id, name, p}", () => {
   // Arrange / Act
   const school = keep(MM.schoolCardModel(goldS(), CTX)).pin;

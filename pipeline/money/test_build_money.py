@@ -1991,6 +1991,20 @@ class FixWaveOneTest(unittest.TestCase):
         self.assertEqual(entries["100002"]["federation"], "New Wave Federation")
         self.assertNotIn("federation", entries["100001"])
 
+    def test_combined_deficits_per_pupil_leave_a_federations_money_and_roll_out(self):
+        # Arrange: two schools in deficit; the federation lead's pupils do not match its federation-wide money.
+        schools = [school(100001, "Own School"), school(100002, "Federation Lead", federation="New Wave Federation")]
+        rows = full_rows("100001", reserve=-300_000) + full_rows("100002", reserve=-900_000, pupils=100,
+                                                                 federated="Lead school", suspect=["pupils"])
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows)
+        _, items, _ = build_money.build_model(site, history, links, pta_path)
+        # Act
+        html = build_money.render_council(items[0]["council"], None)[0][1]
+        # Assert: the total keeps both returns; per pupil is the matched school's £300k over its 300 pupils.
+        lead = re.search(r"with combined deficits of <strong>(.*?)</strong>", html, re.S).group(1)
+        self.assertIn('data-v="1200000"', lead)
+        self.assertIn('data-pp="1000"', lead)
+
     # ------------------------------------------------------------ C3 reserve basis
 
     def test_school_json_lists_every_years_reserve_on_one_basis(self):

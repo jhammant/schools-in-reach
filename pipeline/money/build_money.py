@@ -448,6 +448,11 @@ def suspect(row, key):
     return key in ((row or {}).get("suspect") or ())
 
 
+def reserve_suspect(row):
+    """Either reserve figure flagged suspect (reserve_of and status.reserve_share may read either)."""
+    return suspect(row, "revenue_reserve") or suspect(row, "revenue_reserve_incl_trust_share")
+
+
 def clean_pp(row, key):
     """£ per pupil for a median: None when the value is missing, has no pupils or either is flagged suspect."""
     if suspect(row, key):
@@ -877,8 +882,12 @@ def similar_medians(item):
 
 
 def reserve_rank(s):
+    """The share of similar schools (the benchmark's year) whose reserve is a smaller share of income than this
+    school's. Peers whose reserve or income is flagged suspect are left out, as in the medians, and so are
+    federation leads' combined returns (C5: their share is the federation's, not one school's)."""
     mine = s["status"]["reserve_share"]
-    others = [health.reserve_share(r) for r in similar_benchmark(s)["rows"]]
+    others = [health.reserve_share(r) for r in similar_benchmark(s)["rows"]
+              if not reserve_suspect(r) and not suspect(r, "total_income") and pupils_of_row(r)]
     others = [v for v in others if v is not None]
     if mine is None or len(others) < 10:
         return None
@@ -901,9 +910,19 @@ def latest_year(items):
     return max(labels) if labels else ""
 
 
-def pupils_of(items):
-    total = sum((i["latest"] or {}).get("pupils") or 0 for i in items)
-    return total or None
+def combined_figure(key, items, year, owed=False):
+    """mf for these schools' combined reserves (owed=True: their deficits, as a positive amount owed). C5: the total
+    keeps every return, but its per-pupil companion is the money of the schools whose latest pupils match it over
+    those pupils, as areas.py's deficit_pp, never a federation's money over one school's roll. mf divides the total
+    it shows, so it is given the denominator that yields that figure (None when no school's pupils are usable)."""
+    sign = -1 if owed else 1
+    total = sign * sum(i["status"]["reserve"] for i in items)
+    usable = [(i["status"]["reserve"], pupils_of_row(i["latest"])) for i in items]
+    usable = [(v, p) for v, p in usable if p]
+    matched, pupils = sign * sum(v for v, _ in usable), sum(p for _, p in usable)
+    if not pupils or (matched == 0 and total != 0):
+        return mf(key, total, None, year)
+    return mf(key, total, pupils if matched == total else total * pupils / matched, year)
 
 
 def pupils_by_year(items):
@@ -1010,9 +1029,9 @@ def reason_html(item):
     if not m:
         return text
     if st["status"] == "in_deficit":
-        figure = mf("deficit_total", -st["reserve"], latest.get("pupils"), year_label(latest), label="Deficit", src=fbit_school(item))
+        figure = mf("deficit_total", -st["reserve"], pupils_of_row(latest), year_label(latest), label="Deficit", src=fbit_school(item))
     else:
-        figure = mf("revenue_reserve", st["reserve"], latest.get("pupils"), year_label(latest), src=fbit_school(item))
+        figure = mf("revenue_reserve", st["reserve"], pupils_of_row(latest), year_label(latest), src=fbit_school(item))
     return text[:m.start()] + figure + text[m.end():]
 
 
@@ -1040,7 +1059,7 @@ def questions(item, cmp):
     q = [esc(x) for x in q]
     for r in sorted(cmp, key=lambda r: -(r["value"] / r["median"] if r["median"] else 0)):
         if r["value"] > r["p75"] * 1.1 and len(q) < 6:
-            figure = mf(r["key"], latest.get(r["key"]), latest.get("pupils"), year_label(latest), cmp_similar=r["median"])
+            figure = mf(r["key"], latest.get(r["key"]), pupils_of_row(latest), year_label(latest), cmp_similar=r["median"])
             q.append(f"Spending on {esc(r['label'].lower())} is {figure}, more per pupil than three-quarters of similar schools. What's behind that?")
     if item["pta"]:
         q.append(esc("How does the school decide what the money the parents' association raises is spent on?"))
@@ -1344,7 +1363,7 @@ def council_rows(items):
         st, latest = i["status"], i["latest"]
         change = "—" if st["pupils_change"] is None else f'{st["pupils_change"]:+.0%}'
         rows.append([school_link(i), status_cell(i),
-                     f'<span data-sort="{st["reserve"]:.0f}">{mf("revenue_reserve", st["reserve"], latest.get("pupils"), year_label(latest))}</span>',
+                     f'<span data-sort="{st["reserve"]:.0f}">{mf("revenue_reserve", st["reserve"], pupils_of_row(latest), year_label(latest))}</span>',
                      f'<span data-sort="{(st["reserve_share"] or 0):.4f}">{pct(st["reserve_share"])}</span>',
                      f'<span data-sort="{st["deficit_streak"]}">{st["deficit_streak"] or "—"}</span>',
                      f'<span data-sort="{(st["pupils_change"] or 0):.3f}">{change}</span>'])
@@ -1421,7 +1440,6 @@ def render_council(council, metadata, dsg=None):
     deficit = [i for i in items if i["status"]["status"] == "in_deficit"]
     owed = -sum(i["status"]["reserve"] for i in deficit)
     rest = [i for i in items if i["status"]["reserve"] > 0]
-    held = sum(i["status"]["reserve"] for i in rest)
     name, year = council["name"], latest_year(items)
     crumbs = [("School Money", "/"), ("Councils", "/council/"), (name, council["path"])]
     check = (f'<p>Check at source: <a href="{FBIT}/local-authority/{esc(council["code"])}">DfE benchmarking page for {esc(name)}</a> · '
@@ -1441,12 +1459,12 @@ def render_council(council, metadata, dsg=None):
         body += f'<p class="status-line">{pin("area", "council-" + council["code"], name)}</p>'
         if items:
             body += (f'<p class="lead"><strong>{len(deficit):,} of {len(items):,}</strong> schools in {esc(name)} were in deficit in their latest return, '
-                     f'with combined deficits of <strong>{mf("deficit_total", owed, pupils_of(deficit), year)}</strong>. {counts["heading_for_deficit"]:,} more are heading that way.</p>')
+                     f'with combined deficits of <strong>{combined_figure("deficit_total", deficit, year, owed=True)}</strong>. {counts["heading_for_deficit"]:,} more are heading that way.</p>')
         else:
             body += f'<p class="lead">No school in {esc(name)} has a full-year finance return in the latest data, so there are no statuses to show yet.</p>'
         body += charts.status_bar(counts) + held_note(counts) + f'<p class="report-line">{REPORT_LINK}</p>'
-        body += tiles([("Schools in deficit", f"{len(deficit):,}"), ("Combined deficits", mf("deficit_total", owed, pupils_of(deficit), year)),
-                       ("Heading for deficit", f'{counts["heading_for_deficit"]:,}'), ("Reserves held by the rest", mf("revenue_reserve", held, pupils_of(rest), year))])
+        body += tiles([("Schools in deficit", f"{len(deficit):,}"), ("Combined deficits", combined_figure("deficit_total", deficit, year, owed=True)),
+                       ("Heading for deficit", f'{counts["heading_for_deficit"]:,}'), ("Reserves held by the rest", combined_figure("revenue_reserve", rest, year))])
         series = yearly_deficit_series([i["rows"] for i in council["schools"]])
         if len(series) > 1:
             body += f'<h2>Share of {esc(name)}\'s council-run schools in deficit, by year</h2>' + charts.count_bars(series)
@@ -1493,7 +1511,7 @@ def council_cells(council):
     cs, d, h, total = council_summary(council)
     return [council_link(council), f'<span data-sort="{len(cs)}">{len(cs):,}</span>',
             f'<span data-sort="{len(d)}">{len(d):,}</span>', f'<span data-sort="{len(d) / len(cs):.4f}">{len(d) / len(cs):.0%}</span>',
-            f'<span data-sort="{h}">{h:,}</span>', f'<span data-sort="{total:.0f}">{mf("deficit_total", total, pupils_of(d), latest_year(cs))}</span>']
+            f'<span data-sort="{h}">{h:,}</span>', f'<span data-sort="{total:.0f}">{combined_figure("deficit_total", d, latest_year(cs), owed=True)}</span>']
 
 
 COUNCIL_INDEX_HEADERS = ["Council", "Schools", "In deficit", "% in deficit", "Heading for deficit", "Combined deficits"]
@@ -1520,7 +1538,7 @@ def ranked(items, headers, cells):
 
 
 def reserve_cell(i):
-    return mf("revenue_reserve", i["status"]["reserve"], i["latest"].get("pupils"), year_label(i["latest"]))
+    return mf("revenue_reserve", i["status"]["reserve"], pupils_of_row(i["latest"]), year_label(i["latest"]))
 
 
 def render_national(councils, schools, metadata, dsg=None):
@@ -1535,7 +1553,7 @@ def render_national(councils, schools, metadata, dsg=None):
     body = '<h1>School money: which schools are in deficit, and which are doing well</h1>'
     if items:
         body += (f'<p class="lead">Of {len(items):,} state schools in England with a full-year return, <strong>{len(deficit):,} were in deficit</strong> '
-                 f'({len(deficit) / len(items):.0%}), owing a combined <strong>{mf("deficit_total", owed, pupils_of(deficit), year)}</strong>. Another {counts["heading_for_deficit"]:,} are '
+                 f'({len(deficit) / len(items):.0%}), owing a combined <strong>{combined_figure("deficit_total", deficit, year, owed=True)}</strong>. Another {counts["heading_for_deficit"]:,} are '
                  'heading that way: they have spent more than they received for two years or more and their reserves are running out.</p>')
     else:
         body += '<p class="lead">No school has a full-year finance return in the latest data yet, so there are no statuses to show.</p>'
@@ -1585,7 +1603,6 @@ def render_trust(name, items, metadata):
     """The trust's pages as [(path, html)], the academy table split over pages when large."""
     path = items[0]["trust_path"]
     counts = Counter(i["status"]["status"] for i in items)
-    total = sum(i["status"]["reserve"] for i in items)
     shared = all(i["status"]["trust_share_included"] for i in items)
     crumbs = [("School Money", "/"), ("Academy trusts", "/trust/"), (name, path)]
     description = shorten(f"{name}: reserves and financial status of its {len(items)} academies from DfE accounts returns.", 160)
@@ -1597,7 +1614,7 @@ def render_trust(name, items, metadata):
                      f'<a href="{esc(path)}">Back to the summary</a>.</p>' + sort_note(pages) + table_html + sources())
             return (shorten(f"{name} academy finances, page {n} | School Money", 70),
                     shorten(f"Page {n} of {pages}: {name}'s academies and their financial status from DfE accounts returns.", 160), crumbs, body)
-        body += (f'<p class="lead">{len(items):,} academies with a full-year return. Their reserves add up to <strong>{mf("revenue_reserve", total, pupils_of(items), latest_year(items))}</strong>'
+        body += (f'<p class="lead">{len(items):,} academies with a full-year return. Their reserves add up to <strong>{combined_figure("revenue_reserve", items, latest_year(items))}</strong>'
                  + (", including each school's share of the trust's central reserve." if shared else ".") + "</p>")
         body += charts.status_bar(counts) + held_note(counts) + f'<p class="report-line">{REPORT_LINK}</p>'
         body += ('<p class="note">A trust can move money between its academies, so a school shown in deficit may be supported by the trust '
@@ -1615,7 +1632,7 @@ def render_trust_index(trusts, metadata):
         d = sum(i["status"]["status"] == "in_deficit" for i in items)
         total = sum(i["status"]["reserve"] for i in items)
         rows.append([f'<a href="{esc(items[0]["trust_path"])}">{esc(name)}</a>', f'<span data-sort="{len(items)}">{len(items):,}</span>',
-                     f'<span data-sort="{d}">{d:,}</span>', f'<span data-sort="{total:.0f}">{mf("revenue_reserve", total, pupils_of(items), latest_year(items))}</span>'])
+                     f'<span data-sort="{d}">{d:,}</span>', f'<span data-sort="{total:.0f}">{combined_figure("revenue_reserve", items, latest_year(items))}</span>'])
     crumbs = [("School Money", "/"), ("Academy trusts", "/trust/")]
 
     def frame(n, total, table_html):
@@ -1836,23 +1853,26 @@ def school_json(item, data_root=None, profile=None, line=None):
 def area_stats(items, year, source=None):
     """Reduced yearly summary for a set of schools when areas.py is absent: None where fewer than 5.
     source "CFR" or "AAR" keeps only that year's returns of that kind, whatever the school is now.
-    deficit_total and deficit_pp are negative, as in areas.py."""
+    deficit_total and deficit_pp are negative, as in areas.py. As there, counts and totals keep every
+    return, while per-pupil figures use only returns whose pupils match the money (C5) and reserves
+    not flagged suspect."""
     rows = [(i, r) for i in items for r in i["years"] if year_label(r) == year and source in (None, r.get("source"))]
     if len(rows) < 5:
         return None
-    reserves = [(reserve_of(r), r.get("pupils")) for _, r in rows]
-    deficits = [(v, p) for v, p in reserves if v is not None and v < 0]
-    deficit_pupils = sum(p for _, p in deficits if p)
+    reserves = [(reserve_of(r), pupils_of_row(r), r) for _, r in rows]
+    deficits = [(v, p) for v, p, _ in reserves if v is not None and v < 0]
     deficit_total = sum(v for v, _ in deficits)
+    deficit_pupils = sum(p for _, p in deficits if p)
+    deficit_matched = sum(v for v, p in deficits if p)
 
     def med(key):
         vals = [clean_pp(r, key) for _, r in rows]
         vals = [v for v in vals if v is not None]
         return round(statistics.median(vals)) if vals else None
 
-    reserve_pp = [v / p for v, p in reserves if v is not None and p]
+    reserve_pp = [v / p for v, p, r in reserves if v is not None and p and not reserve_suspect(r)]
     return {"schools": len(rows), "in_deficit": len(deficits), "in_deficit_pct": round(100 * len(deficits) / len(rows), 1),
-            "deficit_total": round(deficit_total), "deficit_pp": round(deficit_total / deficit_pupils) if deficit_pupils else None,
+            "deficit_total": round(deficit_total), "deficit_pp": round(deficit_matched / deficit_pupils) if deficit_pupils else None,
             "reserve_median_pp": round(statistics.median(reserve_pp)) if reserve_pp else None,
             "income_pp_median": med("total_income"), "spend_pp_median": med("total_expenditure")}
 
@@ -2046,19 +2066,21 @@ def area_ctx(shared, councils, schools, trust_path):
 
 def area_result_pages(path, crumbs, result, metadata, first_rows=0):
     """An area renderer's result as [(path, html)]: page 1 is its intro, table and outro; pages 2+
-    carry the title, a link back to the summary, the table and the pager. first_rows: rows page 1
-    always holds (a council's or constituency's schools, see AREA_TABLE_ROWS)."""
+    carry the title, a link back to the summary, the table's note (what its figures divide by, which
+    page 1 says in its intro), the table and the pager. first_rows: rows page 1 always holds (a
+    council's or constituency's schools, see AREA_TABLE_ROWS)."""
     title, description = result["title"], result["description"]
     heading = title.split(" | ")[0]
     tbl = result.get("table") or None
     filters = (tbl or {}).get("filters") or ""
+    note = (tbl or {}).get("note") or ""
     indexable = bool(result.get("indexable", True))
 
     def frame(n, total, table_html):
         if n == 1:
             return title, description, crumbs, result.get("intro", "") + (filters + table_html if table_html else "") + result.get("outro", "")
         body = (f'<h1>{esc(heading)}</h1><p class="lead">Page {n} of {total}. <a href="{esc(path)}">Back to the summary</a>.</p>'
-                + filters + sort_note(total) + table_html)
+                + note + filters + sort_note(total) + table_html)
         return shorten(f"{heading}, page {n} | School Money", 70), shorten(f"Page {n} of {total}. {description}", 160), crumbs, body
 
     rows = (tbl or {}).get("rows") or []
