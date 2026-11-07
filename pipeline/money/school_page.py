@@ -564,7 +564,14 @@ def what_changed(item, view) -> str:
     if all(_num(v) and v > 0 for v in (spend_a, spend_b, inc_a, inc_b)):
         spend_change, inc_change = spend_b / spend_a - 1, inc_b / inc_a - 1
         if spend_change > inc_change:
-            text += (f", as spending per pupil rose faster than income per pupil (spending {_pct(spend_change, signed=True)}, "
+            # Say which way each moved: spending that fell less than income did is not spending that rose.
+            if spend_change <= 0:
+                why = "as income per pupil fell faster than spending per pupil"
+            elif inc_change < 0:
+                why = "as spending per pupil rose while income per pupil fell"
+            else:
+                why = "as spending per pupil rose faster than income per pupil"
+            text += (f", {why} (spending {_pct(spend_change, signed=True)}, "
                      f"income {_pct(inc_change, signed=True)} over those years)")
         else:
             text += (f", while income per pupil kept pace with spending (income {_pct(inc_change, signed=True)}, "
@@ -998,7 +1005,7 @@ def spending_section(item, view) -> str:
     if phase_line:
         real = view.clean(SPEND, latest, "r") if view.has_real() else None
         if real is not None:
-            mine = site.money_figure("spend_pp", real, view.pupils.get(latest), latest, label=f"Spending in {latest}, in 2025-26 prices")
+            mine = site.money_figure("spend_pp", real, view.pupils_for(latest), latest, label=f"Spending in {latest}, in 2025-26 prices")
             html += f'<p>In 2025-26 prices, this school spent {mine} in {esc(latest)}. '
         elif spend is not None:
             html += f'<p>This school spent {view.figure(SPEND, latest, src=False)} in {esc(latest)}, in cash. '
@@ -1062,16 +1069,19 @@ def _nb_rank_lines(nb, year) -> str:
 
 
 def _nb_ratio_line(nb, year) -> str:
-    """'Per pupil, this school spends about a quarter more than the median of the 8 nearest primary schools (2024-25).'
-    Needs phrasing.ratio_words; "" without it, or when this school's figure is a federation's."""
+    """'Per pupil, this school spends about a quarter more than the median of 9 nearby primary schools, this school
+    included (2024-25).' build_money.nearby_doc's median is taken over this school and every neighbour with a figure,
+    so the sentence counts the same schools as the rank lines. Needs phrasing.ratio_words; "" without it, or when this
+    school's figure is a federation's."""
     me = nb["self"]
     mine, median = _num(me.get("spend_pp")), _num((nb.get("medians") or {}).get("spend_pp"))
     words = ratio_words(mine, median) if _federation(me) is None else None
     if not words:
         return ""
-    return (f'<p class="nb-ratio">Per pupil, this school spends {esc(words)} the median of the {len(nb["schools"])} nearest '
-            f'{esc(_phase_schools(nb))} ({esc(year)}): {exact_figure("spend_pp", mine, year, "This school, per pupil")} '
-            f'against {exact_figure("spend_pp", median, year, "Nearby median, per pupil")}.</p>')
+    counted = 1 + sum(1 for r in nb["schools"] if _num(r.get("spend_pp")) is not None)
+    return (f'<p class="nb-ratio">Per pupil, this school spends {esc(words)} the median of {counted} nearby '
+            f'{esc(_phase_schools(nb))}, this school included ({esc(year)}): {exact_figure("spend_pp", mine, year, "This school, per pupil")} '
+            f'against {exact_figure("spend_pp", median, year, "Median of this school and its neighbours, per pupil")}.</p>')
 
 
 def exact_figure(key, value, year, label=None) -> str:
@@ -1270,7 +1280,7 @@ def pass_through_section(item, view) -> str:
     if not flag:
         return ""
     year = flag.get("year")
-    pupils = view.pupils.get(year)
+    pupils = view.pupils_for(year)
     html = (f'<p>In {esc(year)}, this school\'s income rose by '
             f'{site.money_figure("pass_through", flag.get("income_rise"), pupils, year, label="Rise in income", signed=True)} on the year before, '
             f'and its staff costs by {site.money_figure("pass_through", flag.get("staff_rise"), pupils, year, label="Rise in staff costs", signed=True)}. '
@@ -1365,7 +1375,7 @@ def _pta_by_year(view, charities) -> dict:
             if _low_confidence(c):
                 e["confidence"] = "medium"
     for label, e in out.items():
-        p = view.pupils.get(label)
+        p = view.pupils_for(label)
         for k in ("income", "spend"):
             if e[k] is not None:
                 e[k] = round(e[k])
@@ -1391,7 +1401,7 @@ def _charity_line(c, view) -> str:
         h = hist[-1]
         pe = h["period_end"]
         label = pta_label(view, pe)
-        fig = site.money_figure("pta_income", round(h["income"] * share), view.pupils.get(label), label)
+        fig = site.money_figure("pta_income", round(h["income"] * share), view.pupils_for(label), label)
         when = "Latest return" if status == "current" else "Last reported income"
         bits.append(f"{when}: {fig} in the year to {esc(_month_year(pe))}.")
     shared = c.get("shared_with") or []
@@ -1420,7 +1430,7 @@ def _pta_national(view, by_year=None) -> str:
     html = (f'<p>Across England, the typical registered parents\' association raised '
             f'{site.money_figure("pta_per_pupil", median, None, ny, label="England: median PTA income per pupil")} '
             f'per pupil in {esc(ny)}.')
-    mine = _num(((by_year or {}).get(ny) or {}).get("income_pp"))
+    mine = None if ny in view.odd_pupils else _num(((by_year or {}).get(ny) or {}).get("income_pp"))
     words = ratio_words(mine, median)
     if words and not (by_year.get(ny) or {}).get("confidence") == "medium":
         html += (f' This school\'s parents\' association raised {esc(words)} that in the same school year '
@@ -1435,7 +1445,9 @@ def pta_section(item, view) -> str:
                 f'{threshold_figure()} or less a year don\'t have to register with the Charity Commission, so many schools have an '
                 'active PTA or friends\' group that isn\'t on the register.</p>')
         return _section("ptfa", "Money raised by parents", html + _pta_national(view))
-    by_year = view.s.get("pta") or _pta_by_year(view, charities)
+    # A year whose pupils don't match the money has no per-pupil figure to chart or compare, even from an older series.
+    by_year = {y: dict(e, income_pp=None, spend_pp=None) if y in view.odd_pupils else e
+               for y, e in (view.s.get("pta") or _pta_by_year(view, charities)).items()}
     years = sorted(by_year)
     html = ""
     chart_years = [y for y in years if _num(by_year[y].get("income_pp")) is not None or _num(by_year[y].get("spend_pp")) is not None]
@@ -1457,7 +1469,7 @@ def pta_section(item, view) -> str:
     rows = []
     for y in reversed(years[-PTA_ROWS:]):
         e = by_year[y]
-        p = view.pupils.get(y)
+        p = view.pupils_for(y)
         inc = site.money_figure("pta_income", e["income"], p, y) if _num(e.get("income")) is not None else "—"
         exp = site.money_figure("pta_spending", e["spend"], p, y) if _num(e.get("spend")) is not None else "—"
         low = ' <small>matched with lower confidence</small>' if e.get("confidence") == "medium" else ""
@@ -1473,6 +1485,8 @@ def pta_section(item, view) -> str:
     html += ('<p class="small muted">Each return is placed in the school year that holds the end of the charity\'s financial year, '
              'and per-pupil figures use that year\'s pupils. A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
              f'{esc(OVERLAP)}</p>')
+    if view.odd_pupils & set(by_year):
+        html += f'<p class="small muted">{esc(odd_pupils_note(view))}</p>'
     html += _pta_national(view, by_year)
     watch = _watch(item, "ptfa")
     if watch:
@@ -1531,7 +1545,7 @@ def split_section(item, view) -> str:
     total = view.clean(SPEND, latest) if latest else None
     if not total or total <= 0:
         return ""
-    pupils = view.pupils.get(latest)
+    pupils = view.pupils_for(latest)
     parts = []
     for label, key, metrics in SPLIT:
         vals = [view.clean(k, latest) for k in metrics]
@@ -1545,8 +1559,11 @@ def split_section(item, view) -> str:
         parts.append(("Everything else", "per_pupil", rest))
     items = "".join(f'<li style="--w:{max(v / total * 100, 1):.0f}%"><span class="lbl">{esc(label)}</span> '
                     f'{site.money_figure(key, v, pupils, latest, label=label)}</li>' for label, key, v in parts)
-    html = (f'<p>For pupils: out of every pound the school spent in {esc(latest)}, here is roughly where it went, '
-            f'with the amount for each pupil.</p><ul class="sp-split">{items}</ul>')
+    each = ", with the amount for each pupil" if pupils else ""
+    html = (f'<p>For pupils: out of every pound the school spent in {esc(latest)}, here is roughly where it went{each}.</p>'
+            f'<ul class="sp-split">{items}</ul>')
+    if latest in view.odd_pupils:
+        html += f'<p class="small muted">{esc(odd_pupils_note(view))}</p>'
     return _section("split", "How my school's money is split", html)
 
 

@@ -26,7 +26,7 @@ Rules the pages rely on:
 - Pupil counts that don't match the money (suspect_pupils: chiefly a federation lead's
   combined return, where the money is the federation's and the pupils one school's) add
   'pupils' to that year's flags['suspect'], so its per-pupil figures are greyed and kept out
-  of comparisons.
+  of comparisons; that year's parents' association figures get no per-pupil value at all.
 
 The flags follow the site's own rules, not the IFS's. Stdlib only.
 """
@@ -385,7 +385,9 @@ def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
         if entry:
             gap[label] = entry
 
-    pta_pupils = {**_pupils_any_year(rows), **pupils}
+    # A year whose pupils don't match the money gives its parents' association no per-pupil figure either.
+    odd_labels = {year_label(r) for r in full if r["period_end"] in odd_pupils}
+    pta_pupils = {k: v for k, v in {**_pupils_any_year(rows), **pupils}.items() if k not in odd_labels}
     not_reported = {k: why for k, why in NOT_IN_AAR.items() if any(r.get("source") == "AAR" for r in full)}
     return {
         "years": years,

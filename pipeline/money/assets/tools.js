@@ -329,9 +329,11 @@
       r.total_income = cell("total_income", y); r.total_expenditure = cell("total_expenditure", y);
       r.in_year_balance = cell("in_year_balance", y);
       if (out.reserveBasis === INCL_TRUST) {
-        r.revenue_reserve = cell("revenue_reserve_own", y);
+        // m.revenue_reserve_own is optional (C3). Without it the trust-inclusive reserve stands in for fullYears's
+        // reserve check: on this basis nothing else reads the own figure (heldByTrust needs no trust share).
+        var own = cell("revenue_reserve_own", y);
         r.revenue_reserve_incl_trust_share = cell("revenue_reserve", y);
-        if (r.revenue_reserve == null && r.revenue_reserve_incl_trust_share == null) r.revenue_reserve = null;
+        r.revenue_reserve = own != null ? own : r.revenue_reserve_incl_trust_share;
       } else {
         r.revenue_reserve = cell("revenue_reserve", y);
       }

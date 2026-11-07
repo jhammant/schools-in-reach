@@ -16,7 +16,7 @@ from pathlib import Path
 from pipeline.money import school_page, series, site, status as health, timeline
 from pipeline.money.test_school_page import (Figures, aar_academy, big_school, cfr_school, make_ctx, make_item,
                                              nearby_contract, nearby_school, section)
-from pipeline.money.test_series import MAT, academy_rows, federation_rows, gold_rows, row
+from pipeline.money.test_series import MAT, academy_rows, charity, federation_rows, gold_rows, row
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSETS = ROOT / "pipeline/money/assets"
@@ -180,6 +180,17 @@ class FederationTest(unittest.TestCase):
         self.assertIn("doesn't match the money", unescape(odd))
         self.assertIn("No per-pupil figure is shown for 2021-22 and 2022-23", unescape(reserve))
 
+    def test_parents_association_money_in_an_odd_year_has_no_per_pupil_figure(self):
+        # Arrange: charity years ending in 2021-22 (odd pupils) and 2023-24 (the federation's own count)
+        rows = federation_rows()
+        pta = [charity(1103834, [("2022-03", 20_000, 18_000), ("2024-03", 20_000, 18_000)])]
+        # Act
+        by_year = series.school_series(rows, pta)["pta"]
+        # Assert
+        self.assertEqual((by_year["2021-22"]["income"], by_year["2021-22"]["income_pp"], by_year["2021-22"]["spend_pp"]),
+                         (20_000, None, None))
+        self.assertEqual(by_year["2023-24"]["income_pp"], round(20_000 / 1541.5))
+
     def test_unnamed_federation_and_a_school_on_its_own(self):
         rows = federation_rows()
         fed_item, fed_ctx = page_from_rows(rows, name="Example Primary")
@@ -238,6 +249,25 @@ class FirstLineUnderRedBadgeTest(unittest.TestCase):
         self.assertIn("The reserve fell from £544k", changed)
         self.assertIn("in 2019-20 to -£211k", changed)
         self.assertIn("as spending per pupil rose faster than income per pupil", changed)
+
+    def test_what_changed_names_which_way_spending_and_income_each_moved(self):
+        cases = [  # (spending per pupil then and now, income per pupil then and now, the words)
+            ((1_000_000, 1_200_000), (1_000_000, 1_100_000), "as spending per pupil rose faster than income per pupil"),
+            ((1_000_000, 1_100_000), (1_000_000, 900_000), "as spending per pupil rose while income per pupil fell"),
+            ((1_000_000, 900_000), (1_000_000, 800_000), "as income per pupil fell faster than spending per pupil"),
+        ]
+        for (spend_a, spend_b), (inc_a, inc_b), words in cases:
+            with self.subTest(words=words):
+                # Arrange
+                rows = [row("2023-24", total_income=inc_a, total_expenditure=spend_a, in_year_balance=inc_a - spend_a,
+                            revenue_reserve=50_000),
+                        row("2024-25", total_income=inc_b, total_expenditure=spend_b, in_year_balance=inc_b - spend_b,
+                            revenue_reserve=-50_000)]
+                item, ctx = page_from_rows(rows, name="Example Primary")
+                # Act
+                changed = text_of(re.search(r'<p class="sp-changed">(.*?)</p>', school_page.render(item, ctx)["body"], re.S).group(1))
+                # Assert
+                self.assertIn(words, changed)
 
     def test_heading_for_deficit_and_an_academy_get_their_own_definitions(self):
         heading = school_page.deficit_definition({"status": {"status": "heading_for_deficit"}}, None)
@@ -368,8 +398,10 @@ class ComparisonWordsTest(PhrasingPatch):
         body = school_page.render(item, ctx)["body"]
         nearby, pta = text_of(section(body, "nearby")), text_of(section(body, "ptfa"))
         # Assert
-        self.assertIn("Per pupil, this school spends about double the median of the 8 nearest primary schools (2024-25): "
-                      "£7,000 against £6,950.", nearby)
+        # The median (nearby_doc's) counts this school and the 7 neighbours with a figure, as the rank lines do.
+        self.assertIn("Per pupil, this school spends about double the median of 8 nearby primary schools, this school "
+                      "included (2024-25): £7,000 against £6,950.", nearby)
+        self.assertIn("highest spending per pupil of 8 nearby primary schools", nearby)
         self.assertIn("This school's parents' association raised about double that in the same school year", pta)
 
     def test_no_comparison_sentences_without_the_module(self):
