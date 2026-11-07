@@ -188,8 +188,10 @@
     if (hits.some(function (h) { return h.score === 9; })) out.urn = true;
     if (!hits.length && !digits) {
       // Fuzzy: each word to the index words within its typo allowance, then rows where every word lands on the name or
-      // place and at least one on the name. The cost is the typos used; an exact word costs nothing.
+      // place and at least one on the name. The cost is the typos used; an exact word costs nothing. As above, a council
+      // or constituency needs only the words that aren't area words ("Hakney council" is Hackney's).
       var list = tokenList(rows, types ? types.join() : "", pool), near = words.map(function (w, n) { return closeWords(w, list, n === words.length - 1); });
+      var all = words.map(function (w, n) { return n; }), coreAt = areaWords ? all.filter(function (n) { return !AREA_WORDS[words[n]]; }) : all;
       var cost = function (w, n, toks) {
         var best = Infinity;
         for (var j = 0; j < toks.length; j++) {
@@ -201,9 +203,9 @@
       };
       if (near.some(Boolean)) {
         pool.forEach(function (r, k) {
-          var p = prepRow(r), total = 0, inName = false;
-          for (var n = 0; n < words.length; n++) {
-            var c = cost(words[n], n, p.nt);
+          var p = prepRow(r), total = 0, inName = false, at = r.t === "council" || r.t === "constituency" ? coreAt : all;
+          for (var x = 0; x < at.length; x++) {
+            var n = at[x], c = cost(words[n], n, p.nt);
             if (c !== Infinity) inName = true; else c = cost(words[n], n, p.st);
             if (c === Infinity) return;
             total += c;
@@ -940,12 +942,14 @@
 
   // ---------------------------------------------------------------- search index
   // Resolves to the index rows, or null when it could not be loaded; a failure is forgotten, so the next search
-  // tries again rather than search staying off for the rest of the visit.
+  // tries again rather than search staying off for the rest of the visit. fetchJSON keeps any parsed answer, so an
+  // unusable one (an empty list, an error object) is dropped from its cache as well.
   var indexPromise = null;
   function loadIndex() {
     if (!indexPromise) indexPromise = fetchJSON("/data/search.json").then(function (d) {
       if (Array.isArray(d) && d.length) return d;
       indexPromise = null;
+      delete jsonCache["/data/search.json"];
       return null;
     });
     return indexPromise;
@@ -1046,6 +1050,8 @@
       btn.type = "button";
       btn.addEventListener("click", function () {
         loadIndex().then(function (rows) {
+          // Without the index there are no names to pin by; say so and leave the offer up to try again.
+          if (!rows) { pinMsg = "The list of schools didn't load, so nothing was added. Try again in a moment."; refreshPins(); return; }
           var r = importShortlist(pins, pair[1], schoolLookup(rows));
           pins = r.list;
           pinMsg = r.added ? "Added " + r.added + " from your " + pair[0] + "." : "Nothing new to add from your " + pair[0] + ".";

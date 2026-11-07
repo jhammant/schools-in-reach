@@ -763,6 +763,16 @@ test("area words find the council: 'schools in Hackney', 'Hackney council', 'Lon
   }
 });
 
+test("area words with a typo in the place still find the council, flagged fuzzy", () => {
+  for (const q of ["Hakney council", "schools in Hacnkey"]) {
+    // Act
+    const m = M.searchMatches(INDEX, q, 8);
+    // Assert
+    assert.equal(m.rows[0].id, "204", q);
+    assert.equal(m.fuzzy, true, q);
+  }
+});
+
 test("opts.types keeps one kind of row, and limit is respected", () => {
   assert.deepEqual(M.searchMatches(INDEX, "hackney", 8, { types: ["school"] }).rows.map((r) => r.t).filter((t) => t !== "school"), []);
   assert.equal(M.rankSearch(INDEX, "school", 2).length, 2);
@@ -907,6 +917,41 @@ test("/search/ when the index fails: an unavailable state with browse links and 
   await settle();
   // Assert
   assert.match(box.querySelector("h2").textContent, /Results for “patten”/);
+});
+
+test("an unusable index answer (an empty list) is unavailable too, and Try again fetches it afresh", async () => {
+  // Arrange: the server answers 200 with an empty list, then recovers
+  const h = boot({ path: "/search/?q=patten", data: { "/data/search.json": [] },
+    setup: (doc) => { add(add(doc.body, "main", { id: "main" }), "h1", {}, "Search"); } });
+  await settle();
+  const box = h.document.querySelector(".search-results");
+  assert.equal(box.querySelector("h2").textContent, "Search is unavailable just now");
+  h.fixtures["/data/search.json"] = INDEX;
+  // Act
+  box.querySelector("button").click();
+  await settle();
+  // Assert
+  assert.equal(h.calls.filter((u) => u === "/data/search.json").length, 2);
+  assert.match(box.querySelector("h2").textContent, /Results for “patten”/);
+});
+
+test("importing a saved list while the index fails says so, keeps the offer, and a second try pins", async () => {
+  // Arrange: a saved shortlist; the index 404s on the first request
+  const h = boot({ storage: { shortlist: ["100003"] }, setup: (doc) => add(doc.body, "main", { id: "main" }) });
+  const importButton = () => h.document.querySelector(".pin-import button");
+  // Act
+  importButton().click();
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector(".pinbar .msg").textContent, /didn't load, so nothing was added/);
+  assert.equal(h.document.querySelector(".pin-import").hidden, false);
+  assert.deepEqual(JSON.parse(h.memory.get("moneyPinned")), []);
+  // Act again: the index is back
+  h.fixtures["/data/search.json"] = INDEX;
+  importButton().click();
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector(".pinbar .msg").textContent, /Added 1 from your shortlist/);
 });
 
 // ---------------------------------------------------------------- phone menu
