@@ -22,6 +22,7 @@ from urllib.parse import urlencode, urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
 BASE = "https://www.schoolsinreach.com"
+BASE_MONEY = "https://money.schoolsinreach.com"  # the standalone School Money site (pipeline/money/build_money.py)
 CROSSLINKS_PATH = Path(__file__).with_name("crosslinks.json")
 LABS_FOOTER = '<p class="labs-links">More from Hammant Labs: <a href="https://www.termminder.com/">TermMinder</a> (school term dates) · <a href="https://www.binminder.co.uk/">BinMinder</a> (bin collection reminders) · <a href="https://hammantlabs.com/">Hammant Labs</a></p>'
 
@@ -406,7 +407,7 @@ def document(title, description, path, body, crumbs, metadata, structured=None, 
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 {head}
 <link rel="stylesheet" href="/css/seo.css"><script type="application/ld+json">{ld}</script>
-</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="/money/">School money</a><a href="/agents/">For estate agents</a></nav></header>
+</head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="https://money.schoolsinreach.com/">School money</a><a href="/agents/">For estate agents</a></nav></header>
 <main><nav class="breadcrumb" aria-label="Breadcrumb">{trail}</nav>{body}</main><script type="module" src="/js/page-analytics.js"></script></body></html>
 '''
 
@@ -607,8 +608,9 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
     if not councils:
         raise ValueError("No councils found in local data")
     metadata = HeadMetadata((site / "index.html").read_text(encoding="utf-8"))
-    # Written by pipeline/money/build_money.py, which runs first; absent means no Money links.
-    money_status = read_json(site / "money/data/status.json")
+    # Written by pipeline/money/build_money.py into <repo>/site_money/ (clean paths on BASE_MONEY);
+    # absent means no Money links. The old in-site copy is read when a build still has one.
+    money_status = read_json(site.parent / "site_money" / "data" / "status.json") or read_json(site / "money/data/status.json")
     totals = Counter()
     nations = {nation: Counter() for nation in NATIONS}
     school_urls, page_urls, dates = [], [], []
@@ -650,9 +652,10 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
                 updated = data_date(*docs)
                 items.append({"school": s, "admissions": rec, "admissions_doc": adm, "has_admissions": has_adm, "ofsted": inspection, "ofsted_rec": ofsted, "league_row": league_row, "results": result_data, "pupils": pupils, "pupil_rows": pupil_data, "documents": docs, "date": updated, "indexable": quality >= 2, "path": path})
             if money_status and council["nation"] == "England":
-                council["money_path"] = f'/money/council/{slug(council["name"])}/'
+                council["money_path"] = f'{BASE_MONEY}/council/{slug(council["name"])}/'
             for item in items:
-                item["money"] = money_status.get(str(item["school"]["urn"]))
+                money = money_status.get(str(item["school"]["urn"]))
+                item["money"] = dict(money, path=BASE_MONEY + money["path"].removeprefix(BASE_MONEY)) if money and money.get("path") else None
                 html = render_school(item, council, items, metadata, crosslinks)
                 if len(html.encode("utf-8")) > 26_000:
                     raise ValueError(f"School page exceeds ~25 KB: {item['path']}")
@@ -689,8 +692,6 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
             path = f"/sitemaps/schools-{start // sitemap_limit + 1}.xml"
             write_sitemap(stage / path.lstrip("/"), chunk)
             maps.append((path, max(d for _, d in chunk)))
-        if (site / "money/sitemap.xml").is_file():
-            maps.append(("/money/sitemap.xml", latest))
         write_sitemap(stage / "sitemap.xml", maps, index=True)
         # One small map per council: the widget only fetches the councils near a listing.
         (stage / "slugs").mkdir()
