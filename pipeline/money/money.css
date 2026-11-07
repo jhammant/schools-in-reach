@@ -41,3 +41,4 @@ table[data-sortable] th{cursor:pointer;user-select:none}table[data-sortable] th[
 .cmp-table{overflow-x:auto}.cmp-table table{min-width:520px}.cmp-table th[scope=row]{text-align:left;font-weight:600}
 ul.defs{list-style:none;padding:0}ul.defs li{margin:10px 0}
 @media(max-width:600px){.tvalue{font-size:1.2rem}svg.chart{font-size:11px}}
+.pager{margin:12px 0;color:var(--text-secondary)}.pager a{font-weight:600}
