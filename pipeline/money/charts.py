@@ -387,7 +387,7 @@ SPARK_MAX = 400
 
 def sparkline(values, *, width: int = 96, height: int = 24, label: str) -> str:
     """A tiny trend line of [(year, value)] for a table cell: 400 bytes or less, labelled for screen readers.
-    None values leave a gap; the last point is marked."""
+    None values leave a gap. The line takes the text colour; pages may restyle svg.spark path."""
     pts = [(i, _num(v)) for i, (_, v) in enumerate(values or [])]
     known = [v for _, v in pts if v is not None]
     if not known:
@@ -395,23 +395,17 @@ def sparkline(values, *, width: int = 96, height: int = 24, label: str) -> str:
     lo, hi = min(known), max(known)
     span = (hi - lo) or 1
     n = max(len(pts) - 1, 1)
-
-    def xy(i, v):
-        return f"{round(2 + i * (width - 4) / n)},{round(height - 2 - (v - lo) / span * (height - 4))}"
-
     d, gap = "", True
     for i, v in pts:
         if v is None:
             gap = True
             continue
-        d += ("M" if gap else "L") + xy(i, v)
+        d += f"{'M' if gap else 'L'}{round(2 + i * (width - 4) / n)},{round(height - 2 - (v - lo) / span * (height - 4))}"
         gap = False
-    i, v = next((i, v) for i, v in reversed(pts) if v is not None)
-    cx, cy = xy(i, v).split(",")
 
     def svg(text):
         return (f'<svg class="spark" viewBox="0 0 {width} {height}" width="{width}" height="{height}" role="img" aria-label="{esc(text)}">'
-                f'<path d="{d}" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="{cx}" cy="{cy}" r="2" fill="currentColor"/></svg>')
+                f'<path d="{d}" fill="none" stroke="currentColor"/></svg>')
 
     out, text = svg(label), str(label)
     while len(out.encode("utf-8")) > SPARK_MAX and text:

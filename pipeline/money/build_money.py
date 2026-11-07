@@ -1734,6 +1734,10 @@ def school_page_html(item, metadata, shared):
 
 # ----------------------------------------------------------------- area dashboards
 
+def area_head():
+    return getattr(area_pages, "EXTRA_HEAD", AREA_HEAD)
+
+
 def area_ctx(shared, councils, schools, trust_path):
     """The SHARED area renderers' ctx: IFS, DSG, real-terms caption, the areas document and every page path."""
     doc = shared["areas"] or {}
@@ -1763,7 +1767,7 @@ def area_result_pages(path, crumbs, result, metadata):
 
     rows = (tbl or {}).get("rows") or []
     return paged(path, (tbl or {}).get("headers") or [], rows, frame, metadata, caption=(tbl or {}).get("caption") or "",
-                 indexable=indexable, extra_head=AREA_HEAD)
+                 indexable=indexable, extra_head=area_head())
 
 
 def region_index(regions_doc, metadata):
@@ -1781,7 +1785,7 @@ def region_index(regions_doc, metadata):
             + (sort_note(1) + sortable(["Region", "Schools with a return", "In deficit", "% in deficit"], rows) if rows else "<p>No region has a school with a return yet.</p>")
             + '<p><a href="/england/">England as a whole</a> · <a href="/council/">Every council</a> · <a href="/constituency/">Constituencies</a></p>' + sources())
     return page("School finances by region | School Money", "School finances in each English region: schools in deficit and money per pupil, from DfE returns.",
-                "/areas/", body, crumbs, metadata, extra_head=AREA_HEAD)
+                "/areas/", body, crumbs, metadata, extra_head=area_head())
 
 
 def render_constituency_index(constituencies, metadata):
@@ -1821,7 +1825,7 @@ def render_home(schools, metadata, england):
             '<a href="/debts/">Debts</a> · <a href="/ptfa/">PTFA</a> · <a href="/map/">Map</a> · <a href="/compare/">Compare schools</a> · <a href="/about/">How it works</a></p>'
             + sources())
     description = shorten(f"How {len(assessed):,} English state schools are funded, what they spend and their reserves, from DfE returns, for parents, governors and PTFAs.", 160)
-    return page("School finances in England | School Money", description, "/", body, [("School Money", "/")], metadata, extra_head=AREA_HEAD)
+    return page("School finances in England | School Money", description, "/", body, [("School Money", "/")], metadata, extra_head=area_head())
 
 
 def run_extensions(env, skipped):
