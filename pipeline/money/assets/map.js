@@ -12,10 +12,16 @@
   // ======================================================================
   // Pure helpers (no DOM)
   // ======================================================================
-  var ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves"];
-  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves" };
-  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲" };
-  var STATUS_VARS = { in_deficit: "--critical", heading_for_deficit: "--serious", tight: "--warning", healthy: "--good", large_reserves: "--plenty" };
+  // reserve_held_by_trust: an academy whose trust holds the reserve; neutral grey, never tight, never a deficit.
+  var ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves", "reserve_held_by_trust"];
+  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves",
+    reserve_held_by_trust: "Reserve held by the trust" };
+  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲", reserve_held_by_trust: "◇" };
+  var STATUS_VARS = { in_deficit: "--critical", heading_for_deficit: "--serious", tight: "--warning", healthy: "--good", large_reserves: "--plenty",
+    reserve_held_by_trust: "--held" };
+  var STATUS_FALLBACK = { reserve_held_by_trust: "#6b7280" };  // until app.css defines --held
+  var BOUNDARY_NOTICE = "Boundaries: Source: Office for National Statistics licensed under the Open Government Licence v.3.0. " +
+    "Contains OS data © Crown copyright and database right 2025 (councils), 2024 (constituencies).";
   var GEOS = ["council", "constituency"];
   var MEASURE_KEYS = ["pct_in_deficit", "deficit_pp", "reserve_median_pp", "gov_pp_median", "spend_pp_median", "dsg_pp",
     "pta_median_pp", "fsm_pct", "pupils"];
@@ -351,15 +357,17 @@
     var cash = null;
     if (key === "deficit_pp" && A.deficitTotal != null) cash = fmtMoney(A.deficitTotal, true);
     if (key === "dsg_pp" && A.dsgBalance != null) cash = fmtMoney(A.dsgBalance, true);
+    if (year && Array.isArray(M.provisional) && M.provisional.indexOf(year) >= 0) label += ", provisional";
     text = (text || NOT_PUBLISHED) + (text && cash ? ", total " + cash : "") + (isNum(ev) ? " (England " + fmtValue(ev, unit, M.signed) + ")" : "");
     var lines = [{ label: label, text: text }];
+    if (M.note) lines.push({ label: "About this measure", text: String(M.note) });
     if (A.schools != null && A.inDeficit != null) lines.push({ label: "Schools in deficit", text: A.inDeficit + " of " + A.schools + (year ? " in " + year : "") });
     var pupils = A.pupils != null ? A.pupils : obj(A.m.pupils)[year];
     if (key !== "pupils" && isNum(pupils)) lines.push({ label: "Pupils" + (year ? ", " + year : ""), text: fmtNumber(pupils, 1) });
     lines.push({ label: "Source", text: (year ? year + ", " : "") + (M.source || "DfE returns") });
     if (unit === "gbp_pp") lines.push({ label: "Note", text: c.cash_note || "£ figures are cash for each year, not adjusted for inflation." });
     if (key === "pta_median_pp" && c.pta_note) lines.push({ label: "About parents' associations", text: c.pta_note });
-    if (key === "dsg_pp" && c.dsg_note) lines.push({ label: "High-needs budgets", text: c.dsg_note });
+    if (key === "dsg_pp" && c.dsg_note) lines.push({ label: "Dedicated Schools Grant deficits", text: c.dsg_note });
     if (mentionsDeficit(lines) || key in { deficit_pp: 1, reserve_median_pp: 1, dsg_pp: 1 }) {
       lines = lines.concat(explainLines(c, key === "dsg_pp" ? [c.send] : []));
     }
@@ -384,15 +392,20 @@
     var d = obj(s), f = obj(fallback), key = ORDER.indexOf(d.status) >= 0 ? d.status : null;
     var urn = d.urn != null ? String(d.urn) : (f.urn != null ? String(f.urn) : null), name = d.name || f.name || "";
     var pupils = isNum(d.pupils) ? d.pupils : null;
-    function pp(total, given) { return isNum(given) ? given : (isNum(total) && pupils ? Math.round(total / pupils) : null); }
+    // A document carrying the per-pupil field has settled it: null means withheld (a federation's money against one
+    // school's pupils), so only an older document without the field is filled in from total ÷ pupils.
+    function pp(total, field) {
+      if (Object.prototype.hasOwnProperty.call(d, field)) return isNum(d[field]) ? d[field] : null;
+      return isNum(total) && pupils ? Math.round(total / pupils) : null;
+    }
     return {
       urn: urn, name: name || (urn ? "School " + urn : "This school"),
       path: d.path || (urn ? schoolPath(urn, name) : null),
       status: key, label: key ? LABELS[key] : null, reason: typeof d.reason === "string" ? d.reason : null,
       year: typeof d.year === "string" ? d.year : null,
       source: d.source || (d.academy ? "DfE AAR return" : "DfE CFR return"),
-      reserve: isNum(d.reserve) ? d.reserve : null, reservePp: pp(d.reserve, d.reserve_pp),
-      income: isNum(d.income) ? d.income : null, incomePp: pp(d.income, d.income_pp),
+      reserve: isNum(d.reserve) ? d.reserve : null, reservePp: pp(d.reserve, "reserve_pp"),
+      income: isNum(d.income) ? d.income : null, incomePp: pp(d.income, "income_pp"),
       pupils: pupils
     };
   }
@@ -468,7 +481,8 @@
   }
 
   var API = {
-    ORDER: ORDER, LABELS: LABELS, ICONS: ICONS, MEASURE_KEYS: MEASURE_KEYS,
+    ORDER: ORDER, LABELS: LABELS, ICONS: ICONS, STATUS_VARS: STATUS_VARS, STATUS_FALLBACK: STATUS_FALLBACK, BOUNDARY_NOTICE: BOUNDARY_NOTICE,
+    MEASURE_KEYS: MEASURE_KEYS,
     fmtExact: fmtExact, fmtValue: fmtValue, binsFor: binsFor, classify: classify, ramp: ramp, mix: mix,
     legendModel: legendModel, parseState: parseState, serialiseState: serialiseState, searchHits: searchHits,
     pickTarget: pickTarget, normName: normName, areaCardModel: areaCardModel, schoolCardModel: schoolCardModel,
@@ -483,7 +497,8 @@
   var host = document.getElementById("money-map");
   if (!host) return;
   var L = root.L;
-  var ATTRIBUTION = '<a href="https://protomaps.com">Protomaps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+  var ATTRIBUTION = '<a href="https://protomaps.com">Protomaps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · ' +
+    '<a href="/about/#sources">' + BOUNDARY_NOTICE.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</a>';
   var ENGLAND = [[49.9, -6.4], [55.85, 1.8]];
   var DOT_ZOOM = 9;
 
@@ -504,7 +519,7 @@
     if (!paletteCache) {
       paletteCache = { accent: cssVar("--accent"), critical: cssVar("--critical"), plenty: cssVar("--plenty"), lineStrong: cssVar("--line-strong"),
         card: cssVar("--card"), line: cssVar("--line"), ink: cssVar("--ink"), ink3: cssVar("--ink-3") };
-      ORDER.forEach(function (k) { paletteCache[k] = cssVar(STATUS_VARS[k]); });
+      ORDER.forEach(function (k) { paletteCache[k] = cssVar(STATUS_VARS[k]) || STATUS_FALLBACK[k] || ""; });
     }
     return paletteCache;
   }
@@ -739,6 +754,8 @@
     var notes = ["Source: " + (state.y ? state.y + ", " : "") + (m.source || "DfE returns") + "."];
     if (m.unit === "gbp_pp") notes.push(ctx.cash_note || "");
     if (state.m === "pta_median_pp" && ctx.pta_note) notes.push(ctx.pta_note);
+    if (m.note) notes.push(String(m.note));
+    if (state.y && Array.isArray(m.provisional) && m.provisional.indexOf(state.y) >= 0) notes.push(state.y + " is provisional, before audit.");
     if (state.m === "dsg_pp" && ctx.dsg_note) notes.push(ctx.dsg_note);
     els.legend.appendChild(el("p", "small muted", notes.join(" ").trim()));
     var dots = el("div", "mx-dotkey");

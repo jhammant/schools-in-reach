@@ -11,7 +11,8 @@ Two jobs:
 * build_areas(...): for England, each region, each council, each constituency and each
   academy trust, the yearly picture: how many schools, pupils, deficits, the median
   per-pupil figures (cash and real terms), split into all / council-run (CFR returns) /
-  academy (AAR returns), plus the council's high-needs (DSG) balance per pupil, and a
+  academy (AAR returns), plus the council's Dedicated Schools Grant balance (all four
+  blocks) per pupil with its denominator and provisional years, and a
   national parents' association (PTA) summary.
 
 Combined series. CFR years run April to March and AAR years September to August, and
@@ -52,6 +53,7 @@ import argparse
 import bisect
 import json
 import math
+import re
 import statistics
 from collections import Counter, defaultdict
 from datetime import date
@@ -118,6 +120,7 @@ S_KEYS = ["schools", "in_deficit", "in_deficit_pct", "heading", "deficit_total",
           "income_pp_median", "spend_pp_median", "grant_pp_median", "pta_pp_median", "pta_schools", "donations_pp_median",
           "statuses", "gov_pp_median", "gov_rpp_median", "spend_rpp_median", "reserve_median_rpp", "fsm_pct", "pupils"]
 HOLD_ABOVE = 500_000         # a parents' association with a year's income above this is held for review
+HELD = "reserve_held_by_trust"  # status.py's sixth status: its own zero reserve stays out of reserve medians
 TOP_PTA = 20                 # biggest fundraisers kept, by total and by per pupil
 
 
@@ -711,7 +714,8 @@ def school_years(rows, charities):
         def pp(value):
             return value / pp_pupils if value is not None and pp_pupils else None
 
-        reserve_ok = not suspect & {"revenue_reserve", "revenue_reserve_incl_trust_share"}
+        # An academy whose trust holds the reserve has an own reserve of zero that says nothing about it.
+        reserve_ok = not suspect & {"revenue_reserve", "revenue_reserve_incl_trust_share"} and point["status"] != HELD
         reserve_pp = point["reserve_pp"] if reserve_ok and pp_pupils else None
         gov = government_funding(r, suspect)
         spend = _usable(r, "total_expenditure", suspect)
@@ -740,7 +744,9 @@ def summarise(entries):
         return {k: (n if k == "schools" else None) for k in S_KEYS}
     deficits = [e for e in entries if e["reserve"] is not None and e["reserve"] < 0]
     deficit_total = sum(e["reserve"] for e in deficits)
-    deficit_pupils = sum(e["pupils"] or 0 for e in deficits)
+    # Per pupil only over returns whose pupils match the money (a federation lead's combined return does not).
+    counted = [e for e in deficits if e.get("pp_pupils", e["pupils"])]
+    deficit_pupils = sum(e.get("pp_pupils", e["pupils"]) for e in counted)
     pta = [e["pta_pp"] for e in entries if e.get("pta_pp") is not None]
 
     def med(key):
@@ -752,7 +758,7 @@ def summarise(entries):
         "in_deficit_pct": round(100 * len(deficits) / n, 1),
         "heading": sum(1 for e in entries if e["status"] == "heading_for_deficit"),
         "deficit_total": deficit_total,
-        "deficit_pp": deficit_total / deficit_pupils if deficit_pupils else None,
+        "deficit_pp": sum(e["reserve"] for e in counted) / deficit_pupils if deficit_pupils else None,
         "reserve_median_pp": med("reserve_pp"),
         "income_pp_median": med("income_pp"),
         "spend_pp_median": med("spend_pp"),
@@ -820,11 +826,27 @@ def fill_area(area, items, combined_last):
     area["dsg_pupils_by_year"] = carried_pupils(rolls)
 
 
-def fill_dsg(area, values):
+def dsg_provisional(dsg):
+    """Years la_dsg.json marks provisional: an explicit 'provisional' list, else each source note that starts with
+    a year and calls it provisional ('2025-26 is the newest year: ... treat as provisional.')."""
+    years = {str(y) for y in (dsg or {}).get("provisional") or []}
+    for note in (((dsg or {}).get("source") or {}).get("notes") or []):
+        m = re.match(r"(\d{4}-\d{2})\b", str(note))
+        if m and "provisional" in str(note).lower():
+            years.add(m.group(1))
+    return years
+
+
+def fill_dsg(area, values, provisional=()):
+    """area['dsg'][year] = {'balance', 'per_pupil', 'pupils' (the denominator: pupils at the area's schools on
+    the site that year, carried forward one year), plus 'provisional': True where the source says so}."""
     pupils = area["dsg_pupils_by_year"]
     for year, balance in sorted((values or {}).items()):
         roll = pupils.get(year)
-        area["dsg"][year] = {"balance": balance, "per_pupil": balance / roll if balance is not None and roll else None}
+        area["dsg"][year] = {"balance": balance, "per_pupil": balance / roll if balance is not None and roll else None,
+                             "pupils": roll or None}
+        if year in provisional:
+            area["dsg"][year]["provisional"] = True
 
 
 def trust_key(entry, register_trust):
@@ -1011,6 +1033,7 @@ def build_areas(history_rows_by_urn, schools, pta, dsg, data_root, constituencie
     combined_last = max((e["year"] for items in buckets.values() for entries, _ in items for e in entries
                          if e["source"] == "AAR"), default=None)
     out = {"england": None, "regions": {}, "councils": {}, "constituencies": {}}
+    provisional = dsg_provisional(dsg)
     for (kind, key), items in buckets.items():
         area = new_area(names[(kind, key)])
         fill_area(area, items, combined_last)
@@ -1019,7 +1042,7 @@ def build_areas(history_rows_by_urn, schools, pta, dsg, data_root, constituencie
             values = ((dsg.get("las") or {}).get(key) or {}).get("values")
         elif kind == "england":
             values = dsg.get("england")
-        fill_dsg(area, values)
+        fill_dsg(area, values, provisional)
         if kind == "england":
             out["england"] = area
         else:

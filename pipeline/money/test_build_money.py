@@ -741,8 +741,10 @@ class HardeningTest(unittest.TestCase):
         self.assertLess(elapsed, 60, f"build took {elapsed:.1f}s")
 
 
-CTX_KEYS = {"series", "profile", "timeline", "similar", "similar_series", "council", "england", "pta_national", "ifs", "real_label",
-            "check_url", "sir_url"}
+CTX_KEYS = {"series", "profile", "timeline", "similar", "similar_series", "similar_meta", "council", "england", "pta_national", "ifs",
+            "real_label", "check_url", "sir_url"}
+# SHARED SERIES keys every series carries. Other units may add keys (C10: data-honesty adds 'reserve_basis'),
+# so tests check SERIES_KEYS <= set(series), never equality.
 SERIES_KEYS = {"years", "source", "pupils", "m", "gap", "pta", "flags", "trust_central_pp"}
 
 
@@ -934,7 +936,7 @@ class WaveBTest(unittest.TestCase):
         raw = (money / "data/sx/100099.json").read_text(encoding="utf-8")
         doc = json.loads(raw)
         self.assertNotIn(": ", raw)
-        self.assertEqual(set(doc), SERIES_KEYS)
+        self.assertLessEqual(SERIES_KEYS, set(doc))
         self.assertEqual(len(doc["years"]), 8)
         self.assertTrue(build_money.SX_CORE <= set(doc["m"]), build_money.SX_CORE - set(doc["m"]))
         self.assertEqual(doc["m"]["total_income"]["2024-25"]["pp"], round(2_345_678 / 412.5))
@@ -979,7 +981,8 @@ class WaveBTest(unittest.TestCase):
         # Act
         sx = build_money.local_series(rows, pta)
         # Assert
-        self.assertEqual(set(sx), SERIES_KEYS)
+        self.assertLessEqual(SERIES_KEYS, set(sx))
+        self.assertEqual(sx["reserve_basis"], "own")
         self.assertEqual(sx["years"], ["2022-23", "2023-24", "2024-25"])
         self.assertEqual(sx["source"], {"2022-23": "CFR", "2023-24": "CFR", "2024-25": "AAR"})
         self.assertEqual(sx["m"]["total_income"]["2022-23"]["v"], 2_000_000)
@@ -1031,8 +1034,8 @@ class WaveBTest(unittest.TestCase):
         money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
         # Assert: the ctx keys, URLs and medians follow the SHARED contract.
         ctx = fake.ctxs["100000"]
-        self.assertEqual(set(ctx), CTX_KEYS)
-        self.assertEqual(set(ctx["series"]), SERIES_KEYS)
+        self.assertLessEqual(CTX_KEYS, set(ctx))
+        self.assertLessEqual(SERIES_KEYS, set(ctx["series"]))
         self.assertEqual(ctx["check_url"], "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/100000")
         self.assertEqual(ctx["sir_url"], "https://www.schoolsinreach.com/school/100000-peer-0/")
         self.assertEqual(ctx["similar"]["teaching_staff"], round(1_000_000 / 300))
@@ -1109,11 +1112,15 @@ class WaveBTest(unittest.TestCase):
                          {"204": ("204", "Hackney", "/council/hackney/", "London")})
         # Paging: intro and outro on page 1 only; later pages get the title, a way back, filters, the table and the pager.
         council_pages = ["council/hackney"] + [f"council/hackney/{p.name}" for p in sorted((money / "council/hackney").iterdir()) if p.is_dir()]
-        self.assertGreater(len(council_pages), 2)
+        self.assertGreaterEqual(len(council_pages), 2)
         listed = Counter()
         for n, path in enumerate(council_pages, 1):
             html = self.read(money, *path.split("/"))
-            self.assertLess(len(html.encode("utf-8")), build_money.AREA_PAGE_TARGET, path)
+            # Page 1 holds AREA_TABLE_ROWS schools within its own allowance; later pages keep the target.
+            limit = build_money.AREA_PAGE_TARGET + (build_money.AREA_TABLE_ALLOWANCE if n == 1 else 0)
+            self.assertLess(len(html.encode("utf-8")), limit, path)
+            if n == 1:
+                self.assertEqual(len(re.findall(r'data-preview="school:(\d+)"', html)), build_money.AREA_TABLE_ROWS)
             self.assertEqual("INTRO-council" in html, n == 1, path)
             self.assertEqual("OUTRO-council" in html, n == 1, path)
             self.assertIn("data-filters", html)
@@ -1125,10 +1132,12 @@ class WaveBTest(unittest.TestCase):
             listed.update(re.findall(r'data-preview="school:(\d+)"', html))
         self.assertEqual(set(listed), {i["urn"] for i in map(lambda s: {"urn": str(s["urn"])}, schools)})
         self.assertEqual(set(listed.values()), {1}, "each school sits in exactly one row")
-        # Every non-school page stays under the target.
+        # Every non-school page stays under the target, but for the first page of a council's or constituency's schools.
+        firsts = {money / "council/hackney/index.html", money / "constituency/hackney-north-and-stoke-newington/index.html"}
         for page in money.rglob("*.html"):
             if "school" not in page.relative_to(money).parts[:1]:
-                self.assertLess(page.stat().st_size, build_money.AREA_PAGE_TARGET, page)
+                extra = build_money.AREA_TABLE_ALLOWANCE if page in firsts else 0
+                self.assertLess(page.stat().st_size, build_money.AREA_PAGE_TARGET + extra, page)
         self.assertNotIn("Plain-English guides", self.read(money, "ptfa"))
 
     def test_paged_keeps_one_row_per_page_when_the_frame_is_already_big(self):
@@ -1623,7 +1632,7 @@ class NearbyTest(unittest.TestCase):
         self.assertEqual([r["urn"] for r in doc["nearby"]["schools"]], [str(100000 + k) for k in range(1, 9)])
         self.assertEqual(set(doc["nearby"]) - {"line_medians"}, {"year", "phase", "radius_mi", "self", "schools", "medians", "rank"})
         self.assertEqual(fake.ctxs["100000"]["nearby"], doc["nearby"])
-        self.assertEqual(set(fake.ctxs["100000"]), CTX_KEYS | {"nearby"})
+        self.assertLessEqual(CTX_KEYS | {"nearby"}, set(fake.ctxs["100000"]))
         self.assertEqual(json.loads((out / "data/s/100055.json").read_text(encoding="utf-8"))["nearby"]["schools"], [])
         self.assertNotIn("nearby", fake.ctxs["100055"])  # nothing to show, so the page gets no key
         self.assertFalse((out / "data/s/100052.json").exists())
@@ -1764,6 +1773,372 @@ class PostcodeIndexTest(unittest.TestCase):
         self.assertNotIn("5", [r["id"] for r in n16["schools"]])  # independents publish no accounts here
         self.assertEqual(build_money.outcode("n16 0nx"), "N16")
         self.assertIsNone(build_money.outcode("not a postcode"))
+
+
+
+# ------------------------------------------------------------------ fix wave 1 (areas-build)
+
+def mixed_council(n_cfr=40, n_aar=20, cfr_2024_deficits=10, cfr_2025_deficits=4, aar_deficits=5):
+    """A 60-school council: council-run schools reporting to 2025-26 and academies to 2024-25. In 2024-25
+    cfr_2024_deficits + aar_deficits are in deficit; by their latest returns only cfr_2025_deficits + aar_deficits."""
+    schools, rows = [], []
+    for i in range(n_cfr):
+        urn = str(100000 + i)
+        schools.append(school(int(urn), f"Council School {i:02d}", fsm_pct=20 + i % 7, constituency="Hackney North and Stoke Newington"))
+        for end in ("2023-03", "2024-03", "2025-03", "2026-03"):
+            deficit = (end == "2025-03" and i < cfr_2024_deficits) or (end == "2026-03" and i < cfr_2025_deficits)
+            rows.append(row(urn, end, 2_000_000, 1_990_000, -60_000 if deficit else 120_000, pupils=300 + i))
+    for i in range(n_aar):
+        urn = str(140000 + i)
+        schools.append(school(int(urn), f"Academy {i:02d}", type="Academy converter", fsm_pct=20 + i % 7, trust="Good Trust",
+                              constituency="Hackney North and Stoke Newington"))
+        for end in ("2023-08", "2024-08", "2025-08"):
+            deficit = end == "2025-08" and i < aar_deficits
+            rows.append(row(urn, end, 2_000_000, 1_990_000, -60_000 if deficit else 120_000, source="AAR", pupils=300 + i))
+    return schools, rows
+
+
+def main_of(html):
+    """The page's <main> element only (the shell's header and footer left out)."""
+    return html.split("<main", 1)[1].split("</main>", 1)[0]
+
+
+def table_urns(html):
+    """URNs linked from rows of the page's tables (not the lists above them)."""
+    return [u for t in re.findall(r"<table.*?</table>", html, flags=re.S) for u in re.findall(r'data-preview="school:(\d+)"', t)]
+
+
+def held_health(urns):
+    """status.py with the C4 sixth status given to `urns` (so the build's tolerance is tested whatever status.py has)."""
+    from pipeline.money import status as real
+
+    def assess(rows):
+        st = real.assess(rows)
+        if st and rows and str(rows[0].get("urn")) in urns:
+            st = dict(st, status="reserve_held_by_trust", label="Reserve held by the trust", rank=5, reserve=0, reserve_share=0.0,
+                      reason="Its trust holds reserves centrally, so this academy's own balance is zero.")
+        return st
+
+    return types.SimpleNamespace(assess=assess, full_years=real.full_years, reserve_share=real.reserve_share,
+                                 ORDER=list(real.ORDER) + ["reserve_held_by_trust"] * ("reserve_held_by_trust" not in real.ORDER),
+                                 LABELS=dict(real.LABELS, reserve_held_by_trust="Reserve held by the trust"))
+
+
+class FixWaveOneTest(unittest.TestCase):
+    """areas-build's fix wave 1: paging, one benchmark, honest headlines, DSG naming, attribution and the contracts."""
+
+    def setUp(self):
+        without_other_units(self)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def patch(self, **modules):
+        for name, value in modules.items():
+            saved = getattr(build_money, name)
+            setattr(build_money, name, value)
+            self.addCleanup(setattr, build_money, name, saved)
+
+    def build(self, schools, rows, pta=None, dsg=None):
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows, pta)
+        out = self.root / "site_money"  # always a temp out, never the real site_money/
+        summary = build_money.build(site, history, links, pta_path, out=out, dsg_path=dsg or self.root / "no-dsg.json")
+        return out, summary
+
+    def read(self, money, *parts):
+        return (money.joinpath(*parts) / "index.html").read_text(encoding="utf-8")
+
+    def dashboards(self):
+        from pipeline.money import area_pages as real_area_pages
+        self.patch(area_pages=real_area_pages)
+
+    # ------------------------------------------------------------ 1. council and constituency paging
+
+    def test_council_and_constituency_first_pages_list_25_of_60_schools(self):
+        for dashboards in (False, True):
+            with self.subTest(dashboards=dashboards):
+                # Arrange: 60 schools in one council and one constituency.
+                if dashboards:
+                    self.dashboards()
+                schools, rows = mixed_council()
+                # Act
+                money, _ = self.build(schools, rows)
+                # Assert: page 1 lists at least 25, later pages carry the rest exactly once.
+                for base in ("council/hackney", "constituency/hackney-north-and-stoke-newington"):
+                    first = self.read(money, *base.split("/"))
+                    self.assertGreaterEqual(len(table_urns(first)), build_money.AREA_TABLE_ROWS, base)
+                    self.assertLess(len(first.encode("utf-8")), build_money.PAGE_BUDGET + build_money.AREA_TABLE_ALLOWANCE, base)
+                    listed = list(table_urns(first))
+                    for page in sorted((money / base).iterdir()):
+                        if page.is_dir() and page.name.isdigit():
+                            later = self.read(money, *base.split("/"), page.name)
+                            self.assertLess(len(later.encode("utf-8")), build_money.PAGE_BUDGET, page)
+                            listed += table_urns(later)
+                    self.assertEqual(sorted(listed), sorted(str(s["urn"]) for s in schools), base)
+
+    def test_chunk_rows_holds_the_first_rows_within_the_allowance(self):
+        # Arrange: rows of 1,000 bytes, room for 3 on any page.
+        weights = [1_000] * 40
+        # Act
+        plain = build_money.chunk_rows(weights, 3_000, 3_000)
+        first25 = build_money.chunk_rows(weights, 3_000, 3_000, 25, 25_000)
+        capped = build_money.chunk_rows(weights, 3_000, 3_000, 25, 10_000)
+        # Assert
+        self.assertEqual(plain[0], (0, 3))
+        self.assertEqual(first25[0], (0, 25))
+        self.assertEqual(first25[1], (25, 28))
+        self.assertEqual(capped[0], (0, 13))   # never past first + allowance
+
+    # ------------------------------------------------------------ 3. honest headlines
+
+    def test_council_lead_description_and_share_preview_state_one_year_and_count(self):
+        # Arrange: 15 of 60 in deficit in 2024-25; only 9 by each school's latest return.
+        self.dashboards()
+        schools, rows = mixed_council()
+        # Act
+        money, _ = self.build(schools, rows)
+        # Assert
+        for base in ("council/hackney", "constituency/hackney-north-and-stoke-newington"):
+            html = self.read(money, *base.split("/"))
+            description = re.search(r'<meta name="description" content="([^"]*)"', html).group(1)
+            preview = re.search(r'<meta property="og:description" content="([^"]*)"', html).group(1)
+            lead = re.sub(r"<[^>]+>", "", re.search(r'<p class="lead">(.*?)</p>', html, re.S).group(1))
+            pattern = r"In (\d{4}-\d{2}), (\d+) of (\d+) "
+            self.assertEqual(re.match(pattern, description).groups(), ("2024-25", "15", "60"), description)
+            self.assertEqual(re.match(pattern, lead).groups(), ("2024-25", "15", "60"), lead)
+            self.assertEqual(preview, description)
+
+    # ------------------------------------------------------------ 2. one benchmark dataset (C2)
+
+    def test_similar_medians_are_one_years_and_the_same_in_ctx_json_and_meta(self):
+        # Arrange: a council-run school (latest 2025-26) whose similar schools are 14 council-run ones and 10 academies
+        # (latest 2024-25); one peer's spending and another's pupils are flagged suspect in 2025-26.
+        schools = [school(100000, "Subject")]
+        rows = [row("100000", end, 2_000_000, 1_990_000, 100_000) for end in ("2024-03", "2025-03", "2026-03")]
+        spend = {}
+        for i in range(1, 15):
+            flags = {"suspect": ["total_expenditure"]} if i == 1 else {"suspect": ["pupils"]} if i == 2 else {}
+            schools.append(school(100000 + i, f"Council Peer {i}"))
+            for end in ("2024-03", "2025-03", "2026-03"):
+                r = row(str(100000 + i), end, 2_000_000, 1_800_000 + 10_000 * i, 100_000, **(flags if end == "2026-03" else {}))
+                rows.append(r)
+                if end == "2026-03" and i not in (1, 2):
+                    spend[i] = r["total_expenditure"] / r["pupils"]
+        for i in range(10):
+            schools.append(school(140000 + i, f"Academy Peer {i}", type="Academy converter"))
+            rows += [row(str(140000 + i), end, 2_000_000, 9_000_000, 100_000, source="AAR") for end in ("2024-08", "2025-08")]
+        fake = FakeSchoolPage()
+        self.patch(series=fake_series(), school_page=fake)
+        # Act
+        money, _ = self.build(schools, rows)
+        # Assert
+        doc = json.loads((money / "data/s/100000.json").read_text(encoding="utf-8"))
+        ctx = fake.ctxs["100000"]
+        self.assertEqual(doc["similar_meta"], ctx["similar_meta"])
+        self.assertEqual((doc["similar_meta"]["year"], doc["similar_meta"]["peers"]), ("2025-26", 14))
+        self.assertEqual(doc["year"], "2025-26")
+        self.assertIn("School Money's similar schools", doc["similar_meta"]["method"])
+        self.assertEqual(doc["similar"]["total_expenditure"], round(statistics.median(spend.values())))  # suspect values left out
+        for key, value in doc["similar"].items():
+            self.assertEqual(ctx["similar"][key], value, key)
+        self.assertEqual(ctx["similar_series"]["total_expenditure"]["2025-26"], doc["similar"]["total_expenditure"])
+
+    def test_fallback_school_page_names_its_benchmark_and_offers_the_report_link(self):
+        # Arrange
+        schools = [school(100000 + i, f"School {i}") for i in range(14)]
+        rows = [r for i in range(14) for r in full_rows(str(100000 + i), reserve=40_000 + 5_000 * i)]
+        # Act
+        money, _ = self.build(schools, rows)
+        # Assert
+        html = self.read(money, "school", "100000-school-0")
+        self.assertIn("similar schools (13 schools, 2024-25)", html)
+        status_line = re.search(r'<p class="status-line">(.*?)</p>', html, re.S).group(1)
+        self.assertIn(build_money.REPORT_LINK, status_line)
+        self.assertEqual(main_of(html).count('class="report-link"'), 1)
+
+    # ------------------------------------------------------------ C5 suspect pupils and federations
+
+    def test_suspect_pupils_are_merged_into_row_copies_and_leave_per_pupil_figures_out(self):
+        # Arrange: a federation lead whose 2022-23 return lists one school's pupils against the federation's money.
+        rows = full_rows("100001", years=("2022-03", "2023-03", "2024-03"), federated="Lead school", lead_laestab="2041001")
+        schools = [school(100001, "Lead School", federation="New Wave Federation")]
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows)
+        flagged = lambda rows: {"2023-03": ["pupils"]}  # noqa: E731 - series.suspect_pupils's contract
+        for helper, expected in ((flagged, ["pupils"]), (None, [])):
+            with self.subTest(helper=bool(helper)):
+                stub = types.SimpleNamespace(**dict(vars(fake_series()), **({"suspect_pupils": helper} if helper else {})))
+                self.patch(series=stub)
+                # Act
+                _, items, by_urn = build_money.build_model(site, history, links, pta_path)
+                # Assert
+                item = items[0]
+                year = next(r for r in item["rows"] if r["period_end"] == "2023-03")
+                self.assertEqual(year.get("suspect") or [], expected)
+                self.assertNotIn("pupils", next(r for r in by_urn["100001"] if r["period_end"] == "2023-03").get("suspect") or [])
+                self.assertEqual(build_money.clean_pp(year, "total_income") is None, bool(helper))
+                self.assertEqual(build_money.per_pupil(year, "total_income") is None, bool(helper))
+
+    def test_nearby_entries_name_a_federation_leads_combined_return(self):
+        # Arrange: three neighbours; one is a federation lead school.
+        schools = [school(100000 + i, f"School {i}", lat=51.56 + 0.002 * i, lon=-0.075) for i in range(4)]
+        schools[2]["federation"] = "New Wave Federation"
+        rows = [r for i in range(4) for r in full_rows(str(100000 + i), **({"federated": "Lead school"} if i == 2 else {}))]
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows)
+        # Act
+        _, items, _ = build_money.build_model(site, history, links, pta_path)
+        # Assert
+        entries = {e["urn"]: e for e in items[0]["nearby"]["schools"]}
+        self.assertEqual(entries["100002"]["federation"], "New Wave Federation")
+        self.assertNotIn("federation", entries["100001"])
+
+    def test_combined_deficits_per_pupil_leave_a_federations_money_and_roll_out(self):
+        # Arrange: two schools in deficit; the federation lead's pupils do not match its federation-wide money.
+        schools = [school(100001, "Own School"), school(100002, "Federation Lead", federation="New Wave Federation")]
+        rows = full_rows("100001", reserve=-300_000) + full_rows("100002", reserve=-900_000, pupils=100,
+                                                                 federated="Lead school", suspect=["pupils"])
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows)
+        _, items, _ = build_money.build_model(site, history, links, pta_path)
+        # Act
+        html = build_money.render_council(items[0]["council"], None)[0][1]
+        # Assert: the total keeps both returns; per pupil is the matched school's £300k over its 300 pupils.
+        lead = re.search(r"with combined deficits of <strong>(.*?)</strong>", html, re.S).group(1)
+        self.assertIn('data-v="1200000"', lead)
+        self.assertIn('data-pp="1000"', lead)
+
+    # ------------------------------------------------------------ C3 reserve basis
+
+    def test_school_json_lists_every_years_reserve_on_one_basis(self):
+        # Arrange: an academy whose latest year carries the trust-share figure and whose earlier year does not.
+        rows = [row("100001", "2024-08", 2_000_000, 1_990_000, 0, source="AAR"),
+                row("100001", "2025-08", 2_000_000, 1_990_000, 0, source="AAR", revenue_reserve_incl_trust_share=150_000)]
+        schools = [school(100001, "Academy", type="Academy converter")]
+        stub = types.SimpleNamespace(**dict(vars(fake_series()), reserve_basis=lambda rows: "own",
+                                            reserve_on_basis=lambda row, basis: row.get("revenue_reserve")))
+        for series_module, basis, reserves in ((None, "incl_trust_share", [None, 150_000]), (stub, "own", [0, 0])):
+            with self.subTest(helpers=series_module is not None):
+                self.patch(series=series_module)
+                # Act
+                money, _ = self.build(schools, rows)
+                # Assert
+                doc = json.loads((money / "data/s/100001.json").read_text(encoding="utf-8"))
+                self.assertEqual(doc["reserve_basis"], basis)
+                self.assertEqual([y["reserve"] for y in doc["years"]], reserves)
+                self.assertEqual(build_money.reserve_of(rows[0]), 0)  # reserve_of keeps its behaviour
+
+    # ------------------------------------------------------------ C4 the sixth status
+
+    def test_reserve_held_by_trust_is_counted_on_its_own_and_explained(self):
+        # Arrange: two of 12 academies get the sixth status; charts.py may not know it yet.
+        self.patch(health=held_health({"140000", "140001"}))
+        schools = [school(140000 + i, f"Academy {i}", type="Academy converter", trust="Good Trust") for i in range(12)]
+        rows = [r for i in range(12) for r in full_rows(str(140000 + i), source="AAR", years=("2024-08", "2025-08"))]
+        # Act
+        money, summary = self.build(schools, rows)
+        # Assert
+        self.assertEqual(summary["statuses"]["reserve_held_by_trust"], 2)
+        council = main_of(self.read(money, "council", "hackney"))
+        self.assertIn("2 academies whose trust holds the reserve centrally are counted on their own", council)
+        self.assertIn("<strong>0 of 12</strong> schools", council)
+        self.assertIn("Reserve held by the trust", main_of(self.read(money, "about")))
+        self.assertIn("◇", self.read(money, "school", "140000-academy-0"))
+        self.assertEqual(json.loads((money / "data/status.json").read_text(encoding="utf-8"))["140000"]["status"], "reserve_held_by_trust")
+        self.assertEqual(build_money.status_label("reserve_held_by_trust"), "Reserve held by the trust")
+
+    # ------------------------------------------------------------ C6, C7, C9
+
+    def test_about_page_has_corrections_and_privacy_from_the_shell_or_its_own_copy(self):
+        # Arrange
+        given = types.SimpleNamespace(corrections_html=lambda: '<h2 id="corrections">From the shell</h2>',
+                                      privacy_html=lambda: '<h2 id="privacy">Shell privacy</h2>')
+        bare = types.SimpleNamespace()
+        # Act
+        self.patch(shell=bare)
+        without = [build_money.shell_section(n, f) for n, f in (("corrections_html", build_money.CORRECTIONS_FALLBACK),
+                                                                  ("privacy_html", build_money.PRIVACY_FALLBACK))]
+        self.patch(shell=given)
+        given_html = [build_money.shell_section(n, "fallback") for n in ("corrections_html", "privacy_html")]
+        # Assert
+        self.assertTrue(without[0].startswith('<h2 id="corrections">') and without[1].startswith('<h2 id="privacy">'))
+        self.assertIn("direct address for corrections", without[0])
+        self.assertIn("api.postcodes.io", without[1])
+        self.assertNotIn("@", "".join(without))
+        self.assertEqual(given_html, ['<h2 id="corrections">From the shell</h2>', '<h2 id="privacy">Shell privacy</h2>'])
+
+    def test_about_page_carries_corrections_privacy_and_the_boundary_notices(self):
+        # Act
+        money, _ = self.build([school(100001, "One")], full_rows("100001"))
+        # Assert
+        about = main_of(self.read(money, "about"))
+        self.assertIn('id="corrections"', about)
+        self.assertIn('id="privacy"', about)
+        self.assertNotIn("schoolsinreach.com/about.html", about)
+        self.assertEqual(about.count("Source: Office for National Statistics licensed under the Open Government Licence v.3.0"), 3)
+        for year in ("2025", "2024", "2021"):
+            self.assertIn(f"Contains OS data © Crown copyright and database right {year}", about)
+
+    def test_compare_results_are_a_plain_list_with_a_status_region(self):
+        # Act
+        money, _ = self.build([school(100001, "One")], full_rows("100001"))
+        # Assert
+        html = self.read(money, "compare")
+        results = re.search(r'<ul id="cmp-results"[^>]*>', html).group(0)
+        self.assertNotIn("listbox", results)
+        self.assertIn('<p id="cmp-status" class="visually-hidden" role="status" aria-live="polite"></p>', html)
+        self.assertNotIn("onsubmit", html)
+
+    def test_charity_links_use_the_register_template(self):
+        # Arrange
+        pta = {"100001": [{"charity_number": "1103834", "name": "William Patten PTFA", "status": "registered",
+                           "history": [{"period_end": "2025-08", "income": 48_547, "expenditure": 40_000}], "match": {"confidence": "high"}}]}
+        # Act
+        url = build_money.charity_url(1103834)
+        money, _ = self.build([school(100001, "William Patten Primary School")], full_rows("100001"), pta)
+        # Assert
+        self.assertEqual(url, "https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet"
+                              "&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_regId=1103834"
+                              "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
+        html = self.read(money, "school", "100001-william-patten-primary-school")
+        self.assertIn(f'href="{build_money.esc(url)}"', html)
+        self.assertNotIn("charity-details/", html)
+
+    # ------------------------------------------------------------ 4. DSG naming and the scope line
+
+    def test_dsg_is_named_with_its_year_denominator_and_provisional_status(self):
+        for dashboards in (False, True):
+            with self.subTest(dashboards=dashboards):
+                # Arrange: la_dsg.json's own note marks 2024-25 provisional.
+                if dashboards:
+                    self.dashboards()
+                dsg = write_dsg(self.root / "dsg.json")
+                doc = json.loads(dsg.read_text(encoding="utf-8"))
+                doc["source"]["notes"] = ["2024-25 is the newest year: as submitted by LAs; treat as provisional."]
+                dsg.write_text(json.dumps(doc), encoding="utf-8")
+                schools, rows = mixed_council(n_cfr=12, n_aar=0, cfr_2024_deficits=2, cfr_2025_deficits=1)
+                # Act
+                money, _ = self.build(schools, rows, dsg=dsg)
+                # Assert
+                council = main_of(self.read(money, "council", "hackney"))
+                self.assertIn("Dedicated Schools Grant balance (all four blocks)", council)
+                self.assertIn("provisional", council)
+                self.assertIn("pupils at the council&#x27;s schools on this site", council)
+                for page in money.rglob("*.html"):
+                    text = page.read_text(encoding="utf-8").lower()
+                    for old in ("high-needs (dsg) balance", "schools budget balance", "high-needs balance"):
+                        self.assertNotIn(old, text, page)
+
+    def test_england_debts_and_council_pages_say_why_counts_sit_below_dfe_totals(self):
+        for dashboards in (False, True):
+            with self.subTest(dashboards=dashboards):
+                # Arrange
+                if dashboards:
+                    self.dashboards()
+                schools, rows = mixed_council(n_cfr=12, n_aar=6)
+                # Act
+                money, _ = self.build(schools, rows)
+                # Assert
+                pages = [("council", "hackney"), ("england",), ("debts",)] if dashboards else [("council", "hackney"), ()]
+                for parts in pages:
+                    self.assertIn("Counts sit below the DfE&#x27;s published totals", self.read(money, *parts), parts)
 
 
 if __name__ == "__main__":

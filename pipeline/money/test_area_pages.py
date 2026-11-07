@@ -367,7 +367,7 @@ class AreaPagesTest(unittest.TestCase):
         self.assertEqual(len(re.findall(r"<figcaption>", result["intro"])), 8)
         self.assertLessEqual(len((result["intro"] + result["outro"]).encode("utf-8")), 22_000)
         for title, labels in calls.items():
-            if "(DSG)" in title:      # la_dsg.json has councils and England, not regions; totals are the council's own
+            if "Dedicated Schools Grant" in title:  # la_dsg.json has councils and England, not regions; totals are the council's own
                 self.assertTrue("per pupil" not in title or any("England" in label for label in labels), title)
                 continue
             for place in ("London", "England"):
@@ -448,6 +448,107 @@ class AreaPagesTest(unittest.TestCase):
         self.assertIsNotNone(results[0]["table"])
         self.assertFalse(results[1]["indexable"])
         self.assertIn("High Needs Stability Grant", area_pages.hnsg_note(None))
+
+
+
+class FixWaveOneAreaTest(unittest.TestCase):
+    """areas-build fix wave 1 on the dashboards: honest headlines, C1 wording, DSG labels, the sixth status, C9."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.fx = Fixture()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fx.tmp.cleanup()
+
+    def council(self):
+        return area_pages.render_area("council", "204", self.fx.doc["councils"]["204"], self.fx.items, self.fx.ctx)
+
+    def test_lead_and_description_quote_one_year_and_count(self):
+        # Act
+        result = self.council()
+        # Assert
+        lead = re.sub(r"<[^>]+>", "", re.search(r'<p class="lead">(.*?)</p>', result["intro"], re.S).group(1))
+        pattern = r"In (\d{4}-\d{2}), (\d+) of (\d+) Hackney schools with a full-year return were in deficit \((\d+\.\d)%"
+        self.assertEqual(re.match(pattern, lead).groups(), re.match(pattern, result["description"]).groups())
+
+    def test_lead_uses_ratio_words_when_phrasing_is_present_and_percentages_when_not(self):
+        # Arrange
+        stub = type("Phrasing", (), {"ratio_words": staticmethod(lambda a, b: "about double")})
+        none = type("Phrasing", (), {"ratio_words": staticmethod(lambda a, b: None)})
+        others = area_pages.comparators("council", self.fx.doc["councils"]["204"], self.fx.ctx, self.fx.items)
+        area = self.fx.doc["councils"]["204"]
+        # Act
+        with patch.object(area_pages, "phrasing", stub):
+            worded = area_pages.lead("Hackney", area, others, self.fx.ctx)
+        with patch.object(area_pages, "phrasing", none):
+            silent = area_pages.lead("Hackney", area, others, self.fx.ctx)
+        with patch.object(area_pages, "phrasing", None):
+            absent = area_pages.lead("Hackney", area, others, self.fx.ctx)
+        # Assert
+        self.assertIn("about double the share across England (", worded)
+        self.assertIn("against", silent)
+        self.assertEqual(silent, absent)
+
+    def test_dsg_figures_carry_their_year_provisional_status_and_denominator(self):
+        # Arrange: la_dsg.json marks its newest year provisional.
+        provisional = areas.dsg_provisional(self.fx.dsg)
+        newest = max(self.fx.doc["councils"]["204"]["dsg"])
+        # Act
+        council = self.council()
+        league = area_pages.render_council_league({"204": dict(self.fx.doc["councils"]["204"], code="204", name="Hackney",
+                                                                path="/council/hackney/", region="London")}, self.fx.ctx)
+        debts = area_pages.render_debts(self.fx.doc, self.fx.ctx)
+        # Assert
+        self.assertIn(newest, provisional)
+        self.assertTrue(self.fx.doc["councils"]["204"]["dsg"][newest]["provisional"])
+        self.assertIn(f"Dedicated Schools Grant balance (all four blocks), {newest}, provisional", council["intro"])
+        self.assertIn("pupils at the council&#x27;s schools on this site in " + newest, council["intro"])
+        self.assertIn("Dedicated Schools Grant balance (all four blocks) per pupil", league["table"]["headers"])
+        self.assertIn(f"<small>{newest}, provisional</small>", "".join(league["table"]["rows"][0]))
+        self.assertIn("Dedicated Schools Grant balance (all four blocks)", debts["table"]["headers"])
+        self.assertIn(f"<small>{newest}, provisional</small>", "".join("".join(r) for r in debts["table"]["rows"]))
+        for result in (council, league, debts):
+            text = (result["intro"] + result["description"]).lower()
+            self.assertNotIn("high-needs (dsg)", text)
+            self.assertNotIn("schools budget balance", text)
+
+    def test_scope_line_and_report_link_sit_on_council_england_and_debts(self):
+        # Act
+        pages = {"council": self.council(), "england": area_pages.render_area("england", "england", self.fx.doc["england"], self.fx.items, self.fx.ctx),
+                 "debts": area_pages.render_debts(self.fx.doc, self.fx.ctx)}
+        # Assert
+        for name, result in pages.items():
+            self.assertIn(build_money.esc(area_pages.SCOPE_NOTE), result["intro"], name)
+        for name in ("council", "england"):
+            self.assertEqual(pages[name]["intro"].count(area_pages.REPORT_LINK), 1, name)
+
+    def test_reserve_held_by_trust_is_tolerated_counted_apart_and_never_tight(self):
+        # Arrange: an academy given the sixth status whatever charts.py and status.py know.
+        held = dict(self.fx.trust_items[3], status=dict(self.fx.trust_items[3]["status"], status="reserve_held_by_trust", rank=5,
+                                                        label="Reserve held by the trust"))
+        items = self.fx.trust_items[:3] + [held]
+        # Act
+        with patch.object(area_pages.charts, "STATUS_LABELS", {k: v for k, v in area_pages.charts.STATUS_LABELS.items() if k != "reserve_held_by_trust"}):
+            cells, _ = area_pages.school_cells(held)
+            note = area_pages.held_note(Counter(i["status"]["status"] for i in items))
+        order = [i["urn"] for i in sorted(items, key=area_pages.school_order)]
+        # Assert
+        self.assertIn("◇", cells[1])
+        self.assertIn("Reserve held by the trust", cells[1])
+        self.assertEqual(order[-1], held["urn"])
+        self.assertIn("1 academy whose trust holds the reserve centrally is counted on its own", note)
+        self.assertIn("not as tight and not in deficit", note)
+
+    def test_held_charities_link_to_the_register_template(self):
+        # Act
+        ptfa = area_pages.render_ptfa(self.fx.doc, self.fx.items, self.fx.ctx)
+        # Assert
+        self.assertEqual(area_pages.charity_url(1103834), build_money.charity_url(1103834))
+        self.assertIn("_CharityDetailsPortlet_regId=1103834&", area_pages.charity_url(1103834))
+        self.assertIn(build_money.esc(area_pages.charity_url(4000000)), ptfa["intro"])  # the held-for-review list
+        self.assertNotIn("charity-details/", ptfa["intro"] + ptfa["outro"])
 
 
 if __name__ == "__main__":

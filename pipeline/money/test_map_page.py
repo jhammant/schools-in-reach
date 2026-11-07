@@ -359,7 +359,8 @@ class BuildMeasuresTest(unittest.TestCase):
         self.assertEqual(doc["council"]["council-204"]["m"]["deficit_pp"], {"2025-26": -612})
         self.assertIsInstance(doc["council"]["council-204"]["m"]["deficit_pp"]["2025-26"], int)
         for key, meta in doc["measures"].items():
-            self.assertEqual(set(meta), {"label", "unit", "signed", "scale", "source", "levels"}, key)
+            self.assertLessEqual({"label", "unit", "signed", "scale", "source", "levels"}, set(meta), key)
+            self.assertLessEqual(set(meta) - {"label", "unit", "signed", "scale", "source", "levels"}, {"note", "provisional"}, key)
             self.assertIn(meta["unit"], ("pct", "gbp_pp", "pupils"))
             self.assertIn(meta["scale"], ("sequential", "diverging"))
         self.assertEqual(doc["measures"]["reserve_median_pp"]["scale"], "diverging")
@@ -572,6 +573,58 @@ class WritePagesTest(unittest.TestCase):
         M.write_pages(env, councils_path=councils, constituencies_path=constituencies)
         # Assert
         self.assertIn('property="og:image" content="https://money.schoolsinreach.com/og/map.png"', written["/map/"])
+
+
+
+class FixWaveOneMapTest(unittest.TestCase):
+    """areas-build fix wave 1 on the map: ONS/OS boundary notices, the sixth status, DSG naming and provisional years."""
+
+    def build(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        councils, constituencies = boundary_fixtures(tmp.name)
+        env, written = fake_env(Path(tmp.name) / "out")
+        M.write_pages(env, councils_path=councils, constituencies_path=constituencies)
+        return Path(tmp.name) / "out", written
+
+    def test_boundary_files_and_pages_carry_the_ons_and_os_notices(self):
+        # Act
+        out, written = self.build()
+        # Assert
+        for name, year in (("councils.geojson", "2025"), ("constituencies.geojson", "2024")):
+            doc = json.loads((out / "data/map" / name).read_text(encoding="utf-8"))
+            self.assertIn("Source: Office for National Statistics licensed under the Open Government Licence v.3.0", doc["attribution"])
+            self.assertIn(f"Contains OS data © Crown copyright and database right {year}", doc["attribution"])
+        for path in ("/map/", "/map/constituencies/"):
+            self.assertIn("Source: Office for National Statistics licensed under the Open Government Licence v.3.0", written[path])
+            self.assertIn("Contains OS data © Crown copyright and database right 2025", written[path])
+            self.assertIn("Contains OS data © Crown copyright and database right 2024", written[path])
+
+    def test_status_filters_tolerate_the_sixth_status(self):
+        # Arrange: status.py's ORDER with reserve_held_by_trust last, whatever this checkout's status.py has.
+        order = [k for k in health.ORDER if k != "reserve_held_by_trust"] + ["reserve_held_by_trust"]
+        labels = dict(health.LABELS, reserve_held_by_trust="Reserve held by the trust")
+        # Act
+        with mock.patch.object(health, "ORDER", order), mock.patch.object(health, "LABELS", labels):
+            html = M._status_labels()
+        # Assert
+        self.assertIn("◇", html["reserve_held_by_trust"])
+        self.assertIn("Reserve held by the trust", html["reserve_held_by_trust"])
+        self.assertEqual(M.ICONS["reserve_held_by_trust"], "◇")
+
+    def test_dsg_measure_is_named_with_its_denominator_and_provisional_years(self):
+        # Arrange
+        areas = make_areas()
+        areas["councils"]["204"]["dsg"]["2024-25"]["provisional"] = True
+        # Act
+        doc = M.build_measures(areas)
+        # Assert
+        meta = doc["measures"]["dsg_pp"]
+        self.assertEqual(meta["label"], "Dedicated Schools Grant balance (all four blocks) per pupil")
+        self.assertIn("pupils at the council's schools on this site that year", meta["note"])
+        self.assertEqual(meta["provisional"], ["2024-25"])
+        self.assertNotIn("high-needs (DSG)", json.dumps(doc))
+        self.assertNotIn("high-needs (DSG)", M.DSG_FALLBACK)
 
 
 if __name__ == "__main__":

@@ -41,7 +41,9 @@ AUDIENCES = [
     ("pupils", "pupils"),
     ("everyone", "everyone"),
 ]
-ICONS = {"in_deficit": "▼", "heading_for_deficit": "↘", "tight": "●", "healthy": "✓", "large_reserves": "▲"}
+ICONS = {"in_deficit": "▼", "heading_for_deficit": "↘", "tight": "●", "healthy": "✓", "large_reserves": "▲",
+         "reserve_held_by_trust": "◇"}
+HELD = "reserve_held_by_trust"  # the trust holds the academy's reserve: its own zero is never shown as a figure
 SOURCE_NAMES = {"CFR": "DfE CFR return", "AAR": "DfE academy accounts return"}
 
 # The framings the tools explain a forecast with; guides.py hands them to tools.js with their pages.
@@ -509,9 +511,13 @@ def school_view(item: dict) -> dict:
     pupils = item.get("pupils")
     if pupils is None and years:
         pupils = years[-1].get("pupils")
-    status_pupils = next((r.get("pupils") for r in reversed(years) if state and r.get("year") == state["year"] and r.get("pupils")), None)
+    row = next((r for r in reversed(years) if state and r.get("year") == state["year"] and r.get("pupils")), None)
+    if row is not None and "pupils" in (row.get("suspect") or []):
+        status_pupils = None  # the year's pupils don't match its money (a federation's combined return): no per-pupil figure
+    else:
+        status_pupils = (row or {}).get("pupils") or pupils
     return {"urn": urn, "name": name, "path": item.get("path") or site.page_path("school", urn, name),
-            "pupils": pupils, "status_pupils": status_pupils or pupils, "status": state}
+            "pupils": pupils, "status_pupils": status_pupils, "status": state}
 
 
 def _exact(value) -> str:
@@ -527,7 +533,9 @@ def embed_page(view: dict) -> str:
     name = site.esc(view["name"])
     reserve, pupils = state.get("reserve"), view.get("status_pupils")
     when = ", ".join(site.esc(x) for x in (state.get("year"), SOURCE_NAMES.get(state.get("source"), state.get("source"))) if x)
-    if isinstance(reserve, (int, float)) and pupils:
+    if key == HELD:
+        figure, detail = '<p class="embed-fig">Its trust holds the reserve centrally.</p>', when
+    elif isinstance(reserve, (int, float)) and pupils:
         figure = f'<p class="embed-fig"><b>{_exact(reserve / pupils)}</b> reserve per pupil</p>'
         detail = f"{_exact(reserve)} in total" + (f" · {when}" if when else "")
     elif isinstance(reserve, (int, float)):
@@ -540,7 +548,7 @@ def embed_page(view: dict) -> str:
             '<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">'
             f'<title>{name}: {site.SITE_NAME}</title><link rel="stylesheet" href="/assets/app.css">'
             '<link rel="stylesheet" href="/assets/guides.css"></head><body class="embed"><div class="embed-card">'
-            f'<span class="badge s-{key}"><span aria-hidden="true">{ICONS[key]}</span> {site.esc(state["label"])}</span>'
+            f'<span class="badge s-{key}"><span aria-hidden="true">{ICONS.get(key, "•")}</span> {site.esc(state["label"])}</span>'
             f'{figure}{source}<a class="embed-link" href="{url}" target="_blank" rel="noopener"><span class="n">{name}</span><span class="s"> on {site.SITE_NAME}</span></a>'
             '</div></body></html>\n')
     if len(html.encode("utf-8")) > EMBED_MAX_BYTES:

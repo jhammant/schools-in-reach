@@ -12,7 +12,8 @@ Writes, through write_pages(env):
 
 Reads: site/data/england/la_boundaries_lite.geojson and pipeline/money/data/constituencies_2024.geojson
 (repo-relative, falling back to the real repo like areas.py), data/ifs_context.json for the reasons
-behind deficits, data/la_dsg.json for the high-needs override note, and env['items'] / env['areas'].
+behind deficits, data/la_dsg.json for the Dedicated Schools Grant override note, and env['items'] / env['areas'].
+Both boundary files and both pages carry the ONS notice the boundaries' licence asks for (BOUNDARY_NOTICES).
 Stdlib only. Never imports build_money.
 """
 
@@ -64,8 +65,8 @@ MEASURES = [
      [("all", "gov_pp_median"), ("all", "grant_pp_median")]),
     ("spend_pp_median", "Median spending per pupil", "gbp_pp", False, "sequential", SRC_FINANCE, LEVELS_ALL,
      [("all", "spend_pp_median"), ("all", "spend_median_pp")]),
-    ("dsg_pp", "Council high-needs (DSG) balance per pupil", "gbp_pp", True, "diverging",
-     "DfE section 251 outturn (Dedicated Schools Grant balance)", LEVELS_LA, [("dsg", "per_pupil")]),
+    ("dsg_pp", "Dedicated Schools Grant balance (all four blocks) per pupil", "gbp_pp", True, "diverging",
+     "DfE section 251 outturn (Dedicated Schools Grant balance, all four blocks)", LEVELS_LA, [("dsg", "per_pupil")]),
     ("pta_median_pp", "Median parents' association income per pupil", "gbp_pp", False, "sequential",
      "Charity Commission register", LEVELS_ALL, [("all", "pta_median_pp"), ("all", "pta_pp_median")]),
     ("fsm_pct", "Pupils eligible for free school meals", "pct", False, "sequential", "DfE school census",
@@ -83,7 +84,8 @@ PHASE_LABELS = {"primary": "Primary", "secondary": "Secondary", "special": "Spec
                 "other": "Other"}
 GOVERNANCE = ["council-run", "academy", "free school", "independent"]
 GOV_LABELS = {"council-run": "Council-run", "academy": "Academy", "free school": "Free school", "independent": "Independent"}
-ICONS = {"in_deficit": "▼", "heading_for_deficit": "↘", "tight": "●", "healthy": "✓", "large_reserves": "▲"}
+ICONS = {"in_deficit": "▼", "heading_for_deficit": "↘", "tight": "●", "healthy": "✓", "large_reserves": "▲",
+         "reserve_held_by_trust": "◇"}
 
 HELPS = ("What helps: a plan agreed with the council or trust to bring the budget back into balance over a few "
          "years, forecasts that governors see often, and early talks about pupil numbers and special needs "
@@ -92,8 +94,26 @@ CASH_NOTE = "£ figures are cash for each year, not adjusted for inflation."
 PTA_NOTE = ("Parents' association income comes from the Charity Commission register. Charities with income of "
             "£5,000 or less need not register, so a school with no registered parents' association found may "
             "still have one. It can overlap with donations in the school's own accounts, so the two are never added together.")
-DSG_FALLBACK = ("Statutory override: council high-needs (DSG) deficits are held apart from council general funds "
+DSG_FALLBACK = ("Statutory override: councils' Dedicated Schools Grant deficits are held apart from council general funds "
                 "until the end of 2027-28, and the High Needs Stability Grant pays most of them from autumn 2026.")
+DSG_PER_PUPIL = ("All four blocks of the Dedicated Schools Grant together; most deficits come from high-needs spending. "
+                 "Per pupil divides by the pupils at the council's schools on this site that year.")
+ONS_NOTICE = "Source: Office for National Statistics licensed under the Open Government Licence v.3.0"
+# The OS notice year of each boundary set: council boundaries 2025, constituencies 2024.
+BOUNDARY_NOTICES = {"councils.geojson": ("Council boundaries", "2025"),
+                    "constituencies.geojson": ("Parliamentary constituency boundaries", "2024")}
+
+
+def boundary_notice(name):
+    """'Council boundaries: Source: Office for National Statistics ... Contains OS data © Crown copyright ... 2025.'"""
+    what, year = BOUNDARY_NOTICES[name]
+    return f"{what}: {ONS_NOTICE}. Contains OS data © Crown copyright and database right {year}."
+
+
+def attribution_html():
+    """The boundary notices shown under the map and its tables (C119)."""
+    return ('<p class="mx-attrib small muted">' + " ".join(site.esc(boundary_notice(n)) for n in BOUNDARY_NOTICES)
+            + ' <a href="/about/#sources">All sources and licences</a>.</p>')
 
 
 # ----------------------------------------------------------------- small helpers
@@ -300,14 +320,19 @@ def round_geometry(geom, dp=DP):
     return _geometry(_round_polys(polys, dp)) if polys else geom
 
 
-def _feature_collection(features):
-    return _dumps({"type": "FeatureCollection", "features": features})
+def _feature_collection(features, notice=None):
+    doc = {"type": "FeatureCollection"}
+    if notice:  # a GeoJSON foreign member: the licence notice travels with the downloaded file
+        doc["attribution"] = notice
+    doc["features"] = features
+    return _dumps(doc)
 
 
-def build_geojson(features, id_prefix, code_key, budget, simplify):
+def build_geojson(features, id_prefix, code_key, budget, simplify, notice=None):
     """Compact GeoJSON text with properties {id: id_prefix + code, code, name}, rounded to 4 dp, at most
-    budget bytes. With simplify, the Douglas-Peucker tolerance rises (doubling, then bisection) until it
-    fits. Raises ValueError when it cannot fit."""
+    budget bytes, and the boundaries' licence notice as a top-level 'attribution' when given. With simplify,
+    the Douglas-Peucker tolerance rises (doubling, then bisection) until it fits. Raises ValueError when it
+    cannot fit."""
     prepared = []
     for f in features or []:
         props = f.get("properties") or {}
@@ -323,7 +348,7 @@ def build_geojson(features, id_prefix, code_key, budget, simplify):
             if tolerance > 0:
                 polys = _simplify_polys(polys, sigs[k], tolerance)
             out.append({"type": "Feature", "properties": props, "geometry": _geometry(_round_polys(polys, DP))})
-        return _feature_collection(out)
+        return _feature_collection(out, notice)
 
     text = encode(0)
     if len(text.encode("utf-8")) <= budget:
@@ -446,9 +471,15 @@ def build_measures(areas_doc, paths=None):
             out[ident] = {"name": name, "p": path or site.page_path("area", ident, name), "m": _area_values(area, candidates, level)}
         return out
 
+    provisional = sorted({y for block in ([england], councils.values()) for area in block if isinstance(area, dict)
+                          for y, d in (area.get("dsg") or {}).items() if isinstance(d, dict) and d.get("provisional")})
+    meta = measure_meta()
+    meta["dsg_pp"]["note"] = DSG_PER_PUPIL
+    if provisional:
+        meta["dsg_pp"]["provisional"] = provisional
     doc = {
         "years": [],
-        "measures": measure_meta(),
+        "measures": meta,
         "england": _area_values(england, candidates, "england"),
         "council": listing(councils, "council-", "council"),
         "constituency": listing(constituencies, "constituency-", "constituency"),
@@ -642,7 +673,9 @@ def _checks(name, options, labels, legend):
 
 
 def _status_labels():
-    labels = {k: f'<span class="badge small s-{k}"><span aria-hidden="true">{ICONS[k]}</span> {site.esc(health.LABELS[k])}</span>'
+    icons = dict(ICONS, **(getattr(health, "ICONS", None) or {}))
+    labels = {k: f'<span class="badge small s-{k}"><span aria-hidden="true">{icons.get(k, "•")}</span> '
+                 f'{site.esc(health.LABELS.get(k) or k.replace("_", " ").capitalize())}</span>'
               for k in health.ORDER}
     labels["none"] = "No published status"
     return labels
@@ -718,7 +751,7 @@ def map_body(measures, ctx, *, has_councils, has_constituencies):
         '<p class="lead">See how school budgets compare across England, council by council or constituency by constituency. '
         'Pick a measure and a year, then tap an area or a school for its figures.</p>'
         f'{_controls(meta, years, year, DEFAULT_MEASURE)}{missing}'
-        f'<div class="mx-stage">{map_div}{card}</div>{legend}'
+        f'<div class="mx-stage">{map_div}{card}</div>{legend}{attribution_html()}'
         f'{_why_html(ctx)}'
         f'<section class="mx-tablebox" aria-labelledby="mx-table-h"><h2 id="mx-table-h">Every council</h2>'
         '<p class="small muted">The same figures as the map, as a table you can sort. '
@@ -740,6 +773,7 @@ def constituencies_body(measures, ctx):
         f'{_why_html(ctx)}'
         f'<section class="mx-tablebox" aria-label="Every constituency">'
         f'{_table(measures["constituency"], meta, year, england_value, "constituency", False, "mx-ctable")}</section>'
+        f'{attribution_html()}'
     )
 
 
@@ -783,7 +817,7 @@ def write_pages(env, *, councils_path=None, constituencies_path=None):
         doc = _load_json(src) if src else None
         has[name] = bool(doc and doc.get("features"))
         if has[name]:
-            _write_data(out, name, build_geojson(doc["features"], prefix, key, budget, simplify))
+            _write_data(out, name, build_geojson(doc["features"], prefix, key, budget, simplify, boundary_notice(name)))
 
     ctx = map_context()
     written = []

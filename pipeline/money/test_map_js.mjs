@@ -31,8 +31,10 @@ const META = {
     source: "DfE CFR (council-run) and AAR (academy) returns", levels: ["england", "council", "constituency"] },
   deficit_pp: { key: "deficit_pp", label: "Deficit per pupil, schools in deficit", unit: "gbp_pp", signed: true, scale: "diverging",
     source: "DfE CFR (council-run) and AAR (academy) returns", levels: ["england", "council", "constituency"] },
-  dsg_pp: { key: "dsg_pp", label: "Council high-needs (DSG) balance per pupil", unit: "gbp_pp", signed: true, scale: "diverging",
-    source: "DfE section 251 outturn (Dedicated Schools Grant balance)", levels: ["england", "council"] },
+  dsg_pp: { key: "dsg_pp", label: "Dedicated Schools Grant balance (all four blocks) per pupil", unit: "gbp_pp", signed: true, scale: "diverging",
+    source: "DfE section 251 outturn (Dedicated Schools Grant balance, all four blocks)", levels: ["england", "council"],
+    note: "All four blocks together. Per pupil divides by the pupils at the council's schools on this site that year.",
+    provisional: ["2025-26"] },
   spend_pp_median: { key: "spend_pp_median", label: "Median spending per pupil", unit: "gbp_pp", signed: false, scale: "sequential",
     source: "DfE CFR (council-run) and AAR (academy) returns", levels: ["england", "council", "constituency"] },
 };
@@ -278,7 +280,10 @@ test("area card says a missing figure isn't published, never £0", () => {
   assert.equal(model.lines[0].text, "Not published for this year (England £7,400 per pupil)");
   assert.ok(!JSON.stringify(model).includes("£0"));
   assert.equal(dsg.lines[0].text, "-£512 per pupil, total -£23.1m (England -£849 per pupil)");
-  assert.ok(line(dsg, "High-needs budgets").text.startsWith("Statutory override"));
+  assert.ok(line(dsg, "Dedicated Schools Grant deficits").text.startsWith("Statutory override"));
+  assert.equal(dsg.lines[0].label, "Dedicated Schools Grant balance (all four blocks) per pupil, 2025-26, provisional");
+  assert.ok(line(dsg, "About this measure").text.includes("pupils at the council's schools on this site that year"));
+  assert.ok(!JSON.stringify(dsg).toLowerCase().includes("high-needs (dsg)"));
   assert.ok(line(dsg, "Special educational needs (SEND) pressure"));
   assert.ok(line(dsg, "What helps"));
 });
@@ -322,6 +327,21 @@ test("school card without figures says so and never shows £0", () => {
   assert.equal(failed.pin.id, "999002");
 });
 
+test("school card keeps withheld per-pupil figures withheld and fills in only missing ones", () => {
+  // Arrange: a federation lead's money against one school's pupils, and an older document without the fields
+  const withheld = { urn: 100001, name: "Federation Lead", year: "2024-25", pupils: 300, reserve: 100000, reserve_pp: null,
+    income: 2000000, income_pp: null };
+  const older = { urn: 100002, name: "Older Document", year: "2024-25", pupils: 400, reserve: 100000, income: 2000000 };
+  // Act
+  const card = keep(MM.schoolCardModel(withheld, CTX));
+  const filled = keep(MM.schoolCardModel(older, CTX));
+  // Assert
+  assert.equal(line(card, "Reserve per pupil, 2024-25").text, "Not published for this year");
+  assert.equal(line(card, "Income per pupil, 2024-25").text, "Not published for this year");
+  assert.equal(line(filled, "Reserve per pupil, 2024-25").text, `+£250 per pupil (total ${MA.fmtMoney(100000, true)})`);
+  assert.equal(line(filled, "Income per pupil, 2024-25").text, `£5,000 per pupil (total ${MA.fmtMoney(2000000)})`);
+});
+
 test("the pin payload is exactly {type, id, name, p}", () => {
   // Arrange / Act
   const school = keep(MM.schoolCardModel(goldS(), CTX)).pin;
@@ -360,6 +380,26 @@ test("captions and school rows decode", () => {
   assert.equal(rows.length, 2);
   assert.equal(MM.dotVisible(rows[1], { phase: ["secondary"], gov: ["academy"], status: ["none"] }), true);
   assert.equal(MM.dotVisible(rows[0], { phase: ["primary"], gov: ["council-run"], status: ["healthy"] }), false);
+});
+
+test("the sixth status, reserve held by the trust, has its own label, icon and neutral colour", () => {
+  // Arrange
+  const k = "reserve_held_by_trust";
+  // Act
+  const at = MM.ORDER.indexOf(k);
+  // Assert: listed last, never inside the five, with a grey fallback until app.css defines --held.
+  assert.equal(at, MM.ORDER.length - 1);
+  assert.equal(MM.LABELS[k], "Reserve held by the trust");
+  assert.equal(MM.ICONS[k], "◇");
+  assert.equal(MM.STATUS_VARS[k], "--held");
+  assert.equal(MM.STATUS_FALLBACK[k], "#6b7280");
+});
+
+test("the map credits the ONS boundaries with their OS notices", () => {
+  // Assert
+  assert.ok(MM.BOUNDARY_NOTICE.includes("Source: Office for National Statistics licensed under the Open Government Licence v.3.0"));
+  assert.ok(MM.BOUNDARY_NOTICE.includes("Contains OS data © Crown copyright and database right 2025"));
+  assert.ok(MM.BOUNDARY_NOTICE.includes("2024 (constituencies)"));
 });
 
 test("no model string uses banned words", () => {
