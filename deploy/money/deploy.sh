@@ -61,9 +61,13 @@ if problems:
     sys.exit("Deploy aborted: " + "; ".join(problems))
 print(f"School Money deploy check passed: {schools:,} school pages, sitemap, search index, robots and 404 present.")
 PY_CHECK
+# The postcode district files the search boxes read (at least 2,000, with N16 and E8), every file the shipped scripts
+# fetch, and no macOS '._*' files: deploy/money/check_site.py (tested in tests/test_deploy_money.py).
+python3 "$HERE/check_site.py" "$REPO/site_money"
 # One long-window zstd archive (see the Dockerfile): loose files make an upload Railway refuses as too large.
+# COPYFILE_DISABLE stops macOS tar adding '._*' AppleDouble entries of its own.
 rm -rf "$HERE/site"
-tar cf - -C "$REPO/site_money" . | zstd -q -19 --long=30 -T0 -f -o "$HERE/site.tar.zst"
+COPYFILE_DISABLE=1 tar cf - -C "$REPO/site_money" . | zstd -q -19 --long=30 -T0 -f -o "$HERE/site.tar.zst"
 SIZE=$(wc -c < "$HERE/site.tar.zst")
 if [ "$SIZE" -gt 140000000 ]; then
   echo "Deploy aborted: site archive is $SIZE bytes; Railway refuses uploads much above 140 MB." >&2

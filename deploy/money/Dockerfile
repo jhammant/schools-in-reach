@@ -10,4 +10,6 @@ RUN mkdir /site && zstd -d --long=30 -c /tmp/site.tar.zst | tar -xf - -C /site
 FROM nginx:1.27-alpine
 ENV PORT=8080
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# The security headers, included by the template in the server and in every location with its own add_header.
+COPY security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=site /site /usr/share/nginx/html

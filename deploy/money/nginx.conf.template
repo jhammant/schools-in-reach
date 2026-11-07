@@ -1,9 +1,23 @@
+# Framing for security-headers.conf: the /embed/ badge may be framed by any site; nothing else may be framed at all.
+# An empty X-Frame-Options value makes nginx leave that header out.
+map $uri $money_frame_ancestors {
+  default "'none'";
+  ~^/embed/ "*";
+}
+map $uri $money_frame_options {
+  default "DENY";
+  ~^/embed/ "";
+}
+
 server {
   listen ${PORT};
   root /usr/share/nginx/html;
   # Behind Railway's proxy nginx only sees http on $PORT; an absolute directory redirect
   # (/school/x -> /school/x/) would send visitors to http://host:8080/. Keep it relative.
   absolute_redirect off;
+  # HSTS, nosniff, Referrer-Policy, framing and the Content-Security-Policy. add_header is not inherited by a location
+  # that sets its own, so every such location below includes the file again.
+  include /etc/nginx/snippets/security-headers.conf;
 
   # Per-school and per-area JSON, the search index and the app bundle compress very well.
   gzip on;
@@ -18,14 +32,19 @@ server {
   location ~ ^/wrapped/?$ { return 301 /video/$is_args$args; }
   location ~ ^/school/([^/]+)/wrapped/?$ { return 301 /school/$1/video/$is_args$args; }
 
+  # Dotfiles (macOS '._*' AppleDouble forks, editor files) never ship; refuse one if it does. A regex location, so it
+  # is checked before the prefix locations below; /.well-known/ stays open.
+  location ^~ /.well-known/ { try_files $uri =404; }
+  location ~ /\. { deny all; }
+
   # Asset URLs are not versioned (/assets/app.js), so a long immutable cache would pin old JS/CSS
   # against new HTML after a deploy. Revalidate after five minutes; serve stale while doing so.
   # Data files can be an hour stale; HTML never.
-  location /assets/ { add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400"; try_files $uri =404; }
-  location /data/ { add_header Cache-Control "public, max-age=3600"; try_files $uri =404; }
-  location ~* \.geojson$ { default_type application/geo+json; add_header Cache-Control "public, max-age=3600"; }
-  location ~* \.xml$ { add_header Cache-Control "public, max-age=3600"; }
-  location ~* \.html$ { add_header Cache-Control "no-cache, must-revalidate"; }
-  location = / { add_header Cache-Control "no-cache, must-revalidate"; try_files /index.html =404; }
-  location / { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
+  location /assets/ { add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400"; include /etc/nginx/snippets/security-headers.conf; try_files $uri =404; }
+  location /data/ { add_header Cache-Control "public, max-age=3600"; include /etc/nginx/snippets/security-headers.conf; try_files $uri =404; }
+  location ~* \.geojson$ { default_type application/geo+json; add_header Cache-Control "public, max-age=3600"; include /etc/nginx/snippets/security-headers.conf; }
+  location ~* \.xml$ { add_header Cache-Control "public, max-age=3600"; include /etc/nginx/snippets/security-headers.conf; }
+  location ~* \.html$ { add_header Cache-Control "no-cache, must-revalidate"; include /etc/nginx/snippets/security-headers.conf; }
+  location = / { add_header Cache-Control "no-cache, must-revalidate"; include /etc/nginx/snippets/security-headers.conf; try_files /index.html =404; }
+  location / { add_header Cache-Control "no-cache, must-revalidate"; include /etc/nginx/snippets/security-headers.conf; try_files $uri $uri/ =404; }
 }

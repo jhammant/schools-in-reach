@@ -246,11 +246,63 @@ class DeckCssTest(unittest.TestCase):
             self.assertRegex(self.css, r"\.rag\.tone-" + tone + r"\s*{[^}]*border-color:\s*var\(--" + tone + r"\)")
             self.assertRegex(self.css, r"\.rag\.tone-" + tone + r" \.rag-icon\s*{\s*color:\s*var\(--" + tone + r"\)")
 
+    def test_reserve_held_by_trust_is_a_neutral_grey_tone_with_a_fallback(self):
+        # Assert: contract C4, var(--held) from app.css with a grey fallback, icon and word beside it
+        self.assertRegex(self.css, r"\.rag\.tone-held\s*{[^}]*border-color:\s*var\(--held, #6b7280\)")
+        self.assertRegex(self.css, r"\.rag\.tone-held \.rag-icon\s*{\s*color:\s*var\(--held-text, var\(--held, #6b7280\)\)")
+
     def test_editable_fields_look_editable_on_screen_and_print_plain(self):
         # Assert
         self.assertIn(".slide .slide-notes:empty::before", self.css)
         self.assertRegex(self.print, r"\.slide \[contenteditable\]\s*{[^}]*outline:\s*0")
         self.assertRegex(self.print, r"\.slide \.slide-notes:empty, \.action-tools, \.action-bar, \.deck-row-btn\s*{\s*display:\s*none")
+
+
+CC_1103834 = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_"
+              "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_"
+              "CharityDetailsPortlet_regId=1103834&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
+
+
+class CharityUrlTest(unittest.TestCase):
+    def test_builds_the_register_page_with_the_number_mid_url(self):
+        # Act / Assert: contract C9
+        self.assertEqual(deck.charity_url(1103834), CC_1103834)
+        self.assertEqual(deck.charity_url(" 1103834 "), CC_1103834)
+
+    def test_falls_back_to_the_register_home(self):
+        # Act / Assert
+        for bad in (None, "", "abc"):
+            self.assertEqual(deck.charity_url(bad), "https://register-of-charities.charitycommission.gov.uk/")
+
+    def test_no_prefix_plus_number_link_is_left(self):
+        # Arrange
+        sources = [(HERE / name).read_text(encoding="utf-8") for name in ("deck.py", "assets/deck.js")]
+        # Act
+        ctx = deck.deck_context()
+        # Assert
+        self.assertEqual(ctx["links"]["register"], "https://register-of-charities.charitycommission.gov.uk/")
+        for text in sources:
+            self.assertNotIn("charity-search/-/charity-details/", text)
+
+
+class HeldQuestionsTest(unittest.TestCase):
+    def test_reserve_held_by_trust_has_a_question_set(self):
+        # Act
+        ctx = deck.deck_context()
+        # Assert: contract C4; this site's own questions when the IFS file has none, with no IFS page claimed
+        self.assertIn("reserve_held_by_trust", deck.QUESTION_SETS)
+        qs = ctx["questions"]["reserve_held_by_trust"]
+        self.assertGreaterEqual(len(qs), 2)
+        self.assertTrue(all("{overseer}" in q["text"] or "{name}" in q["text"] for q in qs))
+        if "reserve_held_by_trust" not in (ifs().get("questions") or {}):
+            self.assertTrue(all(q["page"] is None for q in qs))
+
+    def test_existing_sets_still_come_from_the_ifs_file(self):
+        # Act
+        ctx = deck.deck_context()
+        # Assert
+        self.assertEqual([q["text"] for q in ctx["questions"]["in_deficit"]],
+                         [q["text"] for q in ifs()["questions"]["in_deficit"]["questions"]])
 
 
 class SourceFilesTest(unittest.TestCase):

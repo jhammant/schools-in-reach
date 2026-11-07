@@ -6,6 +6,7 @@ import re
 import tempfile
 import time
 import unittest
+import unittest.mock
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -237,7 +238,8 @@ class WritePagesTest(unittest.TestCase):
         self.assertIn("over 80%", ctx["staff"]["line"]["text"])
         self.assertEqual(ctx["staff"]["line"]["page"], 63)
         self.assertEqual(ctx["staff"]["framing"]["pages"], [62, 63])
-        self.assertEqual(set(ctx["what_helps"]), set(health.ORDER))
+        # Every status has a story, the held-by-the-trust one (contract C4) whether or not status.py has merged it yet.
+        self.assertEqual(set(ctx["what_helps"]), set(health.ORDER) | {wrapped.HELD})
         for key, block in ctx["what_helps"].items():
             self.assertTrue(block["text"].startswith("What helps:"), key)
             self.assertTrue(block["framing"]["pages"], key)
@@ -351,6 +353,66 @@ class CopyTest(unittest.TestCase):
         for name, text in texts.items():
             for word in BANNED:
                 self.assertNotIn(word.lower(), text.lower(), f"{word!r} in {name}")
+
+
+CC_1103834 = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_"
+              "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_"
+              "CharityDetailsPortlet_regId=1103834&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
+
+
+class HeldByTrustTest(unittest.TestCase):
+    """Contract C4: 'reserve_held_by_trust' has a supportive story whether or not status.py knows it yet."""
+
+    def test_status_is_read_without_status_py_knowing_it(self):
+        # Arrange: status.LABELS as it was before contract C4
+        before = {k: v for k, v in health.LABELS.items() if k != wrapped.HELD}
+        with unittest.mock.patch.object(health, "LABELS", before):
+            # Act
+            view = wrapped.school_view(plain_item("100003", "Example Academy", status_value=wrapped.HELD))
+            ctx = wrapped.context_doc("2026-11-07")
+        # Assert
+        self.assertEqual(view["status"]["key"], wrapped.HELD)
+        self.assertEqual(view["status"]["label"], "Reserve held by the trust")
+        self.assertEqual(ctx["what_helps"][wrapped.HELD]["label"], "Reserve held by the trust")
+
+    def test_status_py_label_wins_when_it_has_one(self):
+        # Arrange: status.LABELS after contract C4
+        after = {**health.LABELS, wrapped.HELD: "Reserve held by the trust"}
+        with unittest.mock.patch.object(health, "LABELS", after):
+            # Act
+            view = wrapped.school_view(plain_item("100003", "Example Academy", status_value={"status": wrapped.HELD, "year": "2024-25"}))
+        # Assert
+        self.assertEqual((view["status"]["key"], view["status"]["year"]), (wrapped.HELD, "2024-25"))
+
+    def test_story_is_supportive_and_gets_a_stub(self):
+        # Arrange
+        with tempfile.TemporaryDirectory() as tmp:
+            fake = FakeEnv(tmp, [plain_item("100003", "Example Academy", status_value=wrapped.HELD)])
+            # Act
+            written = wrapped.write_pages(fake.env)
+            ctx = json.loads((Path(tmp) / "data/wrapped/context.json").read_text(encoding="utf-8"))
+        # Assert
+        self.assertIn(("/school/100003-example-academy/video/", False), written)
+        helps = ctx["what_helps"][wrapped.HELD]
+        self.assertTrue(helps["text"].startswith("What helps:") and "trust" in helps["text"])
+        self.assertTrue(helps["questions"], "the academy question set goes with it")
+        for word in BANNED + ["Tight", "deficit"]:
+            self.assertNotIn(word.lower(), helps["text"].lower())
+
+
+class CharityUrlTest(unittest.TestCase):
+    def test_builds_the_register_page_with_the_number_mid_url(self):
+        # Act / Assert: contract C9
+        self.assertEqual(wrapped.charity_url(1103834), CC_1103834)
+        self.assertEqual(wrapped.charity_url(None), "https://register-of-charities.charitycommission.gov.uk/")
+        self.assertEqual(wrapped.context_doc()["pta"]["charity_url_template"].format(number=1103834), CC_1103834)
+
+    def test_no_prefix_plus_number_link_is_left(self):
+        # Act
+        sources = [(REPO / "pipeline/money" / name).read_text(encoding="utf-8") for name in ("wrapped.py", "assets/wrapped.js")]
+        # Assert
+        for text in sources:
+            self.assertNotIn("charity-search/-/charity-details/", text)
 
 
 class SpeedTest(unittest.TestCase):

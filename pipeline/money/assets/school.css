@@ -18,7 +18,15 @@
 .sp-sec h3 { font-size: 1rem; margin: 16px 0 6px; }
 .cite { color: var(--ink-2); font-size: .85em; white-space: nowrap; }
 
-/* status */
+/* status: the report link sits beside the badge; app.css styles .report-link, this only spaces it */
+.status-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.status-line .report-link { font-size: .9rem; }
+/* "Reserve held by the trust" is neutral grey, never a warning; app.css defines the colours, these are fallbacks */
+.badge.s-reserve_held_by_trust { border-color: var(--held, #6b7280); background: var(--held-soft, #eef0f3); color: var(--held-text, #374151); }
+.s-reserve_held_by_trust > span[aria-hidden] { color: var(--held-text, #374151); }
+.sp-define { margin: 6px 0; }
+.sp-changed { margin: 6px 0 10px; }
+.sp-fed { margin: 4px 0 12px; }
 .sp-why p { margin: 6px 0; }
 .sp-timeline { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
 .sp-timeline li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
@@ -45,8 +53,10 @@
 .chart .dot.hollow.s1 { stroke: var(--c1); } .chart .dot.hollow.s2 { stroke: var(--c2); }
 .chart .dot.hollow.s3 { stroke: var(--c3); } .chart .dot.hollow.s4 { stroke: var(--c4); }
 
-/* figures tables */
+/* figures tables: each sits in its own overflow container, so nothing pushes the page sideways */
+.sp-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .sp-years, .sp-rows, .sp-pta { font-variant-numeric: tabular-nums; }
+.sp-overlap { display: block; font-weight: 400; color: var(--ink-2); font-size: .8rem; }
 .sp-years caption, .sp-rows caption, .sp-pta caption { caption-side: top; text-align: left; color: var(--ink-2); font-size: .9rem; padding: 0 0 6px; }
 .sp-years th[scope="row"], .sp-rows th[scope="row"], .sp-pta th[scope="row"] { text-align: left; font-weight: 600; background: transparent; }
 .sp-years th[scope="row"], .sp-pta th[scope="row"] { white-space: nowrap; }
@@ -59,6 +69,10 @@
 .sp-rows .spark { display: block; overflow: visible; }
 .sp-rows .spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .mf.suspect { color: var(--ink-3); font-style: italic; text-decoration: underline dotted var(--ink-3); }
+.mf-odd { color: var(--ink-3); font-style: italic; }
+/* long numbers and words wrap rather than widen the page */
+.sp-sec p, .sp-sec li, .sp-sec td, .sp-sec th { overflow-wrap: anywhere; }
+.sp-sec .chart, .sp-sec svg { max-width: 100%; height: auto; }
 
 /* pupils, trust, PTA, intake */
 .sp-pupils { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-variant-numeric: tabular-nums; }
@@ -80,21 +94,28 @@
 .sp-sources li { margin: 4px 0; }
 
 @media (max-width: 600px) {
+  /* Every figures table stacks: one block per row, each cell labelled (data-label, else its column name). */
+  .sp-scroll { overflow-x: visible; }
   .sp-years thead, .sp-rows thead, .sp-pta thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .sp-years, .sp-years tbody, .sp-rows, .sp-rows tbody { display: block; }
-  .sp-years caption, .sp-rows caption { display: block; }
-  .sp-years tr, .sp-rows tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; padding: 10px 0;
+  .sp-years, .sp-years tbody, .sp-rows, .sp-rows tbody, .sp-pta, .sp-pta tbody { display: block; width: 100%; }
+  .sp-years caption, .sp-rows caption, .sp-pta caption { display: block; }
+  .sp-years tr, .sp-rows tr, .sp-pta tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; padding: 10px 0;
     border-bottom: 1px solid var(--line); }
-  .sp-years th, .sp-years td, .sp-rows th, .sp-rows td { border: 0; padding: 0; min-width: 0; }
-  .sp-years th[scope="row"], .sp-rows th[scope="row"] { grid-column: 1 / -1; }
+  .sp-years th, .sp-years td, .sp-rows th, .sp-rows td, .sp-pta th, .sp-pta td { border: 0; padding: 0; min-width: 0; white-space: normal; }
+  .sp-years th[scope="row"], .sp-rows th[scope="row"], .sp-pta th[scope="row"] { grid-column: 1 / -1; white-space: normal; }
   .sp-rows td[colspan] { grid-column: 1 / -1; }
-  .sp-years td::before, .sp-rows td:nth-last-child(2)::before, .sp-rows td:last-child::before {
+  .sp-years td::before, .sp-pta td::before, .sp-rows td:nth-last-child(2)::before, .sp-rows td:last-child::before {
     display: block; color: var(--ink-2); font-size: .8rem; }
   .sp-years td:nth-child(2)::before { content: "Pupils"; }
   .sp-years td:nth-child(3)::before { content: "Income"; }
   .sp-years td:nth-child(4)::before { content: "Spending"; }
   .sp-years td:nth-child(5)::before { content: "In-year balance"; }
   .sp-years td:nth-child(6)::before { content: "Reserve"; }
+  .sp-years td:nth-child(7)::before { content: "Own reserve"; }
+  .sp-years td[data-label]::before, .sp-pta td[data-label]::before { content: attr(data-label); }
+  .sp-pta td:nth-child(2)::before { content: "Raised"; }
+  .sp-pta td:nth-child(3)::before { content: "Spent"; }
+  .sp-years .mf small, .sp-pta .mf small { display: block; white-space: normal; }
   .sp-rows td:nth-last-child(2)::before { content: "Change per pupil"; }
   .sp-rows td:last-child::before { content: "Similar schools"; }
   .sp-rows td[colspan]::before { content: none; }

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 
 from pipeline.money import deflator, site, status as health
@@ -32,6 +33,14 @@ REGISTER_NOTE = ("Charities with an income of £5,000 or less don't have to regi
 OVERLAP_NOTE = ("Money a parents' association gives the school can also appear in the school's own donations income, "
                 "so the two are never added together.")
 NOT_FOUND = "No registered parents' association found"
+REGISTER_HOME = "https://register-of-charities.charitycommission.gov.uk/"
+# A charity's page on the register (contract C9): the number sits mid-URL, so links are only built by charity_url().
+CHARITY_PAGE = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                "CharityDetailsPortlet_regId={number}&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
+HELD = "reserve_held_by_trust"
+# status.LABELS gains HELD with contract C4; until it does, this is its label, so a story never drops the status.
+HELD_LABEL = "Reserve held by the trust"
 
 # For each status: the IFS framing that explains it and the question set that helps (both keys of ifs_context.json),
 # plus one plain 'what helps' sentence. The sentences are this site's wording, drawn from the framing they sit beside.
@@ -46,7 +55,21 @@ WHAT_HELPS = {
                 "What helps: keeping an eye on the trend, and comparing spending per pupil with similar schools."),
     "large_reserves": ("one_deficit_year", "large_reserves",
                        "What helps: a clear purpose and timetable for the reserve, so current pupils benefit too."),
+    HELD: ("academy_central_top_slice", "academy",
+           "What helps: knowing that the trust keeps its academies' reserves together, and asking how much is set aside "
+           "for this school and how it is decided."),
 }
+
+
+def _labels() -> dict:
+    """status.LABELS, with the held-by-the-trust status (contract C4) whether or not status.py has it yet."""
+    return {**{HELD: HELD_LABEL}, **getattr(health, "LABELS", {})}
+
+
+def charity_url(number) -> str:
+    """The Charity Commission register page for a charity number (1103834 -> its page), else the register's home."""
+    match = re.match(r"\s*(\d+)", "" if number is None else str(number))
+    return CHARITY_PAGE.format(number=match.group(1)) if match else REGISTER_HOME
 
 
 def _repo_file(rel: str) -> Path:
@@ -65,14 +88,15 @@ def _load_ifs() -> dict:
 
 def _status_of(raw) -> dict | None:
     """A status.assess() dict, a bare status key or None, as {key, label, reason, reserve, year, source} or None."""
+    labels = _labels()
     if isinstance(raw, dict):
         key = raw.get("status")
-        if key not in health.LABELS:
+        if key not in labels:
             return None
-        return {"key": key, "label": raw.get("label") or health.LABELS[key], "reason": raw.get("reason"),
+        return {"key": key, "label": raw.get("label") or labels[key], "reason": raw.get("reason"),
                 "reserve": raw.get("reserve"), "year": raw.get("year"), "source": raw.get("source")}
-    if isinstance(raw, str) and raw in health.LABELS:
-        return {"key": raw, "label": health.LABELS[raw], "reason": None, "reserve": None, "year": None, "source": None}
+    if isinstance(raw, str) and raw in labels:
+        return {"key": raw, "label": labels[raw], "reason": None, "reserve": None, "year": None, "source": None}
     return None
 
 
@@ -245,7 +269,7 @@ def context_doc(today: str | None = None) -> dict:
                 "page_note": "Page numbers are the printed pages of the IFS report."},
         "staff": {"line": _line(ifs, "school", "staff_share"), "framing": framings.get("why_schools_go_into_deficit")},
         "framings": framings,
-        "what_helps": {key: {"status": key, "label": health.LABELS[key], "text": text,
+        "what_helps": {key: {"status": key, "label": _labels()[key], "text": text,
                              "framing": framings.get(fkey), "questions": _questions(ifs, qkey)}
                        for key, (fkey, qkey, text) in WHAT_HELPS.items()},
         "any_questions": _questions(ifs, "any"),
@@ -258,7 +282,8 @@ def context_doc(today: str | None = None) -> dict:
         "pta": {"not_found": NOT_FOUND, "register_note": REGISTER_NOTE, "overlap_note": OVERLAP_NOTE,
                 "source": "Charity Commission register",
                 "register_url": "https://www.gov.uk/setting-up-charity/register-your-charity",
-                "charity_url": "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/"},
+                # The number sits mid-URL (contract C9): replace {number}, never append to a prefix.
+                "charity_url_template": CHARITY_PAGE},
         "fbit_url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/",
     }
 

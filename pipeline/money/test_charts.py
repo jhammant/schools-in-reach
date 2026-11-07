@@ -144,6 +144,47 @@ def svg_root(markup):
     return ET.fromstring(markup[markup.index("<svg"):markup.index("</svg>") + 6])
 
 
+class HeldByTrustStatusTest(unittest.TestCase):
+    """C4: the sixth, neutral status sits last with its own icon and word, and reserve bars name their basis."""
+
+    def test_status_maps_match_status_py_and_end_with_the_neutral_status(self):
+        from pipeline.money import status
+        self.assertEqual(charts.STATUS_ORDER, status.ORDER)
+        self.assertEqual(charts.STATUS_LABELS, status.LABELS)
+        self.assertEqual(charts.STATUS_ICONS, status.ICONS)
+
+    def test_badge_carries_icon_and_word(self):
+        html = charts.badge("reserve_held_by_trust", "small")
+        self.assertIn('class="badge s-reserve_held_by_trust small"', html)
+        self.assertIn("◇", html)
+        self.assertIn("Reserve held by the trust", html)
+
+    def test_status_bar_lists_it_on_its_own_only_when_present(self):
+        # Arrange
+        counts = {"in_deficit": 2, "tight": 1, "healthy": 5}
+        # Act
+        without = charts.status_bar(counts)
+        withheld = charts.status_bar(dict(counts, reserve_held_by_trust=3))
+        # Assert
+        self.assertNotIn("Reserve held by the trust", without)
+        self.assertIn('class="seg s-reserve_held_by_trust"', withheld)
+        self.assertEqual(withheld.count("<li>"), 6)
+        self.assertIn("Tight</span> <strong>1</strong>", withheld)
+
+    def test_reserve_bars_label_the_trust_share_and_pooled_years(self):
+        # Arrange
+        points = [{"year": "2022-23", "reserve": 0, "status": "reserve_held_by_trust", "basis": "own"},
+                  {"year": "2024-25", "reserve": 3_087_254, "status": "large_reserves", "basis": "incl_trust_share"}]
+        # Act
+        svg = charts.reserve_bars(points)
+        only = charts.reserve_bars(points[1:])
+        # Assert
+        self.assertTrue(parses(svg))
+        self.assertIn("2022-23: £0 reserve (held by the trust)", svg)
+        self.assertIn("2024-25: £3.1m reserve, including its share of the trust&#x27;s reserve", svg)
+        self.assertIn('aria-label="Revenue reserve at the end of each year, including its share of the trust&#x27;s reserve"', only)
+
+
 class TrendChartTest(unittest.TestCase):
     def test_chart_is_an_image_with_title_and_desc(self):
         # Act

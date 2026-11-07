@@ -91,7 +91,7 @@ class PageTest(unittest.TestCase):
         self.assertIn("main", p.ids)
         self.assertIn("q", p.ids)
         self.assertEqual(len(set(p.ids)), len(p.ids), "duplicate ids")
-        for landmark in ("<header", '<nav class="main-nav" aria-label="Main">', '<main id="main"', "<footer", '<a class="skip" href="#main">'):
+        for landmark in ("<header", '<nav class="main-nav" id="main-nav" aria-label="Main">', '<main id="main"', "<footer", '<a class="skip" href="#main">'):
             self.assertIn(landmark, self.html)
 
     def test_head_metadata(self):
@@ -347,6 +347,194 @@ class AudiencePickerTest(unittest.TestCase):
             self.assertIn(f'html[data-reader="{key}"] .sp-sec[data-readers~="{key}"] > h2::after', rules)
             self.assertIn(f'html[data-reader="{key}"] header.top button[data-audience="{key}"]', rules)
         self.assertIn("html:not(.js) .aud-bar { display: none; }", rules)
+
+
+def css_rules(name):
+    """An asset stylesheet without its comments, whitespace collapsed."""
+    css = (site.ASSETS / name).read_text(encoding="utf-8")
+    return re.sub(r"\s+", " ", re.sub(r"/\*.*?\*/", "", css, flags=re.S))
+
+
+def media_block(css, query):
+    """The text of every @media block for query, concatenated (braces balanced by counting)."""
+    out, start = [], 0
+    while (i := css.find(f"@media ({query})", start)) != -1:
+        j = css.index("{", i) + 1
+        depth = 1
+        while depth:
+            depth += {"{": 1, "}": -1}.get(css[j], 0)
+            j += 1
+        out.append(css[i:j])
+        start = j
+    return " ".join(out)
+
+
+def contrast(a, b):
+    """WCAG contrast ratio of two #rrggbb colours."""
+    def lum(h):
+        r, g, b_ = (int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
+        f = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b_)
+    hi, lo = sorted((lum(a), lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+class PhoneHeaderTest(unittest.TestCase):
+    """The nav behind a Menu button on a phone (audit C50): markup from site.page, rules from app.css."""
+
+    def setUp(self):
+        # Arrange
+        self.school = site.page("t", "d", "/school/100001-example-primary/", "<h1>Body</h1>", [("School Money", "/")])
+        self.home = site.page("t", "d", "/", "<h1>Body</h1>", [("School Money", "/")])
+        self.css = css_rules("app.css")
+
+    def test_menu_button_is_a_disclosure_for_the_nav(self):
+        # Assert
+        self.assertIn('<button type="button" class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu</button>'
+                      '<nav class="main-nav" id="main-nav" aria-label="Main">', self.school)
+        self.assertLess(self.school.index('<form class="search"'), self.school.index("menu-toggle"),
+                        "Menu sits just before the nav, so Tab goes from it into the opened menu")
+        self.assertIn('<header class="top"><div class="wrap">', self.school)
+        self.assertIn('<header class="top home"><div class="wrap">', self.home)
+        self.assertEqual(parse(self.home).errors, [])
+
+    def test_header_search_is_a_combobox(self):
+        self.assertIn('<input id="q" name="q" type="search" placeholder="School, council, trust or postcode" autocomplete="off" '
+                      'role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="q-list">', self.school)
+
+    def test_menu_rules_show_the_nav_without_javascript_and_hide_it_behind_the_button_on_a_phone(self):
+        # Arrange
+        phone = media_block(self.css, "max-width: 600px")
+        outside = self.css.replace(phone, "")
+        # Assert: hidden everywhere by default (so no JavaScript, no button) and only ever shown under html.js on a phone
+        self.assertIn(".menu-toggle { display: none;", outside)
+        self.assertNotIn("+ nav.main-nav", outside, "only a phone ever hides the nav")
+        self.assertIn("html.js .menu-toggle { display: inline-flex; }", phone)
+        self.assertIn('html.js .menu-toggle[aria-expanded="false"] + nav.main-nav { display: none; }', phone)
+        self.assertIn("header.top.home form.search { display: none; }", phone)
+        self.assertIn('grid-template-areas: "brand menu" "tag tag" "search search" "nav nav"', phone)
+
+    def test_sort_controls_replace_clipped_header_buttons_on_a_phone(self):
+        # Arrange
+        phone = media_block(self.css, "max-width: 600px")
+        # Assert
+        self.assertIn(".sort-controls { display: none;", self.css)
+        self.assertIn(".sort-controls.for-responsive { display: flex; }", phone)
+        self.assertIn("table.responsive thead button.sort { display: none; }", phone)
+        self.assertIn("table.responsive thead .th-label { display: inline; }", phone)
+        self.assertIn(".th-label { display: none; }", self.css)
+
+    def test_focus_stays_visible(self):
+        # Assert: a global ring, and no rule takes an outline away unless it is a mouse focus (:not(:focus-visible))
+        self.assertIn(":focus-visible { outline: 3px solid var(--accent);", self.css)
+        for rule in re.findall(r"[^{}]*\{[^}]*outline: (?:none|0)[^}]*\}", self.css):
+            self.assertIn(":not(:focus-visible)", rule)
+        self.assertIn(".statusbar .seg:focus-visible { outline: 3px solid var(--ink);", self.css)
+        self.assertIn("table[data-sortable] th button.sort:focus-visible", self.css)
+
+    def test_picker_is_compact_on_a_phone(self):
+        # Arrange
+        phone = media_block(css_rules("audience.css"), "max-width: 600px")
+        # Assert
+        self.assertIn("header.top fieldset.audience button { min-height: 36px;", phone)
+
+
+class HeldByTrustStatusTest(unittest.TestCase):
+    """Contract C4: a neutral grey for 'Reserve held by the trust', light and dark, readable, with its classes."""
+
+    def test_tokens_and_classes(self):
+        # Arrange
+        css = css_rules("app.css")
+        dark = media_block(css, "prefers-color-scheme: dark")
+        tokens = {}
+        for scope, text in (("light", css.replace(dark, "")), ("dark", dark)):
+            tokens[scope] = {k: re.search(rf"--{k}: (#[0-9a-f]{{6}})", text).group(1) for k in ("held", "held-soft", "held-text", "paper", "card")}
+        # Assert
+        for scope, t in tokens.items():
+            with self.subTest(scope=scope):
+                self.assertGreaterEqual(contrast(t["held-text"], t["held-soft"]), 4.5)
+                self.assertGreaterEqual(contrast(t["held-text"], t["card"]), 4.5)
+                self.assertGreaterEqual(contrast(t["held"], t["paper"]), 3.0)
+        self.assertIn(".badge.s-reserve_held_by_trust { border-color: var(--held); background: var(--held-soft); color: var(--held-text); }", css)
+        self.assertIn(".s-reserve_held_by_trust > span[aria-hidden] { color: var(--held-text); }", css)
+        self.assertIn(".seg.s-reserve_held_by_trust { background: var(--held); }", css)
+
+    def test_app_js_knows_the_label_and_icon(self):
+        js = (site.ASSETS / "app.js").read_text(encoding="utf-8")
+        self.assertIn('reserve_held_by_trust: "Reserve held by the trust"', js)
+        self.assertIn('reserve_held_by_trust: "◇"', js)
+
+
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
+ENTITY = re.compile(r"\b(?:Ltd|Limited|LLP|plc|CIC)\b")
+
+
+class CorrectionsAndPrivacyTest(unittest.TestCase):
+    """Contract C6: the about page's corrections and privacy sections, and the report link in the footer."""
+
+    def setUp(self):
+        self.saved = site.CONTACT_EMAIL
+
+    def tearDown(self):
+        site.CONTACT_EMAIL = self.saved
+
+    def test_contact_email_is_unset(self):
+        self.assertIsNone(site.CONTACT_EMAIL)
+
+    def test_corrections_without_an_address_say_where_to_correct_at_source_and_that_one_is_coming(self):
+        # Arrange
+        site.CONTACT_EMAIL = None
+        # Act
+        html = site.corrections_html()
+        # Assert
+        self.assertTrue(html.startswith('<h2 id="corrections">'))
+        for needle in ("Department for Education", "council", "trust", "Charity Commission", "A direct corrections address is coming",
+                       "Dedicated Schools Grant balance (all four blocks)"):
+            self.assertIn(needle, html)
+        self.assertNotIn("mailto:", html)
+        self.assertIsNone(EMAIL.search(html))
+        self.assertEqual(parse(html).errors, [])
+
+    def test_corrections_and_privacy_offer_the_address_once_it_is_set(self):
+        # Arrange
+        site.CONTACT_EMAIL = "corrections@example.org"
+        # Act
+        corrections, privacy = site.corrections_html(), site.privacy_html()
+        # Assert
+        self.assertIn('<a href="mailto:corrections@example.org">corrections@example.org</a>', corrections)
+        self.assertNotIn("is coming", corrections)
+        self.assertIn('<a href="mailto:corrections@example.org">corrections@example.org</a>', privacy)
+
+    def test_privacy_says_what_is_stored_and_what_leaves_the_site(self):
+        # Arrange
+        site.CONTACT_EMAIL = None
+        # Act
+        html = site.privacy_html()
+        # Assert
+        self.assertTrue(html.startswith('<h2 id="privacy">'))
+        for needle in ("localStorage", "on this device", "api.postcodes.io", "IP address", "logs", "No personal details"):
+            self.assertIn(needle, html)
+        self.assertNotIn("None", html)
+        self.assertNotIn("mailto:", html)
+        self.assertEqual(parse(html).errors, [])
+
+    def test_footer_has_the_report_link_and_privacy(self):
+        # Act
+        html = site.page("t", "d", "/about/", "<h1>About</h1>", [("School Money", "/")])
+        footer = html.split("<footer>", 1)[1]
+        # Assert
+        self.assertEqual(site.REPORT_LINK, '<a class="report-link" href="/about/#corrections">Report an error or add context</a>')
+        self.assertIn(site.REPORT_LINK, footer)
+        self.assertIn('<a href="/about/#privacy">Privacy</a>', footer)
+        self.assertIn(".report-link {", css_rules("app.css"))
+
+    def test_no_personal_address_or_legal_entity_anywhere_in_the_shell(self):
+        # Arrange
+        site.CONTACT_EMAIL = None
+        html = site.page("t", "d", "/", "<h1>x</h1>", [("School Money", "/")]) + site.corrections_html() + site.privacy_html()
+        # Assert
+        self.assertIsNone(EMAIL.search(html))
+        self.assertIsNone(ENTITY.search(html))
 
 
 @unittest.skipUnless(shutil.which("node"), "node not installed")

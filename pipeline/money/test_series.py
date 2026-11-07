@@ -265,6 +265,138 @@ class FlagsTest(unittest.TestCase):
         self.assertEqual(s["m"]["total_income"]["2022-23"]["r"], series._pounds(deflator.to_real(1_000_000, "2022/23", "AAR")))
 
 
+MAT = "Multi Academy Trust (MAT)"
+
+
+def academy_rows() -> list[dict]:
+    """Mossbourne-like AAR years: own reserves, then two pooled £0 years, then a trust-inclusive latest year."""
+    own = {"2019/20": 3_961_000, "2020/21": 4_028_000, "2021/22": 4_237_000, "2022/23": 0, "2023/24": 0, "2024/25": 0}
+    rows = [row(y, revenue_reserve=v, trust_type=MAT, pupils=1_440, total_income=14_000_000) for y, v in own.items()]
+    rows[-1]["revenue_reserve_incl_trust_share"] = 3_087_254
+    return rows
+
+
+def federation_rows() -> list[dict]:
+    """Grazebrook-like federation lead returns: ~1,550 pupils most years, one school's 437 and 456 in two."""
+    pupils = {"2018-19": 1551.5, "2019-20": 1558.5, "2020-21": 1532, "2021-22": 437, "2022-23": 456,
+              "2023-24": 1541.5, "2024-25": 1793.5, "2025-26": 1749.5}
+    income = {"2018-19": 10_797_922, "2019-20": 11_394_535, "2020-21": 11_376_690, "2021-22": 12_591_743,
+              "2022-23": 13_269_049, "2023-24": 13_925_463, "2024-25": 16_620_883, "2025-26": 18_281_709}
+    return [row(y, pupils=p, total_income=income[y], total_expenditure=income[y] - 50_000, revenue_reserve=1_500_000,
+                federated="Lead school", lead_laestab="2042864") for y, p in pupils.items()]
+
+
+class ReserveBasisTest(unittest.TestCase):
+    """C3: one reserve basis per school, the one status.assess's headline uses."""
+
+    def test_council_run_school_is_own_basis_with_every_year(self):
+        # Arrange
+        rows = [row("2023-24"), row("2024-25", revenue_reserve=40_000)]
+        # Act
+        result = series.school_series(rows)
+        # Assert
+        self.assertEqual(result["reserve_basis"], "own")
+        self.assertEqual(series.reserve_basis(rows), "own")
+        self.assertEqual(set(result["m"]["revenue_reserve"]), {"2023-24", "2024-25"})
+        self.assertNotIn("revenue_reserve_own", result["m"])
+        self.assertEqual(result["flags"]["reserve_basis_missing"], [])
+
+    def test_trust_basis_never_fills_a_year_from_the_own_figure(self):
+        # Arrange
+        rows = academy_rows()
+        # Act
+        result = series.school_series(rows)
+        # Assert
+        self.assertEqual(result["reserve_basis"], "incl_trust_share")
+        self.assertEqual(result["m"]["revenue_reserve"], {"2024-25": {"v": 3_087_254, "pp": 2144, "r": result["m"]["revenue_reserve"]["2024-25"]["r"],
+                                                                      "rpp": result["m"]["revenue_reserve"]["2024-25"]["rpp"]}})
+        self.assertEqual(result["flags"]["reserve_basis_missing"], ["2019-20", "2020-21", "2021-22", "2022-23", "2023-24"])
+        self.assertEqual(result["m"]["revenue_reserve_own"]["2021-22"]["v"], 4_237_000)
+        self.assertEqual(result["m"]["revenue_reserve_own"]["2024-25"]["v"], 0)
+        self.assertEqual(result["flags"]["reserve_held_by_trust"], ["2022-23", "2023-24", "2024-25"])
+
+    def test_latest_series_reserve_equals_the_status_headline(self):
+        # Arrange: council-run, trust basis, pooled own basis, and deficit fixtures
+        fixtures = {
+            "council": [row("2023-24"), row("2024-25", revenue_reserve=-71_496)],
+            "trust basis": academy_rows(),
+            "pooled": academy_rows()[:-1],
+            "lubavitch": [row("2023/24", revenue_reserve=0, trust_type=MAT),
+                          row("2024/25", revenue_reserve=274_000, revenue_reserve_incl_trust_share=-284_662, trust_type=MAT)],
+            "gold": gold_rows()[1],
+        }
+        for name, rows in fixtures.items():
+            with self.subTest(name):
+                # Act
+                result = series.school_series(rows)
+                headline = series.status.assess(rows)
+                latest = result["years"][-1]
+                # Assert
+                self.assertEqual(result["m"]["revenue_reserve"][latest]["v"], round(headline["reserve"]))
+                self.assertEqual(result["reserve_basis"], headline["reserve_basis"])
+
+    def test_suspect_reserve_keys_follow_the_basis(self):
+        # Arrange
+        rows = academy_rows()
+        rows[-1]["suspect"] = ["revenue_reserve_incl_trust_share"]
+        rows[-2]["suspect"] = ["revenue_reserve"]
+        # Act
+        flags = series.school_series(rows)["flags"]["suspect"]
+        # Assert
+        self.assertEqual(flags["2024-25"], ["revenue_reserve_incl_trust_share", "revenue_reserve"])
+        self.assertEqual(flags["2023-24"], ["revenue_reserve_own"])
+
+    def test_helpers_read_one_basis_only(self):
+        r = academy_rows()[0]
+        self.assertEqual(series.reserve_on_basis(r, "own"), 3_961_000)
+        self.assertIsNone(series.reserve_on_basis(r, "incl_trust_share"))
+
+
+class SuspectPupilsTest(unittest.TestCase):
+    """C5: years whose pupil count doesn't match the money."""
+
+    def test_federation_lead_years_with_one_schools_pupils_are_flagged(self):
+        # Arrange
+        rows = federation_rows()
+        # Act
+        odd = series.suspect_pupils(rows)
+        result = series.school_series(rows)
+        # Assert
+        self.assertEqual(odd, {"2022-03": ["pupils"], "2023-03": ["pupils"]})
+        self.assertEqual(result["flags"]["suspect"], {"2021-22": ["pupils"], "2022-23": ["pupils"]})
+        self.assertIn("pp", result["m"]["total_expenditure"]["2021-22"])  # kept, greyed by the flag
+
+    def test_pupils_and_money_moving_together_is_not_flagged(self):
+        # Arrange: Holmleigh-like, an amalgamation: pupils 1.7x and income 1.75x
+        rows = [row(f"{y}-{str(y + 1)[2:]}", pupils=215, total_income=1_700_000) for y in range(2018, 2025)]
+        rows.append(row("2025-26", pupils=373, total_income=3_411_517))
+        # Act / Assert
+        self.assertEqual(series.suspect_pupils(rows), {})
+
+    def test_tiny_counts_are_flagged_and_two_years_are_not_compared(self):
+        tiny = [row("2023-24", pupils=4), row("2024-25", pupils=5)]
+        two = [row("2023-24", pupils=1500), row("2024-25", pupils=450)]
+        self.assertEqual(series.suspect_pupils(tiny), {"2024-03": ["pupils"], "2025-03": ["pupils"]})
+        self.assertEqual(series.suspect_pupils(two), {})
+
+    def test_row_suspect_pupils_merges_without_duplicates(self):
+        rows = federation_rows()
+        rows[3]["suspect"] = ["pupils"]
+        self.assertEqual(series.school_series(rows)["flags"]["suspect"]["2021-22"], ["pupils"])
+
+
+class FallingRollsRunTest(unittest.TestCase):
+    def test_a_recent_fall_after_overall_growth_keeps_the_run(self):
+        # Arrange: Parkhill-like, 362 rising to 470 then falling three years to 442
+        counts = [362, 400, 470, 460, 450, 442]
+        rows = [row(f"{2019 + i}-{str(2020 + i)[2:]}", pupils=c) for i, c in enumerate(counts)]
+        # Act
+        flag = series.school_series(rows)["flags"]["falling_rolls"]
+        # Assert
+        self.assertGreater(flag["change"], 0)
+        self.assertEqual(flag["run"], {"from_year": "2021-22", "from": 470.0, "to": 442.0, "years": 3})
+
+
 class PtaYearTest(unittest.TestCase):
     def test_return_goes_in_the_school_year_holding_its_period_end(self):
         # Arrange / Act / Assert

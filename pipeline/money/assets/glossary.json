@@ -99,106 +99,106 @@
   "teaching_staff": {
     "label": "Teachers",
     "plain": "Pay, pension and National Insurance for the school's teachers.",
-    "how": "Teaching staff costs including on-costs, as reported by the school.",
+    "how": "Teaching staff costs including on-costs. In the DfE's benchmarking tool (FBIT) this is 'Teaching staff', part of 'Teaching and teaching support staff'.",
     "source": "CFR line E01 Teaching staff / AAR Teaching staff",
     "ifs": "framings.why_schools_go_into_deficit"
   },
   "supply_staff": {
     "label": "Supply teachers",
     "plain": "What the school paid for cover when teachers were absent or posts were empty.",
-    "how": "Supply teaching staff plus agency supply teachers, as the DfE's benchmarking tool (FBIT) counts them. Supply teacher insurance is not included, so the figure compares like with like across years and sectors.",
+    "how": "Supply teaching staff plus agency supply teachers, as FBIT counts them ('Supply teaching staff' and 'Agency supply teaching staff', part of 'Teaching and teaching support staff'). Supply teacher insurance is not included, so the figure compares like with like across years and sectors.",
     "source": "CFR lines E02 and E26 / AAR Supply teaching staff and Agency supply teaching staff"
   },
   "education_support_staff": {
     "label": "Support staff",
     "plain": "Pay for teaching assistants, learning mentors, librarians and other staff who support learning directly.",
-    "how": "Education support staff costs including on-costs.",
+    "how": "Education support staff costs including on-costs. In the DfE's benchmarking tool (FBIT) this is 'Educational support staff', part of 'Teaching and teaching support staff'.",
     "source": "CFR line E03 Education support staff / AAR Education support staff"
   },
   "admin_clerical_staff": {
     "label": "Office staff",
     "plain": "Pay for the school office, finance and administrative staff.",
-    "how": "Administrative and clerical staff costs including on-costs.",
+    "how": "Administrative and clerical staff costs including on-costs. In the DfE's benchmarking tool (FBIT) this is 'Administrative and clerical staff', part of 'Non-educational support staff and services'.",
     "source": "CFR line E05 Administrative and clerical staff / AAR Administrative and clerical staff"
   },
   "premises_staff": {
     "label": "Site staff",
     "plain": "Pay for caretakers, cleaners and other staff who look after the buildings.",
-    "how": "Premises staff costs including on-costs.",
+    "how": "Premises staff costs including on-costs. In the DfE's benchmarking tool (FBIT) this is 'Premises staff', part of 'Premises staff and services'. The DfE's Premises subtotal includes it too, so the two rows overlap.",
     "source": "CFR line E04 Premises staff / AAR Premises staff"
   },
   "catering_staff": {
     "label": "Catering staff",
     "plain": "Pay for kitchen and dining staff employed by the school.",
-    "how": "Catering staff costs including on-costs. Schools that buy in catering show those costs under bought-in services instead.",
+    "how": "Catering staff costs including on-costs. Schools that buy in catering show those costs under catering supplies instead. In the DfE's benchmarking tool (FBIT) this is 'Catering staff', part of 'Catering staff and supplies'. The DfE's Catering and Occupation subtotals include it too.",
     "source": "CFR line E06 Catering staff / AAR Catering staff"
   },
   "other_staff_costs": {
     "label": "Other staff costs",
     "plain": "Other people costs such as training, recruitment, staff insurance and other staff not listed above.",
-    "how": "Other staff, indirect employee expenses, staff development and staff-related insurance lines added together.",
-    "source": "CFR lines E07 to E11 / AAR other staff cost lines"
+    "how": "Other staff (E07), indirect employee expenses (E08), staff development and training (E09) and staff-related insurance (E11) added together. FBIT puts other staff under 'Non-educational support staff and services' and the rest under 'Other costs'.",
+    "source": "CFR lines E07 to E09 and E11 / AAR Other Staff Costs"
   },
   "total_staff": {
     "label": "All staff costs",
-    "plain": "Everything the school spent on people, which is usually about four pounds in every five.",
-    "how": "The sum of every staff cost line, including supply and agency staff.",
+    "plain": "Pay for teachers, supply, support, office and other staff, with training and staff insurance: most of what a school spends.",
+    "how": "The DfE's Staff Total subtotal: teachers (E01), supply (E02, E26), education support (E03), office staff (E05), other staff costs (E07 to E09, E11) and supply teacher insurance (E10). It leaves out premises staff (E04) and catering staff (E06), which the DfE counts with premises and catering, so it is a little below the share of spending that goes on all staff. It is a subtotal of the staff rows, never added to them. FBIT has no single category for it: these lines sit in 'Teaching and teaching support staff', 'Non-educational support staff and services' and 'Other costs'.",
     "source": "CFR Staff total (E01 to E03, E05, E07 to E11 and E26) / AAR Total Staff Costs",
     "ifs": "national.costs.staff_share_of_costs"
   },
   "premises": {
-    "label": "Buildings and grounds",
-    "plain": "Keeping the buildings and grounds maintained, cleaned and safe.",
-    "how": "Building maintenance and improvement, grounds maintenance, cleaning and caretaking added together.",
-    "source": "CFR lines E12 to E14 / AAR premises lines"
+    "label": "Premises",
+    "plain": "Keeping the buildings and grounds maintained, cleaned and safe, including the site staff who do it.",
+    "how": "The DfE's Premises subtotal: building maintenance (E12), grounds maintenance (E13), cleaning and caretaking (E14), premises staff (E04) and PFI professional services (E28b). It includes the premises staff row. FBIT counts most of it as 'Premises staff and services' and grounds maintenance and PFI under 'Other costs'.",
+    "source": "CFR lines E04, E12 to E14 and E28b / AAR Premises Costs"
   },
   "energy": {
     "label": "Energy",
     "plain": "Gas, electricity and other fuel for heating, lighting and running the school.",
-    "how": "Energy costs as reported by the school.",
+    "how": "Energy costs as reported by the school. In the DfE's benchmarking tool (FBIT) this is 'Energy', part of 'Utilities'. The DfE's Occupation subtotal includes it too.",
     "source": "CFR line E16 Energy / AAR Energy"
   },
   "occupation": {
-    "label": "Rates, water and other building costs",
-    "plain": "Business rates, water, insurance and other costs of occupying the buildings.",
-    "how": "Water and sewerage, rates and other occupation costs added together.",
-    "source": "CFR lines E15, E17 and E18 / AAR occupation lines"
+    "label": "Occupation costs",
+    "plain": "Running the buildings day to day: water, energy, rates, insurance and other occupation costs, plus catering staff and supplies.",
+    "how": "The DfE's Occupation subtotal: catering staff (E06), water and sewerage (E15), energy (E16), rates (E17), other occupation costs (E18), other insurance premiums (E23) and catering supplies (E25). It includes the energy, catering staff and catering rows, so it is not added to them. FBIT spreads these lines over 'Utilities', 'Catering staff and supplies', 'Premises staff and services' and 'Other costs'.",
+    "source": "CFR lines E06, E15 to E18, E23 and E25 / AAR Occupation Costs"
   },
   "catering": {
-    "label": "Catering supplies",
-    "plain": "Food and other supplies for school meals, and bought-in catering contracts.",
-    "how": "Catering supplies as reported by the school.",
-    "source": "CFR line E25 Catering supplies / AAR Catering supplies"
+    "label": "Catering",
+    "plain": "School meals: kitchen and dining staff, and food and other catering supplies.",
+    "how": "The DfE's Catering subtotal: catering staff (E06) and catering supplies (E25), the same lines as FBIT's 'Catering staff and supplies'. It includes the catering staff row.",
+    "source": "CFR lines E06 and E25 / AAR Catering Expenses"
   },
   "educational_supplies": {
     "label": "Learning resources",
     "plain": "Books, equipment, software and computers used for teaching, plus exam fees.",
-    "how": "Learning resources (not ICT), ICT learning resources and examination fees added together. Administration software (CFR line E20D, split out from 2024-25) is left out in every year, as FBIT does, so years compare like with like.",
+    "how": "Learning resources (not ICT), ICT learning resources and examination fees added together. Administration software (CFR line E20D, split out from 2024-25) is left out in every year, as FBIT does, so years compare like with like. FBIT puts learning resources and exam fees under 'Educational supplies' and ICT under 'Educational ICT'. The DfE's Supplies and services subtotal includes it too.",
     "source": "CFR lines E19 to E21 less E20D / AAR learning resources and exam fees"
   },
   "supplies_services": {
     "label": "Supplies and services",
-    "plain": "Everyday running costs such as office supplies, insurance and special facilities.",
-    "how": "Administrative supplies, other insurance premiums and special facilities added together.",
-    "source": "CFR lines E22 to E24 / AAR supplies and services lines"
+    "plain": "Learning resources, office supplies and bought-in professional services, counted together.",
+    "how": "The DfE's Supplies and Services subtotal: learning resources, ICT and exam fees (E19 to E21), administrative supplies (E22) and bought-in professional services (E27, E28). It includes the learning resources and bought-in services rows, so it is not added to them. FBIT spreads these lines over 'Educational supplies', 'Educational ICT', 'Administrative supplies', 'Teaching and teaching support staff' and 'Non-educational support staff and services'.",
+    "source": "CFR lines E19 to E22, E27 and E28 / AAR Total Costs of Supplies and Services"
   },
   "bought_in_services": {
     "label": "Bought-in services",
     "plain": "Professional services the school pays other organisations for, such as HR, legal, IT support or therapy.",
-    "how": "Bought-in professional services for the curriculum and for other purposes added together.",
-    "source": "CFR lines E27 and E28 / AAR Bought in professional services"
+    "how": "Bought-in professional services for the curriculum (E27) and other, non-PFI services (E28a) added together. FBIT counts the first as 'Educational consultancy' (under 'Teaching and teaching support staff') and the second as 'Professional services (non-curriculum)'. The DfE's Supplies and services subtotal includes it too.",
+    "source": "CFR lines E27 and E28a / AAR Costs of Brought in Professional Services"
   },
   "revenue_reserve": {
     "label": "Reserve",
     "plain": "The school's savings: money carried over from previous years that it can still spend.",
-    "how": "The revenue balance at the end of the year, committed and uncommitted together. Below zero means the school owes money to the council or trust.",
-    "source": "CFR lines B01 and B02 / AAR Revenue reserve",
+    "how": "The revenue balance at the end of the year: committed, uncommitted and community-focused balances together. Below zero means the school has spent more over the years than it received; a council-run school agrees with its council how to pay it back, and an academy's trust is responsible for its money.",
+    "source": "CFR lines B01, B02 and B06 / AAR Revenue reserve",
     "ifs": "framings.one_deficit_year"
   },
   "revenue_reserve_incl_trust_share": {
     "label": "Reserve including trust share",
     "plain": "The academy's own reserve plus its share of money held centrally by its trust.",
-    "how": "Only academies report this. The trust's central reserve is shared out among its schools in proportion to pupils.",
+    "how": "Only academies in a trust have it, and the DfE publishes it from 2024-25. The trust's central reserve is shared out among its academies in proportion to pupils and added to the academy's own reserve. Where it is published, the status and the reserve on this page use it, with the academy's own reserve shown beside it.",
     "source": "AAR Revenue reserve including trust share / not in the CFR",
     "ifs": "framings.academy_central_top_slice"
   },
@@ -263,16 +263,16 @@
     "ifs": "framings.send_pressure"
   },
   "dsg_balance": {
-    "label": "Council schools budget balance",
-    "plain": "Whether the council's overall schools budget (the Dedicated Schools Grant) is in surplus or deficit.",
-    "how": "The council's cumulative DSG balance at the end of the year, in cash terms. Below zero means a deficit, usually driven by special needs costs.",
+    "label": "Dedicated Schools Grant balance (all four blocks)",
+    "plain": "The council's running total on the Dedicated Schools Grant, the money for all its schools, early years and special needs.",
+    "how": "The council's cumulative DSG balance across all four blocks (schools, central services, high needs and early years) at the end of the year, in cash: not high needs alone. Below zero is a deficit, usually driven by special needs costs. Each figure is for the year shown and is marked provisional where the DfE marks it so.",
     "source": "DfE DSG balances published with the Section 251 outturn / pipeline/money/data/la_dsg.json",
     "ifs": "framings.send_pressure"
   },
   "dsg_per_pupil": {
-    "label": "Council schools budget balance per pupil",
-    "plain": "The council's schools budget balance spread across every pupil in its schools.",
-    "how": "DSG balance divided by the number of pupils in the council's schools for the same year.",
+    "label": "Dedicated Schools Grant balance (all four blocks) per pupil",
+    "plain": "The council's Dedicated Schools Grant balance spread across the pupils at its schools.",
+    "how": "The DSG balance (all four blocks) divided by the pupils at the council's schools on this site in the same year. Marked provisional where the DfE marks the balance so.",
     "source": "Worked out from the DSG balance and pupil numbers in the finance returns"
   },
   "deficit_total": {
@@ -327,8 +327,8 @@
   },
   "status_in_deficit": {
     "label": "In deficit",
-    "plain": "The school's savings are below zero, so it owes money to its council or trust and will have a recovery plan.",
-    "how": "Revenue reserve below zero in the latest full year.",
+    "plain": "The school's savings are below zero: over the years it has spent more than it received, and it agrees a plan with its council or trust to bring the balance back.",
+    "how": "Revenue reserve below zero in the latest full year. For an academy in a trust it is the reserve including its share of the trust's reserve when the DfE publishes that figure.",
     "source": "pipeline/money/status.py",
     "ifs": "framings.why_schools_go_into_deficit"
   },
@@ -342,7 +342,7 @@
   "status_tight": {
     "label": "Tight",
     "plain": "The school has very little in reserve, so one unexpected cost could push it into deficit.",
-    "how": "Revenue reserve above zero but under 3% of a year's income.",
+    "how": "Revenue reserve of zero or more but under 3% of a year's income. An academy whose own £0 reserve is held centrally by its trust is not counted as tight: it reads 'Reserve held by the trust'.",
     "source": "pipeline/money/status.py"
   },
   "status_healthy": {
@@ -466,5 +466,18 @@
     "how": "Quoted exactly as the Institute for Fiscal Studies published it in its annual report on education spending in England 2025-26 (January 2026), in 2025-26 prices using the HM Treasury GDP deflator of November 2025. It is a national figure, not this school's, and the site's own real-terms figures use the newer October 2026 deflator.",
     "source": "Institute for Fiscal Studies, Annual report on education spending in England: 2025-26 (January 2026)",
     "ifs": "source"
+  },
+  "status_reserve_held_by_trust": {
+    "label": "Reserve held by the trust",
+    "plain": "The academy's trust holds reserves centrally, so the academy's own balance is £0: this is not a judgement on its finances.",
+    "how": "An academy in a multi-academy trust whose own revenue reserve is exactly £0 in a year when the DfE publishes no figure including its share of the trust's reserve. It is never counted as tight or in deficit; the trust's page shows the trust's reserves.",
+    "source": "pipeline/money/status.py"
+  },
+  "school_deficit": {
+    "label": "Deficit",
+    "plain": "The school's savings have gone below zero: over the years it has spent this much more than it received.",
+    "how": "The revenue reserve at the end of the latest full year, shown as a positive amount when it is below zero. A council-run school agrees a plan with its council to pay it back; an academy's trust is responsible for its money and agrees how to bring the balance back. For an academy in a trust it is the reserve including its share of the trust's reserve when the DfE publishes that figure.",
+    "source": "CFR lines B01, B02 and B06 / AAR Revenue reserve (including the trust share where published)",
+    "ifs": "framings.why_schools_go_into_deficit"
   }
 }

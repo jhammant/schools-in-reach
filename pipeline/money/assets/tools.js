@@ -13,9 +13,14 @@
   // ======================================================================
   // status.py, ported line for line (keep the two in step)
   // ======================================================================
-  var ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves"];
-  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves" };
-  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲" };
+  var ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves", "reserve_held_by_trust"];
+  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves",
+    reserve_held_by_trust: "Reserve held by the trust" };
+  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲", reserve_held_by_trust: "◇" };
+  var HELD_BY_TRUST = "reserve_held_by_trust";
+  var HELD_BY_TRUST_REASON = "Its trust holds reserves centrally, so this academy's own balance is £0; " +
+    "the trust's page shows the trust's reserves.";
+  var OWN = "own", INCL_TRUST = "incl_trust_share";
   var TIGHT_BELOW = 0.03;
   var LARGE_FROM = { secondary: 0.05, "default": 0.08 };
   var RUNWAY_YEARS = 3;
@@ -66,9 +71,30 @@
     return keys.map(function (k) { return byEnd[k]; });
   }
 
-  function reserveShare(row) {
-    var reserve = row.revenue_reserve_incl_trust_share;
-    if (reserve == null) reserve = row.revenue_reserve;
+  function reserveBasis(rows) {
+    var years = fullYears(rows);
+    if (years.length && years[years.length - 1].revenue_reserve_incl_trust_share != null) return INCL_TRUST;
+    return OWN;
+  }
+
+  function reserveOnBasis(row, basis) {
+    var v = basis === INCL_TRUST ? row.revenue_reserve_incl_trust_share : row.revenue_reserve;
+    return v == null ? null : v;
+  }
+
+  function pooledOwnReserve(row) {
+    var trustType = String(row.trust_type == null ? "" : row.trust_type).trim().toLowerCase();
+    var inMat = trustType.indexOf("multi") !== -1 || trustType === "mat";
+    return row.source === "AAR" && inMat && row.revenue_reserve === 0;
+  }
+
+  function heldByTrust(row) {
+    return pooledOwnReserve(row) && row.revenue_reserve_incl_trust_share == null;
+  }
+
+  function reserveShare(row, basis) {
+    var reserve = basis ? reserveOnBasis(row, basis) : row.revenue_reserve_incl_trust_share;
+    if (reserve == null && basis !== INCL_TRUST) reserve = row.revenue_reserve;
     var income = row.total_income;
     if (reserve == null || !income) return null;
     return reserve / income;
@@ -83,13 +109,15 @@
     return streak;
   }
 
-  function assess(rows) {
+  function assess(rows, basis) {
     var years = fullYears(rows);
     if (!years.length) return null;
     var latest = years[years.length - 1];
-    var share = reserveShare(latest);
-    var reserve = latest.revenue_reserve_incl_trust_share;
-    if (reserve == null) reserve = latest.revenue_reserve;
+    basis = basis || reserveBasis(rows);
+    if (reserveOnBasis(latest, basis) == null) basis = OWN;
+    var reserve = reserveOnBasis(latest, basis);
+    var share = reserveShare(latest, basis);
+    var trustShare = basis === INCL_TRUST;
     var streak = deficitStreak(years);
     var phase = latest.phase || "default";
     var largeFrom = has.call(LARGE_FROM, phase) ? LARGE_FROM[phase] : LARGE_FROM["default"];
@@ -101,32 +129,40 @@
     var avgOverspend = -pySum(recent.map(function (r) { return r.in_year_balance || 0; })) / recent.length;
     var runway = reserve > 0 && avgOverspend > 0 ? reserve / avgOverspend : null;
 
+    var held = trustShare ? " including its share of the trust's reserve" : "";
     var status, reason;
-    if (reserve < 0) {
+    if (basis === OWN && heldByTrust(latest)) {
+      status = HELD_BY_TRUST;
+      reason = HELD_BY_TRUST_REASON;
+    } else if (reserve < 0) {
       status = "in_deficit";
-      reason = "In deficit by " + money(-reserve) + ", " + pyPercent(Math.abs(share)) + " of a year's income: it has spent more over the years than it received.";
+      if (trustShare) {  // the academy's own accounts may be in surplus: the trust's share takes it below zero
+        reason = "In deficit by " + money(-reserve) + ", " + pyPercent(Math.abs(share)) + " of a year's income, counting its share of the trust's reserve.";
+      } else {
+        reason = "In deficit by " + money(-reserve) + ", " + pyPercent(Math.abs(share)) + " of a year's income: it has spent more over the years than it received.";
+      }
       if (streak >= 2) reason += " It has spent more than it received for " + streak + " years running.";
     } else if (streak >= 2 && runway != null && runway <= RUNWAY_YEARS) {
       status = "heading_for_deficit";
       reason = "Has spent more than it received for " + streak + " years running; at that rate " +
-        "its " + money(reserve) + " reserve runs out in about " + pyFixed(Math.max(runway, 0.5), 0) + " year" + (runway >= 1.5 ? "s" : "") + ".";
+        "its " + money(reserve) + " reserve" + held + " runs out in about " + pyFixed(Math.max(runway, 0.5), 0) + " year" + (runway >= 1.5 ? "s" : "") + ".";
     } else if (share < TIGHT_BELOW) {
       status = "tight";
-      reason = "Holds " + money(reserve) + " in reserve, under 3% of a year's income: little room for surprises.";
+      reason = "Holds " + money(reserve) + " in reserve" + held + ", under 3% of a year's income: little room for surprises.";
     } else if (share >= largeFrom) {
       status = "large_reserves";
-      reason = "Holds " + money(reserve) + " in reserve, " + pyPercent(share) + " of a year's income.";
+      reason = "Holds " + money(reserve) + " in reserve" + held + ", " + pyPercent(share) + " of a year's income.";
       if (streak >= 2) reason += " It has been drawing on it for " + streak + " years.";
     } else {
       status = "healthy";
-      reason = "Holds " + money(reserve) + " in reserve, " + pyPercent(share) + " of a year's income.";
+      reason = "Holds " + money(reserve) + " in reserve" + held + ", " + pyPercent(share) + " of a year's income.";
       if (streak >= 2) reason += " It has spent more than it received for " + streak + " years, so watch the trend.";
     }
     return {
       status: status, label: LABELS[status], rank: ORDER.indexOf(status), reason: reason,
       year: latest.year, source: latest.source, reserve: reserve, reserve_share: share, deficit_streak: streak,
       runway_years: runway, pupils_change: pupilsChange, years: years.length,
-      trust_share_included: latest.revenue_reserve_incl_trust_share != null
+      trust_share_included: trustShare, reserve_basis: basis
     };
   }
 
@@ -136,7 +172,11 @@
   var BASE = "https://money.schoolsinreach.com";
   var SITE_NAME = "School Money";
   var FBIT = "https://financial-benchmarking-and-insights-tool.education.gov.uk/";
-  var REGISTER = "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/";
+  // The Charity Commission register page for one charity: the number sits mid-URL, so always build it with charityUrl.
+  var CHARITY_PAGE = ["https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_" +
+    "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_" +
+    "CharityDetailsPortlet_regId=", "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0"];
+  function charityUrl(n) { return CHARITY_PAGE[0] + encodeURIComponent(String(n == null ? "" : n).trim()) + CHARITY_PAGE[1]; }
   var DRAFT_KEY = "moneyToolsDraft";
   var MAX_EVENTS = 100;   // a ceiling on the PTA planner events a saved draft can recreate
   var SOURCE_NAMES = { CFR: "DfE CFR return", AAR: "DfE academy accounts return" };
@@ -204,15 +244,24 @@
     var m = /^(\d{4})[-\/]\d{2,4}$/.exec(String(label == null ? "" : label).trim());
     return m ? (parseInt(m[1], 10) + 1) + (academy ? "-08-31" : "-03-31") : null;
   }
+  // Years whose published figures look unusual. /data/sx carries them as flags.suspect = {year: [keys]} beside other
+  // flags (falling_rolls, high_send, ...), which are not years; a bare list or {year: [...]} map is read too.
+  var YEAR_LABEL = /^\d{4}[-\/]\d{2,4}$/;
   function flaggedYears(flags) {
     var out = [];
-    function add(y) { if (y != null && out.indexOf(String(y)) === -1) out.push(String(y)); }
+    function add(y) { if (y != null && YEAR_LABEL.test(String(y)) && out.indexOf(String(y)) === -1) out.push(String(y)); }
+    if (flags && typeof flags === "object" && !Array.isArray(flags) && has.call(flags, "suspect")) flags = flags.suspect;
     if (Array.isArray(flags)) flags.forEach(function (f) { add(f && typeof f === "object" ? f.year : f); });
     else if (flags && typeof flags === "object") Object.keys(flags).forEach(function (y) {
       var v = flags[y];
       if (v && (!Array.isArray(v) || v.length)) add(y);
     });
-    return out;
+    return out.sort();
+  }
+  // sx.source is {year: "CFR" | "AAR"}; older files carried one string for every year.
+  function sourceOf(source, year, fallback) {
+    if (source && typeof source === "object") return typeof source[year] === "string" ? source[year] : fallback;
+    return typeof source === "string" && source ? source : fallback;
   }
   function firstKey(obj, keys) {
     if (!obj || typeof obj !== "object") return null;
@@ -252,10 +301,17 @@
       };
     }
     var academy = out.school ? out.school.academy : false;
-    var sxSource = sx && sx.source != null ? String(sx.source) : null;
+    var sxYears = sx && Array.isArray(sx.years) ? sx.years.map(String) : [];
+    var latestSx = sxYears.length ? sxYears[sxYears.length - 1] : null;
+    var sxSource = sx ? sourceOf(sx.source, latestSx, null) : null;
     if (sxSource && /AAR|academ/i.test(sxSource)) academy = true;
     out.source = sxSource || (academy ? "AAR" : "CFR");
     out.flagged = sx ? flaggedYears(sx.flags) : [];
+    // One reserve basis (sx.reserve_basis): on "incl_trust_share", m.revenue_reserve includes the trust's share and
+    // m.revenue_reserve_own is the academy's own; without reserve_basis, m.revenue_reserve is read as before.
+    out.reserveBasis = sx && sx.reserve_basis === INCL_TRUST ? INCL_TRUST : OWN;
+    var pooled = sx && sx.flags && Array.isArray(sx.flags.reserve_held_by_trust) ? sx.flags.reserve_held_by_trust.map(String) : [];
+    var multi = !!(s && s.tags && s.tags.trust_size === "multi");
 
     // Years: /data/sx metrics first, then /data/s years[] for anything missing.
     var byYear = {}, labels = [];
@@ -271,8 +327,18 @@
     if (sx && Array.isArray(sx.years)) sx.years.forEach(function (y) {
       var r = row(String(y));
       r.total_income = cell("total_income", y); r.total_expenditure = cell("total_expenditure", y);
-      r.revenue_reserve = cell("revenue_reserve", y); r.in_year_balance = cell("in_year_balance", y);
+      r.in_year_balance = cell("in_year_balance", y);
+      if (out.reserveBasis === INCL_TRUST) {
+        // m.revenue_reserve_own is optional (C3). Without it the trust-inclusive reserve stands in for fullYears's
+        // reserve check: on this basis nothing else reads the own figure (heldByTrust needs no trust share).
+        var own = cell("revenue_reserve_own", y);
+        r.revenue_reserve_incl_trust_share = cell("revenue_reserve", y);
+        r.revenue_reserve = own != null ? own : r.revenue_reserve_incl_trust_share;
+      } else {
+        r.revenue_reserve = cell("revenue_reserve", y);
+      }
       r.pupils = sx.pupils && typeof sx.pupils === "object" ? toNum(sx.pupils[y]) : null;
+      r.source = sourceOf(sx.source, String(y), null);
     });
     if (s && Array.isArray(s.years)) s.years.forEach(function (y) {
       if (!y || y.y == null) return;
@@ -289,9 +355,11 @@
       return r.total_income != null && r.revenue_reserve != null;
     }).map(function (r) {
       if (r.in_year_balance == null && r.total_expenditure != null) r.in_year_balance = r.total_income - r.total_expenditure;
-      r.period_end = periodEndFor(r.year, academy) || r.year;
+      r.source = r.source || out.source;
+      r.period_end = periodEndFor(r.year, r.source === "AAR" || (!r.source && academy)) || r.year;
       r.period_months = 12;
-      r.source = out.source;
+      if (r.revenue_reserve_incl_trust_share == null) delete r.revenue_reserve_incl_trust_share;
+      if (r.source === "AAR" && (multi || pooled.indexOf(r.year) !== -1)) r.trust_type = "MAT";
       if (phase) r.phase = phase;
       if (out.flagged.indexOf(r.year) !== -1) r.flagged = true;
       return r;
@@ -320,7 +388,7 @@
   // History rows for the budget check, from /data/sx (preferred) and /data/s.
   function prefillFrom(sx, s) {
     var a = adapt(s, sx, null);
-    return { rows: a.history, flagged: a.flagged, source: a.source, school: a.school };
+    return { rows: a.history, flagged: a.flagged, source: a.source, school: a.school, reserveBasis: a.reserveBasis };
   }
 
   // ======================================================================
@@ -331,7 +399,8 @@
   function projectRows(history, future) {
     var past = fullYears(history);
     var last = past.length ? past[past.length - 1] : null;
-    var reserve = last ? (last.revenue_reserve_incl_trust_share != null ? last.revenue_reserve_incl_trust_share : last.revenue_reserve) : 0;
+    var basis = last && last.revenue_reserve_incl_trust_share != null ? INCL_TRUST : OWN;
+    var reserve = last ? reserveOnBasis(last, basis) : 0;
     var year = last ? last.year : null, end = last ? last.period_end : null, out = [];
     var list = Array.isArray(future) ? future.slice(0, 3) : [];
     for (var i = 0; i < list.length; i++) {
@@ -343,6 +412,7 @@
       end = nextPeriodEnd(end) || "Y" + (i + 1);
       var r = { year: year, period_end: end, period_months: 12, total_income: income, total_expenditure: spend,
         in_year_balance: balance, revenue_reserve: reserve, source: "Your forecast", projected: true };
+      if (basis === INCL_TRUST) r.revenue_reserve_incl_trust_share = reserve;  // the forecast stays on the page's basis
       var pupils = toNum(f.pupils) != null ? toNum(f.pupils) : (last ? last.pupils : null);
       if (pupils != null) r.pupils = pupils;
       if (last && last.phase) r.phase = last.phase;
@@ -523,6 +593,8 @@
   var API = {
     ORDER: ORDER, LABELS: LABELS, ICONS: ICONS, TIGHT_BELOW: TIGHT_BELOW, LARGE_FROM: LARGE_FROM, RUNWAY_YEARS: RUNWAY_YEARS,
     BASE: BASE, pyFixed: pyFixed, money: money, fullYears: fullYears, reserveShare: reserveShare, deficitStreak: deficitStreak,
+    reserveBasis: reserveBasis, reserveOnBasis: reserveOnBasis, heldByTrust: heldByTrust, pooledOwnReserve: pooledOwnReserve,
+    charityUrl: charityUrl, sourceOf: sourceOf, HELD_BY_TRUST: HELD_BY_TRUST,
     assess: assess, toNum: toNum, fmtExact: fmtExact, fmtPupils: fmtPupils, nextYearLabel: nextYearLabel, flaggedYears: flaggedYears,
     adapt: adapt, prefillFrom: prefillFrom, projectRows: projectRows, budgetCheck: budgetCheck, planPta: planPta,
     comparePta: comparePta, embedSnippet: embedSnippet, getJSON: getJSON, loadSchool: loadSchool, loadArea: loadArea,
@@ -635,8 +707,8 @@
     var form = $("bc-form"), loader = $("bc-load"), status = $("bc-load-status"), out = $("bc-out");
     if (!form || !loader || !out) return;
     // The published history behind the form. Its URN goes in the draft, so a reload can fetch the same history again.
-    var state = { urn: null, history: [], flagged: [], academy: false, name: null, source: null, loads: 0 };
-    function reset() { state.urn = null; state.history = []; state.flagged = []; state.academy = false; state.name = null; state.source = null; }
+    var state = { urn: null, history: [], flagged: [], academy: false, name: null, source: null, basis: OWN, loads: 0 };
+    function reset() { state.urn = null; state.history = []; state.flagged = []; state.academy = false; state.name = null; state.source = null; state.basis = OWN; }
     function save() { saveDraft("budget", form, { urn: state.urn }); }
     var draft = readDraft("budget");
     restoreDraft(form, draft);
@@ -665,16 +737,19 @@
         reset();
         if (!last) { status.textContent = "Figures for this school aren't published yet, so type in your own below."; save(); return; }
         state.urn = res.urn; state.history = d.history; state.flagged = d.flagged; state.source = d.source;
+        state.basis = d.reserveBasis === INCL_TRUST ? INCL_TRUST : OWN;
         state.academy = d.school ? d.school.academy : d.source === "AAR";
         state.name = d.school && d.school.name;
         var flaggedNote = d.flagged.length ? " The figures for " + d.flagged.join(", ") + " look unusual and are marked ⚑: check them on the DfE's tool before relying on them." : "";
+        if (state.basis === INCL_TRUST) flaggedNote += " The reserve is the academy's reserve including its share of the trust's reserve, as on its school page.";
         if (restoring) {
           status.textContent = "Your saved figures are below, with " + (state.name || "the school") + "'s " + d.history.length +
             " year" + (d.history.length === 1 ? "" : "s") + " of published figures (" + sourceName(d.source) + ")." + flaggedNote;
           return;
         }
         setVal("bc-year", last.year); setVal("bc-income", last.total_income); setVal("bc-spend", last.total_expenditure);
-        setVal("bc-reserve", last.revenue_reserve); setVal("bc-pupils", last.pupils);
+        setVal("bc-reserve", reserveOnBasis(last, state.basis) != null ? reserveOnBasis(last, state.basis) : last.revenue_reserve);
+        setVal("bc-pupils", last.pupils);
         if (d.school && d.school.phase && $("bc-phase")) $("bc-phase").value = d.school.phase === "secondary" ? "secondary" : (d.school.phase === "primary" ? "primary" : "default");
         [1, 2, 3].forEach(function (i) {
           if (val("bc-inc-" + i) == null) setVal("bc-inc-" + i, last.total_income);
@@ -696,6 +771,12 @@
       var lastRow = { year: year || "Last year", period_end: end, period_months: 12, total_income: income, total_expenditure: spend,
         in_year_balance: spend != null ? income - spend : null, revenue_reserve: reserve, pupils: val("bc-pupils"), phase: phase,
         source: state.source || "Your figures", flagged: state.flagged.indexOf(year) !== -1 };
+      var published = state.history.filter(function (r) { return String(r.year) === String(year); })[0];
+      if (state.basis === INCL_TRUST) {  // the typed reserve is on the page's basis; the academy's own figure stays as published
+        lastRow.revenue_reserve_incl_trust_share = reserve;
+        lastRow.revenue_reserve = published && published.revenue_reserve != null ? published.revenue_reserve : reserve;
+      }
+      if (published && published.trust_type) lastRow.trust_type = published.trust_type;
       var past = state.history.filter(function (r) { return String(r.period_end) < end; }).map(function (r) {
         var c = {}; Object.keys(r).forEach(function (k) { c[k] = r[k]; }); c.phase = phase; return c;
       });
@@ -721,11 +802,14 @@
           list.appendChild(li);
         });
         out.appendChild(list);
-        var points = past.concat([lastRow]).slice(-3).map(function (r) { return { year: r.year, reserve: r.revenue_reserve, flagged: !!r.flagged }; })
+        // One basis in the chart: on the trust basis, years without the trust-inclusive figure are left out.
+        var points = past.concat([lastRow]).filter(function (r) { return reserveOnBasis(r, state.basis) != null; }).slice(-3)
+          .map(function (r) { return { year: r.year, reserve: reserveOnBasis(r, state.basis), flagged: !!r.flagged }; })
           .concat(res.years.map(function (y) { return { year: y.year, reserve: y.reserve, projected: true }; }));
         var fig = el("figure", "tool-figure");
         fig.appendChild(reserveChart(points));
-        fig.appendChild(el("figcaption", "muted small", "Reserve at the end of each year, cash. Faded bars are your forecast." +
+        fig.appendChild(el("figcaption", "muted small", "Reserve at the end of each year, cash" +
+          (state.basis === INCL_TRUST ? ", including the academy's share of the trust's reserve" : "") + ". Faded bars are your forecast." +
           (points.some(function (p) { return p.flagged; }) ? " ⚑ marks a year whose published figures look unusual." : "")));
         out.appendChild(fig);
       }
@@ -813,7 +897,7 @@
       var ul = el("ul");
       school.pta.forEach(function (c) {
         var li = el("li");
-        li.appendChild(c.number ? link(c.name, REGISTER + encodeURIComponent(c.number), true) : el("span", null, c.name));
+        li.appendChild(c.number ? link(c.name, charityUrl(c.number), true) : el("span", null, c.name));
         if (c.income != null) {
           var pp = school.pupils ? c.income / school.pupils : null;
           li.appendChild(document.createTextNode(": " + (pp != null ? fmtExact(pp) + " per pupil (" + fmtExact(c.income) + " in total)" : fmtExact(c.income)) +

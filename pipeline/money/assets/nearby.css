@@ -30,9 +30,16 @@
 .nb-chart line.med { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .nb-chart text.med { fill: var(--ink-2); font-size: 11px; }
 
+.nb-fed { display: block; font-weight: 400; color: var(--ink-2); font-size: .8rem; white-space: normal; }
+.nb-ratio { margin: 0 0 10px; }
+.nb-table .badge.s-reserve_held_by_trust { border-color: var(--held, #6b7280); background: var(--held-soft, #eef0f3); color: var(--held-text, #374151); }
+
 @media (max-width: 600px) {
+  /* the table keeps its own sideways scroll (.nb-scroll) and never widens the page; names wrap */
   .nb-table { font-size: .9rem; }
   .nb-table th, .nb-table td { padding-left: 6px; padding-right: 6px; }
+  .nb-table th[scope="row"] { min-width: 8rem; white-space: normal; }
+  .nb-chart { max-width: 100%; }
 }
 
 @media print {

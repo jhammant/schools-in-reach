@@ -64,6 +64,94 @@ class AssessTest(unittest.TestCase):
         self.assertAlmostEqual(status.assess(rows)["pupils_change"], -0.25)
 
 
+MAT = "Multi Academy Trust (MAT)"
+
+
+def academy(end, reserve, incl=None, *, income=1_000_000, balance=10_000, trust_type=MAT, **extra):
+    """One AAR full year in a multi-academy trust; incl is the reserve including its share of the trust's reserve."""
+    row = year(end, income, income - balance, reserve, source="AAR", trust_type=trust_type, **extra)
+    if incl is not None:
+        row["revenue_reserve_incl_trust_share"] = incl
+    return row
+
+
+class ReserveBasisTest(unittest.TestCase):
+    """One reserve basis per school (C3) and the 'reserve held by the trust' status (C4)."""
+
+    def test_council_run_school_is_always_own_basis(self):
+        # Arrange
+        rows = [year("2025-03", 3_000_000, 2_990_000, 200_000)]
+        # Act
+        result = status.assess(rows)
+        # Assert
+        self.assertEqual(status.reserve_basis(rows), "own")
+        self.assertEqual(result["reserve_basis"], "own")
+        self.assertFalse(result["trust_share_included"])
+
+    def test_latest_trust_share_sets_the_basis_and_the_reason_says_so(self):
+        # Arrange: Lubavitch-like, own accounts in surplus, the trust share below zero
+        rows = [academy("2024-08", 0), academy("2025-08", 274_000, -284_662)]
+        # Act
+        result = status.assess(rows)
+        # Assert
+        self.assertEqual(status.reserve_basis(rows), "incl_trust_share")
+        self.assertEqual(result["status"], "in_deficit")
+        self.assertEqual(result["reserve"], -284_662)
+        self.assertIn("counting its share of the trust's reserve", result["reason"])
+        self.assertNotIn("spent more over the years than it received", result["reason"])
+
+    def test_healthy_on_the_trust_basis_names_the_share(self):
+        rows = [academy("2025-08", 0, 60_000)]
+        result = status.assess(rows)
+        self.assertEqual(result["status"], "healthy")
+        self.assertIn("in reserve including its share of the trust's reserve", result["reason"])
+
+    def test_pooled_own_zero_is_held_by_the_trust_never_tight(self):
+        # Arrange: Mossbourne 2023-24, own reserve £0, no trust-inclusive figure that year
+        rows = [academy("2023-08", 0, balance=533_000), academy("2024-08", 0, balance=-479_000)]
+        # Act
+        result = status.assess(rows)
+        # Assert
+        self.assertEqual(result["status"], "reserve_held_by_trust")
+        self.assertEqual(result["label"], "Reserve held by the trust")
+        self.assertEqual(result["rank"], 5)
+        self.assertEqual(result["reason"], status.HELD_BY_TRUST_REASON)
+        self.assertNotIn("Tight", result["reason"])
+        self.assertTrue(status.held_by_trust(rows[-1]))
+
+    def test_zero_in_a_single_academy_trust_or_council_school_is_still_tight(self):
+        sat = [academy("2025-08", 0, trust_type="Single Academy Trust (SAT)")]
+        council = [year("2025-03", 1_000_000, 990_000, 0)]
+        self.assertEqual(status.assess(sat)["status"], "tight")
+        self.assertEqual(status.assess(council)["status"], "tight")
+
+    def test_own_zero_beside_a_trust_share_is_judged_on_the_share(self):
+        rows = [academy("2025-08", 0, 287_581, income=3_668_000)]
+        result = status.assess(rows)
+        self.assertEqual(result["status"], "healthy")
+        self.assertEqual(result["reserve"], 287_581)
+        self.assertTrue(status.pooled_own_reserve(rows[0]))
+        self.assertFalse(status.held_by_trust(rows[0]))
+
+    def test_explicit_basis_and_fallback_to_own(self):
+        # Arrange
+        rows = [academy("2025-08", 90_000, 120_000)]
+        older = [academy("2024-08", 50_000)]
+        # Act
+        own = status.assess(rows, basis="own")
+        fallback = status.assess(older, basis="incl_trust_share")
+        # Assert
+        self.assertEqual((own["reserve"], own["reserve_basis"]), (90_000, "own"))
+        self.assertEqual((fallback["reserve"], fallback["reserve_basis"]), (50_000, "own"))
+        self.assertEqual(status.reserve_on_basis(older[0], "incl_trust_share"), None)
+
+    def test_order_labels_and_icons_cover_the_new_status_last(self):
+        self.assertEqual(status.ORDER[-1], "reserve_held_by_trust")
+        self.assertEqual(set(status.ORDER), set(status.LABELS))
+        self.assertEqual(set(status.ORDER), set(status.ICONS))
+        self.assertEqual(status.ICONS["reserve_held_by_trust"], "◇")
+
+
 if __name__ == "__main__":
     unittest.main()
 

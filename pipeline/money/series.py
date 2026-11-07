@@ -16,6 +16,17 @@ Rules the pages rely on:
   distinct return counts, so two returns ending in one school year are summed.
 - A conversion year can have a council (CFR) and an academy (AAR) return with
   the same label; the one ending later supplies that whole year.
+- One reserve basis per school, the one status.assess's headline uses (reserve_basis):
+  'incl_trust_share' when the latest year publishes the academy's reserve including its
+  share of the trust's reserve, else 'own'. m['revenue_reserve'] carries that basis in
+  every year; a year without it is left out and listed in flags['reserve_basis_missing'],
+  never filled from the other basis. On the trust basis, m['revenue_reserve_own'] carries
+  the academy's own figure as a second, labelled row. flags['reserve_held_by_trust'] lists
+  the years whose own £0 reserve is held centrally by the trust (status.pooled_own_reserve).
+- Pupil counts that don't match the money (suspect_pupils: chiefly a federation lead's
+  combined return, where the money is the federation's and the pupils one school's) add
+  'pupils' to that year's flags['suspect'], so its per-pupil figures are greyed and kept out
+  of comparisons; that year's parents' association figures get no per-pupil value at all.
 
 The flags follow the site's own rules, not the IFS's. Stdlib only.
 """
@@ -23,6 +34,7 @@ The flags follow the site's own rules, not the IFS's. Stdlib only.
 from __future__ import annotations
 
 import math
+from statistics import median
 
 from pipeline.money import deflator, status
 
@@ -52,6 +64,10 @@ PASS_THROUGH_FROM = "2023-24"   # pension and NI grants grew from here
 PASS_THROUGH_INCOME_RISE = 0.05
 PASS_THROUGH_STAFF_SHARE = 0.7
 EHCP_NATIONAL = 5.3             # IFS p.58: 5.3% of pupils have an EHCP
+PUPILS_JUMP = 1.8               # a year's pupils this many times above or below the school's other years
+PUPILS_INCOME_STEADY = 1 / 3    # ... while its income stays within about a third of theirs
+PUPILS_MIN = 10                 # fewer pupils than this makes per-pupil figures meaningless
+RESERVE_OWN = "revenue_reserve_own"
 
 
 def _pounds(value):
@@ -89,6 +105,40 @@ def value(row: dict, key: str):
     if found is None and key in ALIASES:
         found = row.get(ALIASES[key])
     return found
+
+
+def reserve_basis(rows: list[dict]) -> str:
+    """'own' or 'incl_trust_share': the reserve basis status.assess's headline uses for these rows."""
+    return status.reserve_basis(rows)
+
+
+def reserve_on_basis(row: dict, basis: str):
+    """A row's reserve on one basis, or None when the row doesn't publish it (never the other basis)."""
+    return status.reserve_on_basis(row, basis)
+
+
+def suspect_pupils(rows: list[dict]) -> dict:
+    """{period_end: ['pupils']} for full years whose pupil count doesn't match the money.
+
+    A year is flagged when its pupils are PUPILS_JUMP (1.8) times above or below the median of the school's
+    other full years while its income stays within about a third of their median income: the money and the
+    pupils describe different things, as in a federation lead school's combined return (the federation's money
+    over one school's pupils). Needs two other years to compare with. Counts under PUPILS_MIN are always flagged.
+    """
+    years = [r for r in status.full_years(rows) if (r.get("pupils") or 0) > 0]
+    out = {}
+    for r in years:
+        if r["pupils"] < PUPILS_MIN:
+            out[r["period_end"]] = ["pupils"]
+            continue
+        others = [o for o in years if o is not r and o["pupils"] >= PUPILS_MIN]
+        if len(others) < 2:
+            continue
+        ratio = r["pupils"] / median(o["pupils"] for o in others)
+        income = r["total_income"] / median(o["total_income"] for o in others)
+        if (ratio >= PUPILS_JUMP or ratio <= 1 / PUPILS_JUMP) and abs(income - 1) <= PUPILS_INCOME_STEADY:
+            out[r["period_end"]] = ["pupils"]
+    return out
 
 
 def sen_share(row: dict):
@@ -155,7 +205,10 @@ def _falling_rolls(years: list[str], pupils: dict):
     recent = [pupils[y] for y in run]
     falling_run = len(recent) == FALLING_ROLLS_RUN + 1 and all(b < a for a, b in zip(recent, recent[1:]))
     if change <= -FALLING_ROLLS_DROP + 1e-9 or falling_run:
-        return {"from": counts[0], "to": counts[-1], "change": round(change, 4)}
+        out = {"from": counts[0], "to": counts[-1], "change": round(change, 4)}
+        if falling_run:  # the run that triggered the flag, so pages never call an overall rise a fall
+            out["run"] = {"from_year": run[0], "from": recent[0], "to": recent[-1], "years": FALLING_ROLLS_RUN}
+        return out
     return None
 
 
@@ -274,24 +327,49 @@ def _one_per_year(full: list[dict]) -> list[dict]:
     return [by_label[label] for label in sorted(by_label)]
 
 
+def _suspect_keys(row: dict, basis: str, pupils_flagged: bool) -> list[str]:
+    """The row's suspect keys that have a value, with the reserve keys named as the series names them:
+    on the trust basis the trust-inclusive figure is m['revenue_reserve'] and the own figure m['revenue_reserve_own']."""
+    flagged = []
+    for k in list(row.get("suspect") or []) + (["pupils"] if pupils_flagged else []):
+        if value(row, k) is None:
+            continue
+        names = [k]
+        if basis == status.INCL_TRUST and k == "revenue_reserve":
+            names = [RESERVE_OWN]
+        elif basis == status.INCL_TRUST and k == "revenue_reserve_incl_trust_share":
+            names = [k, "revenue_reserve"]
+        flagged += [n for n in names if n not in flagged]
+    return flagged
+
+
 def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
-    """The SERIES dict for one school: years, source, pupils, m, gap, pta, flags and trust_central_pp."""
+    """The SERIES dict for one school: years, source, pupils, m, gap, pta, flags, trust_central_pp and reserve_basis."""
     full = _one_per_year(status.full_years(rows))
+    basis = reserve_basis(rows)
+    odd_pupils = suspect_pupils(rows)
     years = [year_label(r) for r in full]
     source = {year_label(r): r["source"] for r in full}
     pupils = {year_label(r): float(r["pupils"]) for r in full if r.get("pupils")}
     m: dict[str, dict] = {}
     suspect: dict[str, list] = {}
     trust_central: dict[str, int] = {}
+    basis_missing, held = [], []
     for row in full:
         label = year_label(row)
         for key, _, _ in METRICS:
             if row.get("source") == "AAR" and key in NOT_IN_AAR:
                 continue
-            amount = value(row, key)
+            amount = reserve_on_basis(row, basis) if key == "revenue_reserve" else value(row, key)
             if amount is not None:
                 m.setdefault(key, {})[label] = _cell(amount, row, pupils.get(label))
-        flagged = [k for k in row.get("suspect") or [] if value(row, k) is not None]
+        if basis == status.INCL_TRUST:
+            m.setdefault(RESERVE_OWN, {})[label] = _cell(row["revenue_reserve"], row, pupils.get(label))
+            if reserve_on_basis(row, basis) is None:
+                basis_missing.append(label)
+        if status.pooled_own_reserve(row):
+            held.append(label)
+        flagged = _suspect_keys(row, basis, row["period_end"] in odd_pupils)
         if flagged:
             suspect[label] = flagged
         if row.get("trust_central_spend_per_pupil") is not None:
@@ -307,7 +385,9 @@ def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
         if entry:
             gap[label] = entry
 
-    pta_pupils = {**_pupils_any_year(rows), **pupils}
+    # A year whose pupils don't match the money gives its parents' association no per-pupil figure either.
+    odd_labels = {year_label(r) for r in full if r["period_end"] in odd_pupils}
+    pta_pupils = {k: v for k, v in {**_pupils_any_year(rows), **pupils}.items() if k not in odd_labels}
     not_reported = {k: why for k, why in NOT_IN_AAR.items() if any(r.get("source") == "AAR" for r in full)}
     return {
         "years": years,
@@ -322,8 +402,11 @@ def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
             "high_send": _high_send(full[-1], sen_share_q3) if full else None,
             "suspect": suspect,
             "not_reported": not_reported,
+            "reserve_basis_missing": basis_missing,
+            "reserve_held_by_trust": held,
         },
         "trust_central_pp": trust_central,
+        "reserve_basis": basis,
     }
 
 

@@ -24,6 +24,7 @@ from collections import Counter
 
 from pipeline.money import areas as agg
 from pipeline.money import charts
+from pipeline.money import status as health
 from pipeline.money.charts import STATUS_ORDER, badge, esc, money
 from pipeline.money.site import money_figure, pin_button, slug
 
@@ -31,9 +32,27 @@ try:
     from pipeline.money import deflator
 except ImportError:  # pragma: no cover - deflator.py ships with the money package
     deflator = None
+try:  # comparisons-stories' C1 ratio words; without it the comparison keeps its percentages only
+    from pipeline.money import phrasing
+except ImportError:
+    phrasing = None
 
 FBIT = "https://financial-benchmarking-and-insights-tool.education.gov.uk"
-CHARITY = "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/"
+# A charity's page on the register: the number sits mid-URL, so links are built only by charity_url().
+CHARITY_URL = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet"
+               "&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view"
+               "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_regId={number}"
+               "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
+HELD = "reserve_held_by_trust"  # status.py's sixth status: counted on its own, never tight or in deficit
+HELD_ICON = "◇"
+REPORT_LINK = '<a class="report-link" href="/about/#corrections">Report an error or add context</a>'
+DSG_NAME = "Dedicated Schools Grant balance (all four blocks)"
+DSG_DENOMINATOR = "pupils at the council's schools on this site that year"
+DSG_NOTE = ("All four blocks of the Dedicated Schools Grant together (schools, early years, central school services and "
+            "high needs); most deficits come from high-needs spending. Negative is a deficit carried forward, in cash terms.")
+SCOPE_NOTE = ("Counts sit below the DfE's published totals: only full-year returns count (schools that opened, converted, "
+              "changed trust or closed mid-year are left out), a federation counts once through its lead school, and "
+              "independent schools are not included.")
 EXTRA_HEAD = '<link rel="stylesheet" href="/assets/areas.css"><script src="/assets/trend.js" defer></script>'
 SUFFIX = " | School Money"
 FROM_YEAR = "2018-19"
@@ -62,8 +81,8 @@ TRUST_NOTE = ("A trust can move money between its academies, so an academy shown
               "trust as a whole.")
 OVERLAP_NOTE = ("Parents' association income and the donations in a school's own accounts can overlap (money the "
                 "association gives the school can appear in both), so the two are never added together.")
-HNSG_FALLBACK = ("Statutory override: council high-needs (DSG) deficits are held apart from council general funds until "
-                 "the end of 2027-28, and the High Needs Stability Grant pays 90% of each council's eligible deficit "
+HNSG_FALLBACK = ("Statutory override: councils' Dedicated Schools Grant deficits are held apart from council general funds "
+                 "until the end of 2027-28, and the High Needs Stability Grant pays 90% of each council's eligible deficit "
                  "from autumn 2026.")
 POUND = re.compile(r"£(\d[\d,]*(?:\.\d+)?)(\s?(?:billion|bn|million|m)\b)?")
 
@@ -261,6 +280,137 @@ def pct_text(s):
 def sort(value, html):
     key = "" if _num(value) is None else (f"{value:.4f}".rstrip("0").rstrip(".") if isinstance(value, float) else str(value))
     return f'<span data-sort="{key}">{html}</span>'
+
+
+def charity_url(number):
+    """C9: a charity's page on the Charity Commission register."""
+    return CHARITY_URL.format(number=str(number).strip())
+
+
+def status_label(status):
+    return charts.STATUS_LABELS.get(status) or (getattr(health, "LABELS", {}) or {}).get(status) or (
+        "Reserve held by the trust" if status == HELD else str(status).replace("_", " ").capitalize())
+
+
+def status_badge(status, size=""):
+    """charts.badge when charts knows the status, else the same markup with icon and word (never a KeyError)."""
+    if status in charts.STATUS_LABELS:
+        return badge(status, size)
+    icon = HELD_ICON if status == HELD else "•"
+    return (f'<span class="badge s-{esc(status)} {esc(size)}"><span aria-hidden="true">{icon}</span> '
+            f'{esc(status_label(status))}</span>')
+
+
+def status_rank(st):
+    """Sort rank of an assessed status: status.py's rank, else its place in STATUS_ORDER, else after them all."""
+    if isinstance(st.get("rank"), int):
+        return st["rank"]
+    return STATUS_ORDER.index(st["status"]) if st.get("status") in STATUS_ORDER else len(STATUS_ORDER)
+
+
+def held_note(counts):
+    """A line for academies whose trust holds the reserve: counted on their own, never as tight or in deficit."""
+    n = (counts or {}).get(HELD) or 0
+    if not n:
+        return ""
+    return (f'<p class="muted small">{status_badge(HELD, "small")} {n:,} academ{"y" if n == 1 else "ies"} whose trust '
+            f'holds the reserve centrally {"is" if n == 1 else "are"} counted on {"its" if n == 1 else "their"} own: '
+            'not as tight and not in deficit.</p>')
+
+
+def status_list(counts, year=None):
+    """The status bar for one year (each school judged on its return for that year), or "" without counts."""
+    if not counts:
+        return ""
+    head = f'<p class="muted small">Statuses in {esc(year)}, each school judged on its return for that year.</p>' if year else ""
+    return head + charts.status_bar(counts)
+
+
+def report_line(counts):
+    """Under the status list: the held-by-trust line and, once per page, the report link (C6)."""
+    return held_note(counts) + f'<p class="report-line">{REPORT_LINK}</p>'
+
+
+def dsg_denominator(name):
+    """What a DSG per-pupil figure divides by, for a council or for England."""
+    return "pupils at schools in England on this site that year" if name == "England" else DSG_DENOMINATOR
+
+
+def dsg_year(year, entry):
+    """'2025-26', or '2025-26, provisional' when la_dsg.json marks the year provisional."""
+    return f"{year}, provisional" if isinstance(entry, dict) and entry.get("provisional") else str(year)
+
+
+def provisional_note(dsg, years):
+    """' 2025-26 is provisional, before audit.' for the years la_dsg.json marks provisional, so a DSG chart
+    says so beside itself (C8); '' when none is."""
+    found = [y for y in years if isinstance((dsg or {}).get(y), dict) and dsg[y].get("provisional")]
+    return f" {', '.join(found)} {'is' if len(found) == 1 else 'are'} provisional, before audit." if found else ""
+
+
+def dsg_table_note(per_pupil_only=False):
+    """C8 for a table of DSG figures: what the per-pupil figure divides by. A paged table repeats it on
+    every continuation page (build_money.area_result_pages), where the intro that also says it is absent."""
+    what = f"{DSG_NAME} per pupil" if per_pupil_only else f"{DSG_NAME}: the per-pupil figure"
+    return (f'<p class="muted small">{esc(what)} divides by the {esc(DSG_DENOMINATOR)}; its year, and '
+            '"provisional" where the DfE marks it, is beside each figure.</p>')
+
+
+def dsg_figure(entry, year, *, per_pupil=False):
+    """A DSG figure with its year (and 'provisional') beside it; per_pupil shows the per-pupil value alone."""
+    if not isinstance(entry, dict) or _num(entry.get("balance")) is None:
+        return '<span class="muted">—</span>'
+    if per_pupil:
+        html = pp_fig("dsg_per_pupil", entry.get("per_pupil"), year, signed=True)
+    else:
+        pp = entry.get("per_pupil")
+        pupils = entry.get("pupils") or (entry["balance"] / pp if _num(pp) else None)
+        html = money_figure("dsg_balance", entry["balance"], pupils, year, signed=True)
+    return f'{html} <small>{esc(dsg_year(year, entry))}</small>'
+
+
+def latest_dsg(area, field="balance"):
+    """(year, entry) for the newest DSG year with that field, or (None, None)."""
+    dsg = (area or {}).get("dsg") or {}
+    year = max((y for y, d in dsg.items() if isinstance(d, dict) and _num(d.get(field)) is not None), default=None)
+    return (year, dsg[year]) if year else (None, None)
+
+
+def deficit_figures(area, others):
+    """(year, S, England's % in deficit that year or None) for the area's newest all-schools year, or
+    (None, None, None). The lead, the page description and share previews all quote these, so they never
+    disagree (audit C53)."""
+    year, s = latest_combined(area)
+    if not s or s.get("in_deficit") is None:
+        return None, None, None
+    england = dict(others).get("England")
+    e = split_of(england, year) if england else None
+    return year, s, (e or {}).get("in_deficit_pct")
+
+
+def schools_of(name):
+    """'Hackney schools', 'schools in England'."""
+    return "schools in England" if name == "England" else f"{name} schools"
+
+
+def deficit_description(name, area, others):
+    """The plain, year-stated deficit sentence a page description opens with, or None."""
+    year, s, e = deficit_figures(area, others)
+    if year is None:
+        return None
+    return (f"In {year}, {s['in_deficit']:,} of {s['schools']:,} {schools_of(name)} with a full-year return were in deficit "
+            f"({s['in_deficit_pct']:.1f}%" + (f"; England {e:.1f}%" if _num(e) is not None else "") + ").")
+
+
+def ratio_words(a, b):
+    """phrasing.ratio_words (C1) when it is present, else None (the sentence keeps its percentages only)."""
+    rule = getattr(phrasing, "ratio_words", None)
+    if rule is None:
+        return None
+    try:
+        return rule(a, b)
+    except Exception:  # a page must never fail on optional wording
+        return None
 
 
 def sources(extra=""):
@@ -568,16 +718,16 @@ def measure_cards(kind, name, area, others, ctx, brief):
         dyears = sorted(y for y in area["dsg"] if y >= FROM_YEAR)
         pp_lines = [{"label": name, "values": dsg_values(area, dyears, "per_pupil"), "emph": True}]
         pp_lines += [{"label": label, "values": dsg_values(other, dyears, "per_pupil")} for label, other in others]
-        title = "Council high-needs (DSG) balance"
+        title = DSG_NAME
         pp_svg = trend_svg(pp_lines, years=dyears, title=f"{title} per pupil, {name}", desc=describe(pp_lines, "£"))
         total_lines = [{"label": name, "values": dsg_values(area, dyears, "balance"), "emph": True}]
         total_svg = trend_svg(total_lines, years=dyears, title=f"{title}, {name}", desc=describe(total_lines, "£"))
         if pp_svg:
             body = f'<div data-unit="pp">{pp_svg}</div>' + (f'<div data-unit="total" hidden>{total_svg}</div>' if total_svg else "")
-            note = "Negative is a deficit carried forward, in cash terms."
+            note = (DSG_NOTE if not brief else "All four blocks; negative is a deficit carried forward.")
+            note += f" Per pupil divides by the {dsg_denominator(name)}." + provisional_note(area["dsg"], dyears)
             if not brief:
-                note += (" Per pupil divides by pupils at the schools on this site; a school whose return for the year "
-                         "is not yet published counts its previous year's roll.")
+                note += " A school whose return for the year is not yet published counts its previous year's roll."
             cards.append(card(title, body, esc(note), unit_toggle() if total_svg else ""))
     cards.append(chart("Median parents' association income per pupil",
                             measure_lines(name, area, others, "pta_pp_median", years, council_run=False), years,
@@ -627,16 +777,15 @@ def ifs_context(ctx, council=False):
 
 
 def lead(name, area, others, ctx=None):
-    year, s = latest_combined(area)
-    if not s or s.get("in_deficit") is None:
+    year, s, e = deficit_figures(area, others)
+    if year is None:
         return (f'<p class="lead">Too few schools in {esc(name)} have published full-year returns to show area '
                 'figures yet; the table lists every school we hold.</p>')
-    text = (f'In {esc(year)}, <strong>{s["in_deficit"]:,} of the {s["schools"]:,}</strong> schools in {esc(name)} with a '
+    text = (f'In {esc(year)}, <strong>{s["in_deficit"]:,} of {s["schools"]:,}</strong> {esc(schools_of(name))} with a '
             f'full-year return were in deficit ({s["in_deficit_pct"]:.1f}%)')
-    england = dict(others).get("England")
-    e = split_of(england, year) if england else None
-    if e and e.get("in_deficit_pct") is not None:
-        text += f", against {e['in_deficit_pct']:.1f}% across England"
+    if _num(e) is not None:
+        words = ratio_words(s["in_deficit_pct"], e)
+        text += f", {esc(words)} the share across England ({e:.1f}%)" if words else f", against {e:.1f}% across England"
     text += ". "
     cr_year, cr = latest_split(area, "council-run")
     if cr and cr_year and year and cr_year > year:
@@ -663,13 +812,13 @@ def headline(area):
     cr_year, cr = latest_split(area or {}, "council-run")
     if cr and cr_year and (not year or cr_year > year):
         tiles.append((f"Council-run schools in deficit, {cr_year}", f'{cr["in_deficit_pct"]:.1f}% <small>(council-run only)</small>'))
-    dsg = (area or {}).get("dsg") or {}
-    dyear = max((y for y, d in dsg.items() if isinstance(d, dict) and _num(d.get("balance")) is not None), default=None)
+    dyear, d = latest_dsg(area)
     if dyear:
-        balance = dsg[dyear]["balance"]
-        pp = dsg[dyear].get("per_pupil")
-        pupils = balance / pp if _num(pp) else None
-        tiles.append((f"High-needs (DSG) balance, {dyear}", money_figure("dsg_balance", balance, pupils, dyear, signed=True)))
+        pupils = d.get("pupils") or (d["balance"] / d["per_pupil"] if _num(d.get("per_pupil")) else None)
+        denominator = dsg_denominator((area or {}).get("name"))
+        sub = (f'<span class="sub">per pupil of the {pupils:,.0f} {esc(denominator.replace("that year", "in " + dyear))}</span>'
+               if _num(pupils) else "")
+        tiles.append((f"{DSG_NAME}, {dsg_year(dyear, d)}", money_figure("dsg_balance", d["balance"], pupils, dyear, signed=True) + sub))
     if not tiles:
         return ""
     return '<div class="tiles headline">' + "".join(
@@ -778,12 +927,12 @@ def school_cells(item):
     tags, labels = item_tags(item)
     link = f'<a href="{esc(item.get("path") or "/school/" + urn + "/")}" data-preview="school:{esc(urn)}">{esc(item.get("name") or urn)}</a>'
     cells = [f'<span data-tags="{esc(tags)}">{link}</span>']
+    year, pupils = label_of(latest.get("year")), latest.get("pupils")
     if st:
-        cells.append(sort(st.get("rank", STATUS_ORDER.index(st["status"])), badge(st["status"], "small")))
+        cells.append(sort(status_rank(st), status_badge(st["status"], "small") + (f' <small>{esc(year)}</small>' if year else "")))
     else:
         why = "In a combined federation return" if item.get("member_of") else "No full-year return"
         cells.append(sort(9, f'<span class="muted">{why}</span>'))
-    year, pupils = label_of(latest.get("year")), latest.get("pupils")
     suspect = set(latest.get("suspect") or [])
     if "pupils" in suspect:
         pupils = None
@@ -825,7 +974,7 @@ def school_order(item):
     st = item.get("status")
     if not st:
         return (9, 0, item.get("name") or "")
-    return (st.get("rank", STATUS_ORDER.index(st["status"])), st.get("reserve_share") or 0, item.get("name") or "")
+    return (status_rank(st), st.get("reserve_share") or 0, item.get("name") or "")
 
 
 def school_table(items, caption):
@@ -839,7 +988,8 @@ def school_table(items, caption):
     return {"headers": SCHOOL_HEADERS, "rows": rows, "caption": caption, "filters": filters(tags)}
 
 
-TABLE_NOTE = ("Figures are each school's latest full-year return, total with the per-pupil figure beside it. PTA income "
+TABLE_NOTE = ("Figures are each school's latest full-year return (its year beside its status), total with the per-pupil "
+              "figure beside it. PTA income "
               "is the school's share of its registered parents' association's latest return, in the school year that "
               "return falls in. Where no registered parents' association was found, the school may still have one: "
               "charities with an income of {limit} or less need not register.")
@@ -852,16 +1002,15 @@ def table_note():
 # ----------------------------------------------------------------- council rows (league)
 
 COUNCIL_HEADERS = ["Council", "Schools", "In deficit", "Deficit per pupil", "Median reserve per pupil",
-                   "Government funding per pupil", "Spending per pupil", "High-needs (DSG) balance per pupil", "Trend"]
+                   "Government funding per pupil", "Spending per pupil", f"{DSG_NAME} per pupil", "Trend"]
 
 
 def council_cells(ctx, code, a, england=None):
     year, s = latest_combined(a)
     s = s or {}
     e = split_of(england, year) if england and year else None
-    dsg = a.get("dsg") or {}
-    dyear = max((y for y, d in dsg.items() if isinstance(d, dict) and _num(d.get("per_pupil")) is not None), default=None)
-    dpp = dsg[dyear]["per_pupil"] if dyear else None
+    dyear, d = latest_dsg(a, "per_pupil")
+    dpp = d["per_pupil"] if dyear else None
     trend = [(y, (split_of(a, y) or {}).get("in_deficit_pct")) for y in combined_years(a) if y >= FROM_YEAR]
 
     def cell(key, glossary, signed=False):
@@ -871,7 +1020,7 @@ def council_cells(ctx, code, a, england=None):
     return [council_link(ctx, code, a.get("name")), sort(s.get("schools"), f'{s.get("schools") or 0:,}'),
             sort(s.get("in_deficit_pct"), pct_text(s)), cell("deficit_pp", "deficit_pp", True),
             cell("reserve_median_pp", "reserve_median_pp", True), cell("gov_pp_median", "gov_funding_pp"),
-            cell("spend_pp_median", "spend_pp"), sort(dpp, pp_fig("dsg_per_pupil", dpp, dyear, signed=True)),
+            cell("spend_pp_median", "spend_pp"), sort(dpp, dsg_figure(d, dyear, per_pupil=True)),
             spark(trend, "Share of schools in deficit by year")]
 
 
@@ -938,30 +1087,39 @@ def render_area(kind, area_id, area, items, ctx):
         table = {"headers": COUNCIL_HEADERS, "rows": rows, "caption": f"Councils in {name}", "filters": ""} if rows else None
         check = ""
     outro = sources(check)
-    status_counts = area.get("statuses_latest") or Counter(i["status"]["status"] for i in assessed)
+    # The status bar describes the lead's year (each school judged on that year's return), so the two agree.
+    year, s, _ = deficit_figures(area, others)
+    year_statuses = (s or {}).get("statuses")
+    if isinstance(year_statuses, dict) and year_statuses:
+        status_counts, status_year = year_statuses, year
+    else:
+        status_counts, status_year = area.get("statuses_latest") or Counter(i["status"]["status"] for i in assessed), None
     dsg_text = ""
     if kind == "council" and (area.get("dsg") or {}):
         flags = dsg_flags(ctx, area_id)
         if flags:
             dsg_text = (f'<p class="muted small">{esc(name)} is in the DfE {esc(" and ".join(flags))} programme for councils '
                         'with large high-needs deficits: it agrees a plan with the DfE to bring the budget back into balance.</p>')
-    fixed = [(head, True), (lead(name, area, others, ctx), True), (headline(area), True), (sector, True)]
-    base = len("".join(p for p, _ in fixed).encode("utf-8")) + len(outro.encode("utf-8"))
+    scope = f'<p class="muted small scope">{esc(SCOPE_NOTE)}</p>' if kind in ("england", "council") else ""
+    bar = status_list(status_counts, status_year)
+    fixed = [(head, True), (lead(name, area, others, ctx), True), (headline(area), True), (bar, False),
+             (report_line(status_counts), True), (sector, True)]
+    base = len("".join(p for p, keep in fixed if keep).encode("utf-8")) + len(outro.encode("utf-8"))
     context = ifs_context(ctx, council=kind in ("council", "england"))
-    extras = (charts.status_bar(status_counts) if status_counts else "") + dsg_text
-    notes = table_note() if kind in ("council", "constituency") else ""
-    room = PAGE_TEXT_BUDGET - base - sum(len(p.encode("utf-8")) for p in (context, extras, notes)) - 600
+    notes = (table_note() if kind in ("council", "constituency") else "") + scope
+    room = PAGE_TEXT_BUDGET - base - sum(len(p.encode("utf-8")) for p in (context, bar, dsg_text, notes)) - 600
     grid = dashboard_charts(kind, name, area, others, ctx, max(room, 0))
     # Every measure is required; only the status bar and programme line give way to the budget.
-    intro = fit(fixed + [(extras, False), (grid, True), (context, True), (notes, True)], outro)
+    intro = fit(fixed + [(dsg_text, False), (grid, True), (context, True), (notes, True)], outro)
     n_def = sum(1 for i in assessed if i["status"]["status"] == "in_deficit")
-    year, s = latest_combined(area)
-    if kind in ("council", "constituency") and assessed:
+    stated = deficit_description(name, area, others)
+    if stated and kind in ("council", "constituency"):
+        description = f"{stated} Trends since {FROM_YEAR}: funding, spending, reserves, PTAs."
+    elif stated:
+        description = f"{stated} Trends since {FROM_YEAR} and councils compared."
+    elif kind in ("council", "constituency") and assessed:
         description = (f"{n_def} of {len(assessed)} schools in {name} were in deficit at their latest return. Trends since "
                        f"{FROM_YEAR}, funding and spending per pupil, reserves and parents' associations.")
-    elif s and s.get("in_deficit") is not None:
-        description = (f"{s['in_deficit_pct']:.1f}% of schools in {name} were in deficit in {year}. Trends since "
-                       f"{FROM_YEAR}, funding and spending per pupil, reserves, high-needs balances and councils compared.")
     else:
         description = f"School finances in {name}: deficits, reserves, funding and spending per pupil from DfE returns."
     indexable = bool(assessed) or bool(s and s.get("schools"))
@@ -991,13 +1149,16 @@ def render_council_league(council_areas, ctx):
              + (f", for {esc(year)}" if year else "") + '.</p>'
              f'<p>{esc(REASONS)} {esc(HELPS)}</p>' + headline(england or {})
              + f'<p class="muted small">{esc(GOV_NOTE)} {esc(SECTOR_NOTE.format(last=year or "the latest year"))}</p>'
+             + f'<p class="muted small">{esc(DSG_NAME)} per pupil: {esc(DSG_NOTE)} It divides by the {esc(DSG_DENOMINATOR)}, '
+               'and its year is beside each figure.</p>'
+             + f'<p class="muted small scope">{esc(SCOPE_NOTE)}</p>'
              + council_ifs_lines(ctx, {"high_needs_deficits"}))
     outro = sources()
     return {"title": title_of("School finances by council"),
             "description": shorten("Every council in England compared per pupil: schools in deficit, deficits, reserves, "
-                                   "funding, spending and high-needs balances, from DfE returns.", 160),
+                                   "funding, spending and Dedicated Schools Grant balances, from DfE returns.", 160),
             "intro": intro, "table": {"headers": COUNCIL_HEADERS, "rows": rows, "caption": "Councils in England",
-                                      "filters": ""} if rows else None,
+                                      "filters": "", "note": dsg_table_note(per_pupil_only=True)} if rows else None,
             "outro": outro, "indexable": bool(rows)}
 
 
@@ -1130,7 +1291,7 @@ def render_debts(areas_doc_, ctx):
     ac_year = ac_years[-1] if ac_years else None
     headers = (["Council", "Council-run schools in deficit"] + [f"Council-run deficits {y}" for y in cr_years]
                + [f"Academies in deficit {ac_year or ''}".strip()] + [f"Academy deficits {y}" for y in ac_years]
-               + ["High-needs (DSG) balance", "DfE programme"])
+               + [DSG_NAME, "DfE programme"])
     rows = []
     for code, a in sorted(councils.items(), key=lambda kv: str(kv[1].get("name"))):
         cr_year, cr = latest_split(a, "council-run")
@@ -1141,14 +1302,8 @@ def render_debts(areas_doc_, ctx):
         cells.append(sort((ac or {}).get("in_deficit_pct"), pct_text(ac)))
         for year in ac_years:
             cells.append(deficit_cell(split_of(a, year, "academy"), year))
-        dsg = a.get("dsg") or {}
-        dyear = max((y for y, d in dsg.items() if isinstance(d, dict) and _num(d.get("balance")) is not None), default=None)
-        if dyear:
-            d = dsg[dyear]
-            pupils = d["balance"] / d["per_pupil"] if _num(d.get("per_pupil")) else None
-            cells.append(sort(d.get("per_pupil"), money_figure("dsg_balance", d["balance"], pupils, dyear, signed=True)))
-        else:
-            cells.append(sort(None, '<span class="muted">—</span>'))
+        dyear, d = latest_dsg(a)
+        cells.append(sort(d.get("per_pupil"), dsg_figure(d, dyear)) if dyear else sort(None, '<span class="muted">—</span>'))
         flags = dsg_flags(ctx, code)
         cells.append(esc(", ".join(f.capitalize() for f in flags)) if flags else '<span class="muted">—</span>')
         rows.append(cells)
@@ -1161,29 +1316,32 @@ def render_debts(areas_doc_, ctx):
                       note=esc(SECTOR_NOTE.format(last=last or "the latest year")))
     dsg = england.get("dsg") or {}
     dyears = sorted(y for y in dsg if y >= FROM_YEAR)
-    grid += chart_card("Councils' high-needs (DSG) balance per pupil, England",
+    grid += chart_card(f"Councils' {DSG_NAME} per pupil, England",
                        [{"label": "England", "values": dsg_values(england, dyears, "per_pupil"), "emph": True}], dyears,
-                       note="Negative is a deficit carried forward, in cash terms.")
+                       note=esc(f"{DSG_NOTE} Per pupil divides by the pupils at councils' schools on this site that year."
+                                + provisional_note(dsg, dyears)))
     framing = (((ctx or {}).get("ifs") or {}).get("framings") or {}).get("why_schools_go_into_deficit") or {}
     why = f'<p>{ifs_text(framing["text"])}{cite(", ".join(str(p) for p in framing.get("pages") or []))}</p>' if framing.get("text") else f"<p>{esc(REASONS)}</p>"
     dsg_pp = ifs_line(ctx, "council", "high_needs_deficits")
     override = (f'<div class="override"><h2>The statutory override</h2>'
                 + (f'<p class="ifs">{dsg_pp[0]}{cite(dsg_pp[1])}</p>' if dsg_pp else "")
                 + f'<p class="note hnsg">{esc(hnsg_note((ctx or {}).get("dsg")))}</p></div>')
-    top = ('<h1>School and council deficits</h1><p class="lead">Where school budgets and council high-needs budgets '
-           'are in deficit, year by year: council-run schools and academies apart, and each council\'s dedicated schools '
-           'grant (DSG) balance.</p>' + why + f"<p>{esc(HELPS)}</p>" + headline(england))
+    top = ('<h1>School and council deficits</h1><p class="lead">Where school budgets and councils\' Dedicated Schools '
+           'Grant balances are in deficit, year by year: council-run schools and academies apart, and each council\'s '
+           f'{esc(DSG_NAME)}, with its year beside it.</p>' + why + f"<p>{esc(HELPS)}</p>" + headline(england)
+           + f'<p class="muted small scope">{esc(SCOPE_NOTE)}</p>')
     rest = (override + '<section class="context"><h2>Councils and special needs</h2>' + council_ifs_lines(ctx) + "</section>"
             + '<p class="muted small">Safety valve and delivering better value are DfE programmes for councils with large '
             'high-needs deficits; safety valve closed in April 2026 and was replaced by the High Needs Stability Grant. '
-            + esc(SECTOR_NOTE.format(last=last or "the latest year")) + "</p>")
+            + esc(SECTOR_NOTE.format(last=last or "the latest year"))
+            + f' {esc(DSG_NAME)}: {esc(DSG_NOTE)} Per pupil divides by the {esc(DSG_DENOMINATOR)}.</p>')
     outro = sources()
     intro = fit([(top, True), (f'<div class="chart-grid">{grid}</div>' if grid else "", False), (rest, True)], outro)
     return {"title": title_of("School and council deficits in England"),
-            "description": shorten("School deficits by council and year, academies apart, and councils' high-needs (DSG) "
-                                   "deficits with the statutory override and the High Needs Stability Grant.", 160),
+            "description": shorten("School deficits by council and year, academies apart, and councils' Dedicated Schools "
+                                   "Grant deficits with the statutory override and the High Needs Stability Grant.", 160),
             "intro": intro, "table": {"headers": headers, "rows": rows, "caption": "School deficits and DSG balances by council",
-                                      "filters": ""} if rows else None,
+                                      "filters": "", "note": dsg_table_note()} if rows else None,
             "outro": outro, "indexable": bool(rows)}
 
 
@@ -1277,7 +1435,7 @@ def render_ptfa(areas_doc_, items, ctx):
                      'share for each school.</p>')
     held = pta.get("held") or []
     if held:
-        names = ", ".join(f'<a href="{CHARITY}{esc(c.get("charity_number"))}" rel="noopener">{esc(c.get("name"))}</a>'
+        names = ", ".join(f'<a href="{esc(charity_url(c.get("charity_number")))}" rel="noopener">{esc(c.get("name"))}</a>'
                           for c in held[:12])
         parts.append(f'<p class="muted small">Held for review and left out of every figure here: charities with a year\'s '
                      f'income over {amount("pta_income", agg.HOLD_ABOVE)}, as a match that large is usually a different '

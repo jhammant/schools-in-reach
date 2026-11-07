@@ -559,7 +559,8 @@ class CopyRulesTest(unittest.TestCase):
         # Assert
         self.assertIn("Why schools go into deficit", body)
         self.assertIn("What helps", body)
-        self.assertIn('data-mf="deficit_total"', body)
+        self.assertIn('data-mf="school_deficit"', body)  # the school's own deficit definition, never the area total
+        self.assertNotIn('data-mf="deficit_total"', section(body, "status"))
 
 
 class SizeBudgetTest(unittest.TestCase):
@@ -573,8 +574,9 @@ class SizeBudgetTest(unittest.TestCase):
                          extra_head=school_page.EXTRA_HEAD)
 
         # Assert
-        self.assertLessEqual(len(page["body"].encode("utf-8")), 32_000)
-        self.assertLess(len(html.encode("utf-8")), 40_000)
+        # 2 KB up on the first budget: the C9 register link, the corrections link and the academy check wording.
+        self.assertLessEqual(len(page["body"].encode("utf-8")), 34_000)
+        self.assertLess(len(html.encode("utf-8")), 42_000)
 
     def test_eight_years_three_ptas_and_39_similar_schools(self):
         # Arrange
@@ -586,8 +588,9 @@ class SizeBudgetTest(unittest.TestCase):
                          extra_head=school_page.EXTRA_HEAD)
 
         # Assert
-        self.assertLessEqual(len(page["body"].encode("utf-8")), 56_000)
-        self.assertLess(len(html.encode("utf-8")), 64_000)
+        # Three C9 register links (~330 bytes each) and the spending-row notes add about 1 KB.
+        self.assertLessEqual(len(page["body"].encode("utf-8")), 58_000)
+        self.assertLess(len(html.encode("utf-8")), 66_000)
 
 
 class OptionalContextTest(unittest.TestCase):
@@ -711,7 +714,9 @@ class LinesTest(unittest.TestCase):
         body = school_page.render(*cfr_school())["body"]
 
         # Assert
-        self.assertRegex(body, r"Staff costs were \d+% of this school")
+        self.assertRegex(body, r"All staff costs were \d+% of this school")
+        self.assertIn("leaves out premises and catering staff", body)
+        self.assertRegex(body, r"counting them too, staff were \d+% of spending")
         self.assertIn("over 80%", body)
 
 
@@ -814,7 +819,7 @@ class PtaWordingTest(unittest.TestCase):
         self.assertIn("Annual return due 30 June 2026", body)
         self.assertIn("never added together", body)
         self.assertTrue(figures(body, "pta_per_pupil", "2024-25"))
-        self.assertIn('<a href="https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/1100000">', body)
+        self.assertIn(f'<a href="{site.esc(school_page.charity_url(1100000))}">', body)
 
     def test_review_flagged_charities_are_held_back(self):
         # Arrange
