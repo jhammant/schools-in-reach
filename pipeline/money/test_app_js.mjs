@@ -465,3 +465,26 @@ test("pinned schools' rows move to the top of every sortable table on load", () 
   assert.deepEqual(h.document.querySelectorAll("table")[0].tBodies[0].rows.map((r) => r.querySelector("a").textContent),
     ["School 100003", "School 100001", "School 100002"]);
 });
+
+test("nearestRows sorts a district's schools by distance from the exact postcode and says how far", () => {
+  // Arrange: N16's centre, and two schools; the second is nearer the exact postcode
+  const doc = { district: "N16", lat: 51.5615, lon: -0.0760, schools: [
+    { id: "1", name: "Centre School", lat: 51.5615, lon: -0.0760, p: "/school/1-centre-school/", sub: "London N16 1AA", status: "healthy" },
+    { id: "2", name: "North School", lat: 51.5700, lon: -0.0760, p: "/school/2-north-school/", sub: "London N16 2BB", status: null }] };
+  // Act
+  const fromCentre = M.nearestRows(doc, null, 10);
+  const fromNorth = M.nearestRows(doc, { lat: 51.5701, lon: -0.0760 }, 10);
+  // Assert
+  assert.deepEqual(fromCentre.map((r) => r.id), ["1", "2"]);
+  assert.deepEqual(fromNorth.map((r) => r.id), ["2", "1"]);
+  assert.match(fromNorth[0].sub, /^under 0\.1 miles · London N16 2BB$/);
+  assert.match(fromNorth[1].sub, /^0\.6 miles · /);
+  assert.equal(M.nearestRows(null, null, 10).length, 0);
+});
+
+test("milesBetween is a great-circle distance in miles", () => {
+  // Act: one degree of latitude
+  const d = M.milesBetween({ lat: 51, lon: 0 }, { lat: 52, lon: 0 });
+  // Assert
+  assert.ok(Math.abs(d - 69.09) < 0.1, String(d));
+});

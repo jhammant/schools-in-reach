@@ -128,6 +128,39 @@
   function slugify(s) {
     return norm(String(s || "").replace(/&/g, " and ")).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80).replace(/-+$/, "") || "school";
   }
+  function milesBetween(a, b) {
+    var r = Math.PI / 180, p1 = a.lat * r, p2 = b.lat * r;
+    var h = Math.pow(Math.sin((p2 - p1) / 2), 2) + Math.cos(p1) * Math.cos(p2) * Math.pow(Math.sin((b.lon - a.lon) * r / 2), 2);
+    return 3958.8 * 2 * Math.asin(Math.sqrt(Math.min(1, h)));
+  }
+  // The district file's schools, nearest first from `from` ({lat, lon}; else the district centre), as search rows
+  // whose sub says how far away each one is.
+  function nearestRows(doc, from, limit) {
+    if (!doc || !Array.isArray(doc.schools)) return [];
+    var origin = from && isFinite(from.lat) && isFinite(from.lon) ? from : (isFinite(doc.lat) ? { lat: doc.lat, lon: doc.lon } : null);
+    return doc.schools.map(function (r) {
+      var mi = origin && isFinite(r.lat) && isFinite(r.lon) ? milesBetween(origin, r) : r.mi;
+      var away = isFinite(mi) ? (mi < 0.1 ? "under 0.1 miles" : mi.toFixed(1) + " miles") : "";
+      return { t: "school", id: r.id, name: r.name, status: r.status || null, p: r.p, mi: mi,
+        sub: [away, r.sub].filter(Boolean).join(" · ") };
+    }).sort(function (x, y) { return (isFinite(x.mi) ? x.mi : 1e9) - (isFinite(y.mi) ? y.mi : 1e9); }).slice(0, limit || 10);
+  }
+  // A full postcode's position from postcodes.io (the lookup Schools in Reach already uses); null when it can't say.
+  function postcodePoint(full) {
+    if (!full || typeof fetch !== "function") return Promise.resolve(null);
+    return fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(full)).then(function (r) {
+      return r.ok ? r.json() : null;
+    }).then(function (j) {
+      var x = j && j.result;
+      return x && isFinite(x.latitude) && isFinite(x.longitude) ? { lat: x.latitude, lon: x.longitude } : null;
+    }).catch(function () { return null; });
+  }
+  // Schools near a parsed postcode: {rows, exact} (exact = sorted from the full postcode, not the district centre).
+  function schoolsNear(pc, limit) {
+    return Promise.all([postcodeLookup(pc.district), postcodePoint(pc.full)]).then(function (r) {
+      return { rows: nearestRows(r[0], r[1], limit), exact: !!r[1] };
+    });
+  }
   function postcodeLookup(district) {
     var d = String(district || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (!d || typeof fetch !== "function") return Promise.resolve(null);
@@ -206,6 +239,7 @@
 
   var API = {
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
+    milesBetween: milesBetween, nearestRows: nearestRows, schoolsNear: schoolsNear,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
     slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
     rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF
@@ -772,15 +806,6 @@
       if (i >= 0) { input.setAttribute("aria-activedescendant", options[i].id); options[i].scrollIntoView({ block: "nearest" }); }
       else input.removeAttribute("aria-activedescendant");
     }
-    function normalisePostcodeRows(d) {
-      var rows = Array.isArray(d) ? d : (d && (d.schools || d.results || d.rows)) || [];
-      return rows.map(function (r) {
-        if (!r) return null;
-        var id = r.id != null ? r.id : r.urn;
-        return { t: r.t || "school", id: id, name: r.name || ("School " + id), sub: r.sub || [r.town, r.postcode].filter(Boolean).join(" "),
-          status: r.status || null, p: r.p || ("/school/" + id + "-" + slugify(r.name || "") + "/") };
-      }).filter(Boolean).slice(0, 10);
-    }
     function render(rows, note) {
       list.textContent = "";
       options = [];
@@ -813,10 +838,9 @@
       if (q.length < 2) { hide(); return; }
       var pc = parsePostcode(q);
       if (pc && /\d/.test(q)) {
-        Promise.resolve(API.postcodeLookup(pc.district)).then(function (d) {
+        schoolsNear(pc, 8).then(function (near) {
           if (lastQuery !== q) return;
-          if (!d) { hide(); return; }
-          render(normalisePostcodeRows(d), "No schools near " + pc.district);
+          render(near.rows, "No schools found near " + (pc.full || pc.district));
         });
         return;
       }
@@ -853,9 +877,9 @@
     box.setAttribute("aria-live", "polite");
     box.appendChild(el("p", "muted", "Searching…"));
     if (h1 && h1.nextSibling) h1.parentNode.insertBefore(box, h1.nextSibling); else main.insertBefore(box, main.firstChild);
-    function show(rows, emptyNote) {
+    function show(rows, emptyNote, heading, jump) {
       box.textContent = "";
-      box.appendChild(el("h2", null, rows.length ? "Results for “" + q + "”" : emptyNote));
+      box.appendChild(el("h2", null, rows.length ? (heading || "Results for “" + q + "”") : emptyNote));
       if (!rows.length) return;
       var ul = el("ul", "results");
       rows.forEach(function (r) {
@@ -868,21 +892,19 @@
         ul.appendChild(li);
       });
       box.appendChild(ul);
-      if (rows.length === 1 && rows[0].p) location.replace(rows[0].p);
+      if (jump && rows.length === 1 && rows[0].p) location.replace(rows[0].p);
     }
     var pc = parsePostcode(q);
     if (pc && /\d/.test(q)) {
-      Promise.resolve(API.postcodeLookup(pc.district)).then(function (d) {
-        var rows = (Array.isArray(d) ? d : (d && (d.schools || d.results || d.rows)) || []).map(function (r) {
-          var id = r.id != null ? r.id : r.urn;
-          return { t: r.t || "school", id: id, name: r.name || ("School " + id), sub: r.sub || [r.town, r.postcode].filter(Boolean).join(" "),
-            status: r.status || null, p: r.p || ("/school/" + id + "-" + slugify(r.name || "") + "/") };
-        });
-        show(rows.slice(0, 50), "No schools found near " + pc.district);
+      schoolsNear(pc, 30).then(function (near) {
+        show(near.rows, "No schools found near " + (pc.full || pc.district), "Schools nearest " + (pc.full || pc.district));
+        if (near.rows.length && !near.exact && pc.full) {
+          box.insertBefore(el("p", "muted small", "Sorted from the middle of " + pc.district + "; the exact postcode couldn't be looked up."), box.children[1] || null);
+        }
       });
       return;
     }
-    loadIndex().then(function (rows) { show(rankSearch(rows, q, 50), "No matches for “" + q + "”"); });
+    loadIndex().then(function (rows) { show(rankSearch(rows, q, 50), "No matches for “" + q + "”", null, true); });
   })();
 
   // ---------------------------------------------------------------- preview cards ([data-preview])

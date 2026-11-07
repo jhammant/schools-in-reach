@@ -1865,6 +1865,56 @@ def search_index(councils, schools, trusts):
     return index
 
 
+POSTCODE_NEAREST = 30  # schools listed per postcode district, nearest to the district's centre first
+
+
+def outcode(postcode):
+    """'N16 0NX' -> 'N16'; None when the register has no usable postcode."""
+    text = re.sub(r"\s+", "", str(postcode or "")).upper()
+    m = re.fullmatch(r"([A-Z]{1,2}\d[A-Z\d]?)(\d[A-Z]{2})", text)
+    return m.group(1) if m else None
+
+
+def _miles(lat1, lon1, lat2, lon2):
+    """Great-circle distance in miles."""
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return 3958.8 * 2 * math.asin(math.sqrt(min(1.0, a)))
+
+
+def postcode_index(schools, nearest=POSTCODE_NEAREST):
+    """{district: {"district", "lat", "lon", "schools": [...]}} for /data/postcodes/<district>.json.
+
+    A district's centre is the mean position of its own schools; its list is the `nearest` schools to that centre from
+    anywhere, so a district on a council border still finds the school over the road. Only state-funded schools are
+    listed (independents publish no accounts here, and in N16 they filled two-thirds of the list). Each row carries
+    lat/lon so the page can re-sort by distance from the exact postcode when it can look that up."""
+    located = [i for i in schools if isinstance(i.get("lat"), (int, float)) and isinstance(i.get("lon"), (int, float))]
+    listed = [i for i in located if not i.get("independent")]
+    groups = defaultdict(list)
+    for i in located:
+        district = outcode(i["school"].get("postcode"))
+        if district:
+            groups[district].append(i)
+    out = {}
+    for district, members in groups.items():
+        lat = sum(i["lat"] for i in members) / len(members)
+        lon = sum(i["lon"] for i in members) / len(members)
+        # A box first (a degree of latitude is ~69 miles), widening until it holds enough schools.
+        for box in (0.05, 0.12, 0.3, 1.0, 180.0):
+            near = [i for i in listed if abs(i["lat"] - lat) <= box and abs(i["lon"] - lon) <= box * 1.6]
+            if len(near) >= nearest:
+                break
+        ranked = sorted(near, key=lambda i: (_miles(lat, lon, i["lat"], i["lon"]), i["name"]))[:nearest]
+        out[district] = {"district": district, "lat": round(lat, 5), "lon": round(lon, 5), "schools": [
+            {"t": "school", "id": i["urn"], "name": i["name"],
+             "sub": " ".join(x for x in (i["school"].get("town"), i["school"].get("postcode")) if x),
+             "status": i["status"]["status"] if i["status"] else None, "p": i["path"],
+             "lat": round(i["lat"], 5), "lon": round(i["lon"], 5),
+             "mi": round(_miles(lat, lon, i["lat"], i["lon"]), 2)} for i in ranked]}
+    return out
+
+
 def write_urlset(path, entries, base=BASE_MONEY, index=False):
     """A sitemap (or sitemap index) whose locs sit on `base`; entries = [(path, lastmod)]."""
     ET.register_namespace("", NS)
@@ -2063,6 +2113,9 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
                 raise ValueError(f"Unsafe area id {ident!r}")
             (data / "a" / f"{ident}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         (data / "search.json").write_text(json.dumps(search_index(councils, schools, trusts), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        (data / "postcodes").mkdir()
+        for district, doc in postcode_index(schools).items():
+            (data / "postcodes" / f"{district}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         (data / "status.json").write_text(json.dumps(statuses, separators=(",", ":")), encoding="utf-8")
         assets = stage / "assets"
         assets.mkdir()

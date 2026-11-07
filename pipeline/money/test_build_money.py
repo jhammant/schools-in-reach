@@ -1351,5 +1351,30 @@ class DeployFilesTest(unittest.TestCase):
         self.assertNotIn("Money payload", www)
 
 
+class PostcodeIndexTest(unittest.TestCase):
+    def test_each_district_lists_its_nearest_schools_from_anywhere(self):
+        # Arrange: two N16 schools and one just over the border in E8; one far away in Leeds
+        def item(urn, name, postcode, lat, lon, status=None):
+            return {"urn": urn, "name": name, "school": {"postcode": postcode, "town": "London"}, "lat": lat, "lon": lon,
+                    "status": {"status": status} if status else None, "path": f"/school/{urn}-x/"}
+        schools = [item("1", "William Patten", "N16 0NX", 51.5618, -0.0750, "in_deficit"),
+                   item("2", "Grasmere", "N16 9BG", 51.5590, -0.0830),
+                   item("3", "Over The Road", "E8 2BX", 51.5530, -0.0740),
+                   item("4", "Leeds School", "LS1 1AA", 53.80, -1.55),
+                   dict(item("5", "Independent Next Door", "N16 0AA", 51.5617, -0.0751), independent=True)]
+        # Act
+        index = build_money.postcode_index(schools, nearest=3)
+        # Assert
+        self.assertEqual(set(index), {"N16", "E8", "LS1"})
+        n16 = index["N16"]
+        self.assertEqual([r["id"] for r in n16["schools"]], ["1", "2", "3"])  # E8's school counts for N16 too
+        self.assertEqual(n16["schools"][0]["status"], "in_deficit")
+        self.assertEqual(n16["schools"][0]["sub"], "London N16 0NX")
+        self.assertNotIn("4", [r["id"] for r in n16["schools"]])
+        self.assertNotIn("5", [r["id"] for r in n16["schools"]])  # independents publish no accounts here
+        self.assertEqual(build_money.outcode("n16 0nx"), "N16")
+        self.assertIsNone(build_money.outcode("not a postcode"))
+
+
 if __name__ == "__main__":
     unittest.main()
