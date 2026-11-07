@@ -1,0 +1,87 @@
+/* School page (pipeline/money/school_page.py). Uses app.css's variables, so light and dark
+   follow the same palette; classes are prefixed sp- except the shared .trend controls. */
+
+.sp-toc ul { display: flex; flex-wrap: wrap; gap: 4px 14px; list-style: none; padding: 0; margin: 4px 0 16px; font-size: .9rem; }
+.sp-sec { margin: 28px 0; }
+.sp-sec h2 { margin-bottom: .4em; }
+.sp-sec h3 { font-size: 1rem; margin: 16px 0 6px; }
+.cite { color: var(--ink-2); font-size: .85em; white-space: nowrap; }
+
+/* status */
+.sp-why p { margin: 6px 0; }
+.sp-timeline { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.sp-timeline li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.sp-timeline .y, .sp-pupils .y { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 4.5em; }
+.sp-timeline .r { color: var(--ink-2); font-size: .9rem; }
+.sp-share { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 10px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius-s); background: var(--card); }
+.sp-share p { margin: 0; }
+.sp-share-label { font-weight: 600; }
+
+/* trend charts and their toggles (assets/trend.js switches them) */
+.trend { margin: 12px 0; }
+.trend-toggles { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 8px; }
+.trend-toggles [role="group"] { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 999px; overflow: hidden; }
+.trend-toggles button { min-height: var(--tap); padding: 0 14px; border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: .9rem; cursor: pointer; }
+.trend-toggles button + button { border-left: 1px solid var(--line-strong); }
+.trend-toggles button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.trend-toggles button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.chart .line.s3 { stroke: var(--c3); } .chart .line.s4 { stroke: var(--c4); }
+.chart .dot.s3 { fill: var(--c3); } .chart .dot.s4 { fill: var(--c4); }
+.chart .line.dashed { stroke-dasharray: 5 4; } .chart .line.emph { stroke-width: 3; }
+.chart .dot.hollow { fill: var(--paper); stroke-width: 2; }
+.chart .dot.hollow.s1 { stroke: var(--c1); } .chart .dot.hollow.s2 { stroke: var(--c2); }
+.chart .dot.hollow.s3 { stroke: var(--c3); } .chart .dot.hollow.s4 { stroke: var(--c4); }
+
+/* figures tables */
+.sp-years, .sp-rows, .sp-pta { font-variant-numeric: tabular-nums; }
+.sp-years caption, .sp-rows caption, .sp-pta caption { caption-side: top; text-align: left; color: var(--ink-2); font-size: .9rem; padding: 0 0 6px; }
+.sp-years th[scope="row"], .sp-rows th[scope="row"], .sp-pta th[scope="row"] { text-align: left; font-weight: 600; background: transparent; }
+.sp-years th[scope="row"], .sp-pta th[scope="row"] { white-space: nowrap; }
+.sp-rows tr.tot th, .sp-rows tr.tot td { border-top: 2px solid var(--line-strong); }
+.sp-rows td small, .sp-years td small, .sp-pta td small { color: var(--ink-2); }
+.sp-rows .spark { display: block; overflow: visible; }
+.sp-rows .spark path { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.mf.suspect { color: var(--ink-3); font-style: italic; text-decoration: underline dotted var(--ink-3); }
+
+/* pupils, trust, PTA, intake */
+.sp-pupils { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-variant-numeric: tabular-nums; }
+.sp-charities { padding-left: 1.2em; } .sp-charities li { margin: 8px 0; }
+.sp-facts { padding-left: 1.2em; }
+.sp-dsg { display: block; margin-top: 4px; color: var(--ink-2); font-size: .85rem; }
+
+/* how my school's money is split */
+.sp-split { list-style: none; padding: 0; display: grid; gap: 6px; max-width: 40rem; }
+.sp-split li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; padding: 8px 10px; border-radius: var(--radius-s);
+  background: linear-gradient(to right, var(--accent-soft) var(--w, 0%), var(--card-2) var(--w, 0%)); }
+.sp-split .lbl { font-weight: 600; }
+
+/* questions and sources */
+.sp-questions li { margin: 10px 0; }
+.sp-questions .why { display: block; color: var(--ink-2); margin-top: 2px; }
+.sp-similar { columns: 2 16rem; padding-left: 1.2em; }
+.sp-sources { padding-left: 1.2em; color: var(--ink-2); }
+.sp-sources li { margin: 4px 0; }
+
+@media (max-width: 600px) {
+  .sp-years thead, .sp-rows thead, .sp-pta thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .sp-years, .sp-years tbody, .sp-rows, .sp-rows tbody { display: block; }
+  .sp-years caption, .sp-rows caption { display: block; }
+  .sp-years tr, .sp-rows tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--line); }
+  .sp-years th, .sp-years td, .sp-rows th, .sp-rows td { border: 0; padding: 0; min-width: 0; }
+  .sp-years th[scope="row"], .sp-rows th[scope="row"] { grid-column: 1 / -1; }
+  .sp-rows td[colspan] { grid-column: 1 / -1; }
+  .sp-years td::before, .sp-rows td:nth-last-child(2)::before, .sp-rows td:last-child::before {
+    display: block; color: var(--ink-2); font-size: .8rem; }
+  .sp-years td:nth-child(2)::before { content: "Pupils"; }
+  .sp-years td:nth-child(3)::before { content: "Income"; }
+  .sp-years td:nth-child(4)::before { content: "Spending"; }
+  .sp-years td:nth-child(5)::before { content: "In-year balance"; }
+  .sp-years td:nth-child(6)::before { content: "Reserve"; }
+  .sp-rows td:nth-last-child(2)::before { content: "Change per pupil"; }
+  .sp-rows td:last-child::before { content: "Similar schools"; }
+  .sp-rows td[colspan]::before { content: none; }
+  .sp-rows tr.tot th, .sp-rows tr.tot td { border-top: 0; } .sp-rows tr.tot { border-top: 2px solid var(--line-strong); }
+  .trend-toggles button { padding: 0 12px; }
+}

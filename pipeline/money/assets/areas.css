@@ -1,0 +1,70 @@
+/* Area dashboards (area_pages.py): chart grid, trend cards, filters and table extras.
+   Colours come from app.css variables, so light and dark follow the page. */
+
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; margin: 18px 0; }
+.chart-card { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.chart-card figcaption { font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
+.chart-card .muted.small { margin: 8px 0 0; }
+.chart-card svg.chart { max-width: 560px; }
+
+/* Trend lines: four series colours, the area's own line drawn heavier, dashes for council-run
+   only and partial years. Direct labels at each line's end, so colour is never the only key. */
+.trend-chart .grid, .trend-chart .axis { fill: none; }
+.trend-chart .tl { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; stroke: var(--ink-3); }
+.trend-chart .tl.emph { stroke-width: 3; }
+.trend-chart .tl.dash { stroke-dasharray: 5 4; }
+.trend-chart .l0 { stroke: var(--c1); } .trend-chart .l1 { stroke: var(--c2); }
+.trend-chart .l2 { stroke: var(--c3); } .trend-chart .l3 { stroke: var(--c4); }
+.trend-chart .l4 { stroke: var(--ink-2); } .trend-chart .l5 { stroke: var(--ink-3); }
+.trend-chart .lab { font-size: 11px; fill: var(--ink); stroke: none; }
+.trend-chart .dot { fill: var(--ink-2); }
+.trend-chart .hollow { fill: var(--card); stroke: var(--ink-2); stroke-width: 1.5; }
+
+.toggles { display: inline-flex; flex-wrap: wrap; gap: 4px; margin: 0 0 8px; }
+.toggles button, .table-filters button {
+  min-height: 36px; padding: 4px 12px; border: 1px solid var(--line-strong); border-radius: 999px;
+  background: var(--card); color: var(--ink); font: inherit; font-size: .9rem; cursor: pointer;
+}
+.toggles button[aria-pressed="true"], .table-filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.toggles button:focus-visible, .table-filters button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Sparklines inside table cells. */
+svg.spark { display: block; overflow: visible; }
+svg.spark path { fill: none; stroke: var(--c1); stroke-width: 1.5; stroke-linejoin: round; }
+svg.spark circle { fill: var(--c1); }
+svg.spark .zero { stroke: var(--grid); stroke-width: 1; }
+
+/* Table filters: one row of buttons per group, wrapping on small screens. */
+.table-filters { display: grid; gap: 8px; margin: 12px 0; padding: 10px 12px; background: var(--card-2); border-radius: var(--radius); }
+.table-filters [role="group"] { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.table-filters .fl { font-weight: 600; color: var(--ink-2); font-size: .85rem; min-width: 6.5rem; }
+.table-filters .n { color: inherit; opacity: .75; font-size: .8em; margin-left: 2px; }
+tr.pinned td { background: var(--accent-soft); }
+.mf.suspect { opacity: .55; border-bottom-style: dashed; }
+/* Wide tables (/debts/ has a column per year): the per-pupil figure sits under its total, so a
+   money cell is one short line wide. Below 600px app.css turns rows into cards instead. */
+@media (min-width: 601px) {
+  table[data-sortable] td .mf small { display: block; }
+}
+
+/* Headline tiles and context copy. */
+.tiles.headline .tvalue small { display: block; font-size: .8rem; font-weight: 400; color: var(--ink-2); }
+.ifs-list { padding-left: 1.2rem; margin: 8px 0; }
+.ifs-list li { margin: 4px 0; }
+.ifs .cite, .ifs-list .cite { color: var(--ink-2); font-size: .85em; white-space: nowrap; }
+.hnsg, .override .note { display: block; margin-top: 4px; padding: 6px 10px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+.override { margin: 18px 0; }
+.year-counts { columns: 2 12rem; margin: 8px 0; padding-left: 1.2rem; }
+table.mini { width: 100%; border-collapse: collapse; font-size: .92rem; }
+table.mini th, table.mini td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+table.mini td { font-variant-numeric: tabular-nums; }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; }
+ol.top { padding-left: 1.4rem; } ol.top li { margin: 6px 0; }
+
+@media (max-width: 480px) {
+  .chart-card { padding: 10px; }
+  .table-filters .fl { min-width: 100%; }
+  .toggles button, .table-filters button { min-height: var(--tap); }
+  table.mini { font-size: .85rem; }
+  table.mini th, table.mini td { padding: 4px 3px; }
+}

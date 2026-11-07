@@ -1,0 +1,112 @@
+/* School Money — deck.css (unit C2): the /deck/ presentation page. Loaded only there, after app.css.
+   Uses the app.css tokens only, so light and dark follow prefers-color-scheme.
+   Screen: one slide at a time, 16:9, scaled with the page (sizes inside a slide are in cqw, a share of
+   the slide's own width). Below 640px a slide may grow taller than 16:9 so its text stays readable.
+   Print: one slide per landscape 16:9 page, in light colours, with the site chrome hidden. */
+
+/* ---------- toolbar and messages ---------- */
+.deck-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0 12px; }
+.deck-toolbar[hidden] { display: none; }
+.deck-toolbar button { min-height: var(--tap); min-width: var(--tap); padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-s);
+  background: var(--card); color: var(--ink); font-weight: 600; }
+.deck-toolbar button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.deck-toolbar button:disabled { color: var(--ink-3); cursor: default; }
+.deck-toolbar button[aria-busy="true"] { cursor: progress; }
+.deck-toolbar button[data-deck="pptx"]:not(:disabled) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.deck-toolbar button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.deck-count { min-width: 7.5em; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.deck-msg { margin: 0 0 8px; color: var(--ink-2); }
+.deck-msg:empty { display: none; }
+.deck-copy { width: min(100%, 36rem); min-width: 0; min-height: var(--tap); margin-top: 6px; padding: 6px 10px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s); background: var(--card); color: var(--ink); }
+.deck-wait, .deck-noscript { padding: 16px; border: 1px dashed var(--line-strong); border-radius: var(--radius); background: var(--card); }
+
+/* ---------- slides ---------- */
+/* The deck is a container too, so a slide's own padding scales with the slide width. */
+.deck { min-width: 0; container-type: inline-size; }
+.deck .slide { container-type: inline-size; position: relative; display: flex; flex-direction: column; gap: 1.4cqw; width: 100%; aspect-ratio: 16 / 9;
+  margin: 0 0 16px; padding: 3.2cqw 3.8cqw 2cqw; overflow: hidden; background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: var(--shadow); line-height: 1.4; }
+.deck.is-paged .slide:not(.is-current) { display: none; }
+.slide > * { min-width: 0; font-size: 1.5vw; font-size: clamp(10px, 1.5cqw, 20px); }
+.slide-head { display: flex; flex-wrap: wrap; align-items: center; gap: .4em 1em; }
+.slide-head h2 { margin: 0; font-size: 3cqw; line-height: 1.15; }
+.slide-head .badge.large { font-size: 1.7cqw; }
+.slide .slide-lead { margin: 0; font-size: 1.8cqw; }
+.slide-body { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 2.4cqw; overflow: auto; }
+.slide-body.has-chart { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
+.slide-text { min-width: 0; }
+.slide-figs { display: grid; gap: .45em; margin: 0 0 .7em; padding: 0; list-style: none; }
+.slide-figs li { display: flex; flex-direction: column; padding-left: .6em; border-left: 3px solid var(--accent); }
+.fig-label { color: var(--ink-2); font-size: .82em; }
+.fig-text { font-weight: 700; font-variant-numeric: tabular-nums; }
+.fig-meta { color: var(--ink-2); font-size: .8em; }
+.slide-bullets { margin: 0; padding-left: 1.2em; }
+.slide-bullets li { margin: 0 0 .3em; }
+.slide-bullets.many { font-size: .88em; }
+.slide-body:not(.has-chart) .slide-bullets.many { columns: 2; column-gap: 2.4em; }
+.slide-statuses { display: grid; gap: .4em; margin: 0 0 .6em; padding: 0; list-style: none; }
+.slide-statuses .badge { font-size: .9em; }
+.slide-links { margin: .4em 0 0; }
+.slide-links a { display: inline-flex; align-items: center; min-height: var(--tap); }
+/* The chart shrinks to the height left in the slide; the viewBox keeps its shape. */
+.slide-chart { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 0; margin: 0; }
+.slide-chart svg.chart { flex: 1 1 0; min-height: 0; width: 100%; max-width: none; height: 100%; font-size: 12px; }
+.slide-chart .legend { font-size: .8em; }
+.slide .slide-note { margin: 0; padding-left: .7em; border-left: 3px solid var(--line-strong); color: var(--ink-2); font-size: 1.15cqw; }
+.slide .slide-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2em 1em; margin-top: auto; color: var(--ink-3); font-size: 1.1cqw; }
+.slide-title { justify-content: center; }
+.slide-title .slide-head h2 { font-size: 4.6cqw; }
+.slide-title .slide-body { flex: 0 1 auto; }
+.slide-message .slide-body { flex: 0 1 auto; }
+.slide-sources .slide-bullets { font-size: .78em; }
+
+/* chart series beyond the two app.css colours, swatch keys and marked (suspect) years */
+.chart .line.s3 { stroke: var(--c3); } .chart .line.s4 { stroke: var(--c4); }
+.chart .dot.s3 { fill: var(--c3); } .chart .dot.s4 { fill: var(--c4); }
+.chart .bar.s1 { fill: var(--c1); } .chart .bar.s2 { fill: var(--c2); } .chart .bar.s3 { fill: var(--c3); } .chart .bar.s4 { fill: var(--c4); }
+.chart .dot.suspect { fill: var(--card); stroke: var(--serious); stroke-width: 2; }
+.chart .bar.suspect { stroke: var(--serious); stroke-width: 2; stroke-dasharray: 4 2; }
+.key.swatch { width: 12px; height: 12px; border-radius: 3px; }
+.key.swatch.s1 { background: var(--c1); } .key.swatch.s2 { background: var(--c2); } .key.swatch.s3 { background: var(--c3); } .key.swatch.s4 { background: var(--c4); }
+.key.line.s3 { background: var(--c3); } .key.line.s4 { background: var(--c4); }
+
+/* full screen: the current slide as large as fits */
+.deck:fullscreen { display: flex; align-items: center; justify-content: center; padding: 2vh 2vw; background: var(--paper); }
+.deck:fullscreen .slide { width: min(96vw, calc(96vh * 16 / 9)); margin: 0; }
+
+/* narrow screens: slides keep at least 16:9 but grow so text stays readable */
+@media (max-width: 640px) {
+  .deck .slide { aspect-ratio: auto; min-height: 56.25vw; padding: 14px 14px 10px; gap: 8px; overflow: visible; }
+  .slide > * { font-size: .95rem; }
+  .slide-head h2, .slide-title .slide-head h2 { font-size: 1.3rem; }
+  .slide-head .badge.large { font-size: .95rem; }
+  .slide .slide-lead { font-size: 1rem; }
+  .slide .slide-note { font-size: .82rem; }
+  .slide .slide-foot { font-size: .75rem; }
+  .slide-body, .slide-body.has-chart { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; overflow: visible; }
+  .slide-chart svg.chart { flex: none; height: auto; }
+  .slide-chart .chart .tick { font-size: 13px; }
+  .slide-body:not(.has-chart) .slide-bullets.many { columns: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .deck.is-paged .slide.is-current { animation: deck-in .16s ease-out; }
+  @keyframes deck-in { from { opacity: .35; } to { opacity: 1; } }
+}
+
+/* ---------- print: one 16:9 landscape page per slide ---------- */
+@media print {
+  @page { size: 10in 5.625in; margin: 0; }
+  header.top, footer, nav.crumbs, .deck-toolbar, .pinbar, .skip, .deck-msg, .deck-intro, h1.deck-title, .deck-wait, .deck-noscript, #deck-live { display: none !important; }
+  html, body { background: #fff !important; }
+  main, main.wrap { max-width: none; margin: 0; padding: 0 !important; }
+  .deck.is-paged .slide, .deck .slide { display: flex !important; }
+  .deck .slide { width: 10in; height: 5.625in; aspect-ratio: auto; margin: 0; border: 0; border-radius: 0; box-shadow: none; overflow: hidden;
+    background: #fff; color: #000; print-color-adjust: exact; -webkit-print-color-adjust: exact;
+    break-after: page; page-break-after: always; break-inside: avoid; page-break-inside: avoid; animation: none; }
+  .deck .slide:last-child { break-after: auto; page-break-after: auto; }
+  .slide .fig-label, .slide .slide-note, .slide .slide-foot, .slide-chart .legend, .slide .chart .tick { color: #444; fill: #444; }
+  .slide a { color: #000; }
+  .slide-body { overflow: visible; }
+  .slide-links a { min-height: 0; }
+}

@@ -6,12 +6,8 @@
 # `railway up` skips them and the image builds without a site: `"/site": not found`.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# Money section first: build_pages links school pages to it and adds its sitemap.
-# finance_history.jsonl comes from pipeline/dfe/finance_history.py (cached DfE workbooks).
-if ! (cd "$HERE/../.." && python3 -m pipeline.money.build_money); then
-  echo "Deploy aborted: Money section generation failed." >&2
-  exit 1
-fi
+# School Money is a separate service: build and deploy it with deploy/money/deploy.sh. build_pages
+# reads site_money/data/status.json (when present) to link school pages to it.
 if ! python3 "$HERE/../../pipeline/seo/build_pages.py"; then
   echo "Deploy aborted: static school page generation failed." >&2
   exit 1
@@ -32,9 +28,6 @@ try:
     )
 except (OSError, ET.ParseError, AttributeError):
     valid = False
-money = sum(1 for _ in (site / "money" / "school").glob("*/index.html"))
-if money < 10_000:
-    sys.exit(f"Deploy aborted: Money payload incomplete ({money:,} school finance pages).")
 if count < 10_000 or not valid:
     sys.exit(f"Deploy aborted: SEO payload incomplete ({count:,} school pages; valid sitemap: {valid}). Need at least 10,000 school pages and a sitemap with existing child files.")
 print(f"SEO deploy check passed: {count:,} school pages and sitemap present.")

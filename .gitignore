@@ -2,6 +2,11 @@
 site/data/
 deploy/railway/site/
 
+# School Money site (rebuild with python3 -m pipeline.money.build_money) and its deploy staging copy
+site_money/
+.site_money-build-*/
+deploy/money/site/
+
 # Source PDFs, spreadsheets and scratch downloads (gigabytes; re-fetchable)
 pipeline/.cache/
 __pycache__/

@@ -5,9 +5,10 @@ server {
   # (/school/x -> /school/x/) would send visitors to http://host:8080/. Keep it relative.
   absolute_redirect off;
 
-  # money.schoolsinreach.com opens on the Money section's own home page (no redirect); every /money/ page
-  # also works on that host. Build #2 moves Money to its own service with clean URLs on this host.
-  if ($host ~* ^money\.) { rewrite ^/$ /money/ last; }
+  # School Money lives on its own service (deploy/money/). Old /money/ links on this host go there,
+  # prefix stripped; $1 keeps the rest of the path and $is_args$args keeps any query string.
+  location = /money { return 301 https://money.schoolsinreach.com/$is_args$args; }
+  location ~ ^/money/(.*)$ { return 301 https://money.schoolsinreach.com/$1$is_args$args; }
 
   # The per-council JSON and GeoJSON files compress very well.
   gzip on;
@@ -27,7 +28,5 @@ server {
   location = / { add_header Cache-Control "no-cache, must-revalidate"; try_files /index.html =404; }
   location /school/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
   location /council/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
-  location /money/data/ { add_header Cache-Control "public, max-age=3600"; }
-  location /money/ { add_header Cache-Control "no-cache, must-revalidate"; try_files $uri $uri/ =404; }
   location / { try_files $uri $uri/ =404; }
 }
