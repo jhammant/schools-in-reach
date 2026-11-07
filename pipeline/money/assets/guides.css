@@ -1,0 +1,107 @@
+/* School Money — guides.css: guide articles, the free tools and the embeddable badge.
+   Loaded after app.css on /guides/, /tools/ and /embed/ pages. Uses app.css tokens only (light and dark follow
+   prefers-color-scheme there); nothing here sets a colour of its own. Every block shrinks to 360 px without
+   horizontal scroll: grids use min(100%, …), flex rows wrap, and children get min-width: 0. */
+
+/* ---------- guide articles ---------- */
+.guide, .guide-index { max-width: 44rem; min-width: 0; }
+.guide .kicker { margin: 1.2em 0 0; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.guide h1 { margin-top: .2em; }
+.guide-body h2 { scroll-margin-top: 16px; }
+.guide-body h3 { color: var(--ink); }
+.guide-body ul, .guide-body ol { padding-left: 1.4em; }
+.guide-body li { margin: .35em 0; }
+.guide-body li::marker { color: var(--ink-2); }
+.guide-body strong { font-weight: 700; }
+.guide-body .note { margin: 1.2em 0; padding: 12px 16px; border-left: 4px solid var(--accent); border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  background: var(--accent-soft); color: var(--ink); }
+.guide-body .note p { margin: 0; }
+.guide-sources { margin-top: 2.5em; padding-top: 1em; border-top: 1px solid var(--line); }
+.guide-sources h2 { margin-top: 0; font-size: 1.15rem; }
+.guide-sources ul { padding-left: 1.2em; font-size: .95rem; }
+.guide-sources li { margin: .4em 0; }
+.guide-more { margin-top: 2em; font-size: .95rem; }
+.guide-more h2 { font-size: 1.05rem; }
+.guide-more ul { padding-left: 1.2em; }
+
+/* index of guides */
+.guide-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); gap: 0 28px; }
+.guide-group, .tool-strip { min-width: 0; }
+.guide-group h2, .tool-strip h2 { font-size: 1.15rem; margin: 1.6em 0 .4em; }
+.guide-list { list-style: none; padding: 0; margin: 0; }
+.guide-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.guide-list a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 700; }
+.guide-list p { margin: 0; }
+
+/* ---------- tools ---------- */
+.tool-cards { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: 12px; }
+.tool-cards .card { min-width: 0; }
+.tool-cards h2 { margin: .2em 0 .4em; font-size: 1.15rem; }
+.tool-cards h2 a { display: inline-flex; align-items: center; min-height: var(--tap); }
+.tool-private { padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); }
+.tool { min-width: 0; }
+.tool[hidden] { display: none; }
+.tool h2 { font-size: 1.2rem; margin: 1.6em 0 .5em; }
+.tool-form { min-width: 0; margin: 0 0 1em; }
+.tool-load { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.tool-load .field { flex: 1 1 14rem; }
+.tool-load .tool-status { flex-basis: 100%; }
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); gap: 10px 16px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin: 0 0 8px; }
+.field label { font-weight: 600; }
+.field .hint, .tool .hint { color: var(--ink-2); font-size: .85rem; }
+.field input, .field select, .field textarea { width: 100%; min-width: 0; min-height: var(--tap); padding: 8px 12px; border: 1px solid var(--line-strong);
+  border-radius: var(--radius-s); background: var(--card); color: var(--ink); }
+.field textarea { min-height: 6.5em; font: .85rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; }
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { border-color: var(--accent); }
+.tool fieldset { min-width: 0; margin: 0 0 12px; padding: 10px 14px 4px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.tool legend { padding: 0 6px; font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 12px 0; }
+.tool button.button { cursor: pointer; font: inherit; font-weight: 600; }
+.tool-status { margin: 4px 0 0; color: var(--ink-2); }
+.tool-status:empty { display: none; }
+
+/* results */
+.tool-result { min-width: 0; margin: 1.5em 0; padding: 4px 18px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--card); }
+.tool-result h2 { margin-top: .8em; }
+.tool-result h3 { font-size: 1rem; }
+.tool-result .note { margin: 1em 0; }
+.tool-years { padding-left: 1.4em; }
+.tool-years li { margin: .6em 0; }
+.tool-years .badge { margin: 0 4px; }
+.tool-figs { font-variant-numeric: tabular-nums; }
+.tool-figure { margin: 12px 0; max-width: 100%; overflow-x: auto; }
+svg.tool-chart { max-width: 420px; }
+.tool-chart .bar.projected { fill-opacity: .45; }
+.tool-chart .bar.flagged { stroke: var(--ink-2); stroke-dasharray: 3 2; }
+.tool-sums { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; margin: 8px 0 12px; }
+.tool-sums dt { color: var(--ink-2); }
+.tool-sums dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tool-charity:empty { display: none; }
+.tool-charity { margin: 1em 0; }
+.embed-preview { max-width: 100%; overflow-x: auto; }
+.embed-preview iframe { display: block; max-width: 100%; border: 1px dashed var(--line-strong); border-radius: var(--radius-s); background: var(--paper); }
+.embed-preview iframe[hidden] { display: none; }
+
+/* ---------- the embeddable badge (/embed/<urn>/, 320 x 140) ---------- */
+body.embed { margin: 0; padding: 0; background: var(--card); font-size: 15px; line-height: 1.4; overflow: hidden; }
+.embed-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; height: 140px; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); color: var(--ink); }
+.embed-card p { margin: 0; max-width: 100%; }
+.embed-fig { font-size: .95rem; }
+.embed-fig b { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.embed-src { color: var(--ink-2); font-size: .75rem; }
+.embed-link { margin-top: auto; max-width: 100%; min-height: var(--tap); display: flex; align-items: center; font-weight: 600; font-size: .9rem; }
+.embed-link .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.embed-link .s { flex: none; white-space: pre; }
+
+@media (max-width: 600px) {
+  .tool-result { padding: 4px 12px 10px; }
+  .tool fieldset { padding: 8px 10px 2px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .field input, .field select, .field textarea { transition: border-color .12s; }
+}
+@media print {
+  .tool-load, .actions, .tool-private { display: none !important; }
+}
