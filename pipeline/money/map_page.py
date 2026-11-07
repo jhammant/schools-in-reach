@@ -460,14 +460,10 @@ def build_measures(areas_doc):
     return doc
 
 
-def default_year(measures, measure=DEFAULT_MEASURE):
-    """The latest year the measure has a value for England or any council, else the latest year."""
-    years = set((measures.get("england") or {}).get(measure, {}))
-    for entry in (measures.get("council") or {}).values():
-        years.update(entry["m"].get(measure, {}))
-    if years:
-        return max(years)
-    return measures["years"][-1] if measures.get("years") else None
+def default_year(measures):
+    """The latest year in the document. A measure missing for that year shows as not published, not as an older year."""
+    years = measures.get("years") or []
+    return years[-1] if years else None
 
 
 # ----------------------------------------------------------------- schools

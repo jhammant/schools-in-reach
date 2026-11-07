@@ -66,7 +66,8 @@
     if (!isNum(v)) return null;
     return fmtBound(v, unit, signed) + unitSuffix(unit);
   }
-  function stepFor(unit) { return unit === "pct" ? 0.1 : 1; }
+  // The precision build_measures keeps: £1 per pupil, 0.1 for percentages and pupils (FTE counts have tenths).
+  function stepFor(unit) { return unit === "gbp_pp" ? 1 : 0.1; }
   function tidy(v, step) { return step < 1 ? Math.round(v * 10) / 10 : Math.round(v); }
 
   // 1, 2, 2.5 or 5 times a power of ten, nearest to v (and at least step).
@@ -220,8 +221,11 @@
     if (!measureFits(o, m, g)) m = d.m;
     var y = d.y;
     if (p.y && /^\d{4}-\d{2}$/.test(p.y) && (o.years.length ? o.years.indexOf(p.y) >= 0 : true)) y = p.y;
-    var q = String(p.q || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
-    return { m: m, y: y, g: g, q: q };
+    return { m: m, y: y, g: g, q: cleanQuery(p.q) };
+  }
+  // The q value as stored in state and the URL: control characters and runs of spaces collapsed, at most 80 characters.
+  function cleanQuery(q) {
+    return String(q == null ? "" : q).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
   }
   // Defaults are omitted; returns "" or "?m=...&y=...&g=...&q=...".
   function serialiseState(state, opts) {
@@ -374,14 +378,16 @@
     var A = app(), slug = A && typeof A.slugify === "function" ? A.slugify(name) : normName(name).replace(/ /g, "-") || "school";
     return "/school/" + urn + "-" + slug + "/";
   }
-  // One adapter for /data/s/<urn>.json (fields per the shared contract).
-  function adaptSchool(s) {
-    var d = obj(s), urn = d.urn != null ? String(d.urn) : null, key = ORDER.indexOf(d.status) >= 0 ? d.status : null;
+  // One adapter for /data/s/<urn>.json (fields per the shared contract). fallback ({urn, name}) is the identity the
+  // caller already knows; it fills in whichever of those the document lacks.
+  function adaptSchool(s, fallback) {
+    var d = obj(s), f = obj(fallback), key = ORDER.indexOf(d.status) >= 0 ? d.status : null;
+    var urn = d.urn != null ? String(d.urn) : (f.urn != null ? String(f.urn) : null), name = d.name || f.name || "";
     var pupils = isNum(d.pupils) ? d.pupils : null;
     function pp(total, given) { return isNum(given) ? given : (isNum(total) && pupils ? Math.round(total / pupils) : null); }
     return {
-      urn: urn, name: d.name || (urn ? "School " + urn : "This school"),
-      path: d.path || (urn ? schoolPath(urn, d.name || "") : null),
+      urn: urn, name: name || (urn ? "School " + urn : "This school"),
+      path: d.path || (urn ? schoolPath(urn, name) : null),
       status: key, label: key ? LABELS[key] : null, reason: typeof d.reason === "string" ? d.reason : null,
       year: typeof d.year === "string" ? d.year : null,
       source: d.source || (d.academy ? "DfE AAR return" : "DfE CFR return"),
@@ -395,7 +401,8 @@
     if (!isNum(pp)) return { label: l, text: NOT_PUBLISHED };
     return { label: l, text: fmtExact(pp, signed) + " per pupil" + (isNum(total) ? " (total " + fmtMoney(total, signed) + ")" : "") };
   }
-  // Card for a school from /data/s/<urn>.json. fallback ({urn, name}) is used when the document didn't load.
+  // Card for a school from /data/s/<urn>.json. fallback ({urn, name}) is used when the document didn't load,
+  // and for whichever identity fields a loaded document is missing.
   function schoolCardModel(s, ctx, fallback) {
     var f = obj(fallback);
     if (!s || typeof s !== "object") {
@@ -408,7 +415,7 @@
         pin: urn ? { type: "school", id: urn, name: name, p: path } : null
       };
     }
-    var S = adaptSchool(s), c = obj(ctx), lines = [];
+    var S = adaptSchool(s, f), c = obj(ctx), lines = [];
     lines.push({ label: "Status" + (S.year ? ", " + S.year : ""), text: S.status ? ICONS[S.status] + " " + S.label : "No published status for this school" });
     if (S.reason) lines.push({ label: "Why", text: S.reason });
     lines.push(moneyLine("Reserve per pupil", S.year, S.reservePp, S.reserve, true));
@@ -589,10 +596,13 @@
     return { color: on ? p.ink : p.card, weight: on ? 3 : 0.7, opacity: 1, fillColor: cls == null ? "url(#mx-hatch)" : colours[cls],
       fillOpacity: cls == null ? 1 : 0.82 };
   }
-  function areaTip(id) {
-    var entry = obj(obj(measuresDoc)[state.g])[id], m = metaOf(state.m), box = el("div", "mx-tip");
-    box.appendChild(el("strong", null, entry.name || ""));
-    box.appendChild(el("span", null, fmtValue(valueOf(entry, state.m, state.y), m.unit, m.signed) || NOT_PUBLISHED));
+  // g is the geography the layer was drawn for: it can differ from state.g while a new geography downloads.
+  // A boundary with no measures entry still gets its own name and a no-data line.
+  function areaTip(g, id, name) {
+    var entry = obj(obj(obj(measuresDoc)[g])[id]), m = metaOf(state.m), box = el("div", "mx-tip");
+    var missing = measuresFailed ? "Figures couldn't be loaded just now." : (measuresDoc ? NOT_PUBLISHED : "Loading figures…");
+    box.appendChild(el("strong", null, entry.name || name || ""));
+    box.appendChild(el("span", null, fmtValue(valueOf(entry, state.m, state.y), m.unit, m.signed) || missing));
     return box;
   }
   function drawGeo(g, data) {
@@ -609,9 +619,9 @@
       geoLayer = L.geoJSON(data, {
         style: styleFor,
         onEachFeature: function (feature, layer) {
-          var id = obj(feature.properties).id;
+          var props = obj(feature.properties), id = props.id;
           layersById[id] = layer;
-          layer.bindTooltip(function () { return areaTip(id); }, { sticky: true });
+          layer.bindTooltip(function () { return areaTip(g, id, props.name); }, { sticky: true });
           layer.on("mouseover", function () { layer.setStyle({ weight: 2.5, color: palette().ink }); });
           layer.on("mouseout", function () { geoLayer.resetStyle(layer); });
           layer.on("click", function () { openArea(id, map.getContainer()); });
@@ -924,19 +934,30 @@
     var g = id && id.indexOf("constituency-") === 0 ? "constituency" : "council";
     return Object.assign({ id: id }, obj(obj(measuresDoc)[g])[id]);
   }
+  var areaDocs = {};
+  // The card for an area at the current measure and year, so render() can bring an open card up to date.
+  function areaModel(id) {
+    var entry = areaEntry(id);
+    if (!measuresDoc) {
+      var text = measuresFailed ? "Figures for this area couldn't be loaded just now." : "Loading this area's figures…";
+      return { kind: "area", title: entry.name || "This area", lines: [{ label: "Figures", text: text }],
+        spark: [], open: entry.p ? { href: entry.p, text: "Open its page" } : null, links: [], pin: null };
+    }
+    return areaCardModel(entry, metaOf(state.m), state.y, measuresDoc.england, areaDocs[id] || null, ctx);
+  }
+  function refreshAreaCard() {
+    if (cardFor && cardFor.indexOf("area:") === 0) refreshCard(areaModel(cardFor.slice(5)), cardFor);
+  }
   function openArea(id, trigger) {
     if (!id) return;
     select(id);
-    var key = "area:" + id, entry = areaEntry(id);
-    if (!measuresDoc) {
-      openCard({ kind: "area", title: entry.name || "This area", lines: [{ label: "Figures", text: "Figures for this area couldn't be loaded just now." }],
-        spark: [], open: entry.p ? { href: entry.p, text: "Open its page" } : null, links: [], pin: null }, key, trigger);
-      return;
-    }
-    var m = metaOf(state.m), y = state.y;
-    openCard(areaCardModel(entry, m, y, measuresDoc.england, null, ctx), key, trigger);
+    var key = "area:" + id;
+    openCard(areaModel(id), key, trigger);
+    if (areaDocs[id]) return;
     fetchJSON("/data/a/" + encodeURIComponent(id) + ".json").then(function (doc) {
-      if (doc) refreshCard(areaCardModel(entry, m, y, measuresDoc.england, doc, ctx), key);
+      if (!doc) return;
+      areaDocs[id] = doc;
+      refreshCard(areaModel(id), key);
     });
   }
   function openSchool(urn, row, trigger) {
@@ -950,7 +971,7 @@
   }
   function focusArea(id, trigger) {
     var g = id.indexOf("constituency-") === 0 ? "constituency" : "council";
-    if (state.g !== g) { state.g = g; render(); }
+    if (state.g !== g) { setGeo(g); render(); }
     var show = function () {
       var layer = layersById[id];
       if (map && layer && layer.getBounds) map.fitBounds(layer.getBounds(), { maxZoom: 11, animate: !reduced() });
@@ -965,10 +986,16 @@
     if (!searchIndex) searchIndex = fetchJSON("/data/search.json").then(function (d) { if (!Array.isArray(d)) searchIndex = null; return Array.isArray(d) ? d : []; });
     return searchIndex;
   }
+  // Typed or chosen search text goes into the URL too, so a shared or reloaded link restores what is in the box.
+  function setQuery(q) {
+    q = cleanQuery(q);
+    if (q === state.q) return;
+    state.q = q;
+    updateURL();
+  }
   function choose(row) {
     if (!row) return;
-    state.q = row.name || "";
-    updateURL();
+    setQuery(row.name);
     if (row.t === "school") {
       loadSchools().then(function () {
         var r = schoolIndex[String(row.id)];
@@ -1020,6 +1047,7 @@
     function run() {
       var q = input.value.trim();
       last = q;
+      setQuery(q);
       if (q.length < 2) { hide(); return; }
       loadIndex().then(function (all) {
         if (last !== q) return;
@@ -1061,6 +1089,12 @@
     if (els.out) els.out.textContent = state.y || "No year yet";
     $$('input[name="g"]', els.filters).forEach(function (r) { r.checked = r.value === state.g; });
   }
+  // Every geography change goes through here, so a measure the geography lacks (DSG for constituencies)
+  // falls back to the default whether the change came from the radios or from search.
+  function setGeo(g) {
+    state.g = g === "constituency" ? "constituency" : "council";
+    if (!measureFits(stateOptions(opts), state.m, state.g)) state.m = stateOptions(opts).defaults.m;
+  }
   function render() {
     syncControls();
     updateURL();
@@ -1071,6 +1105,7 @@
       renderTable();
     }
     renderLegend();
+    refreshAreaCard();
     if (map && measuresDoc) {
       var g = state.g;
       loadGeo(g).then(function (d) { if (state.g === g) drawGeo(g, d); });
@@ -1081,8 +1116,7 @@
       var t = e.target;
       if (t === els.measure) state.m = t.value;
       else if (t.name === "g") {
-        state.g = t.value === "constituency" ? "constituency" : "council";
-        if (!measureFits(stateOptions(opts), state.m, state.g)) state.m = stateOptions(opts).defaults.m;
+        setGeo(t.value);
         closeCard();
       } else if (t.name === "phase" || t.name === "gov" || t.name === "status") { drawDots(); return; }
       else return;
@@ -1109,7 +1143,7 @@
   initMap();
   renderLegend();
   fetchJSON(dataUrls.measures || "/data/map/measures.json").then(function (d) {
-    if (!d || typeof d !== "object" || !d.council) { measuresFailed = true; renderLegend(); return; }
+    if (!d || typeof d !== "object" || !d.council) { measuresFailed = true; renderLegend(); refreshAreaCard(); return; }
     measuresDoc = d;
     render();
     drawDots();
