@@ -66,13 +66,13 @@ function strings(value, out = []) {
 test("status parity with status.py for every generated case", { skip: !process.env.MONEY_STATUS_CASES && "MONEY_STATUS_CASES not set" }, () => {
   // Arrange
   const { cases, expected } = JSON.parse(readFileSync(process.env.MONEY_STATUS_CASES, "utf8"));
-  assert.equal(cases.length, 40);
+  assert.equal(cases.length, 50);
   cases.forEach((c, i) => {
     // Act
-    const got = keep(T.assess(c.rows)), want = expected[i];
+    const got = keep(T.assess(c.rows, c.basis)), want = expected[i];
     // Assert
     if (want === null) { assert.equal(got, null, c.name); return; }
-    for (const k of ["status", "label", "rank", "deficit_streak", "reason", "year", "source", "reserve", "years", "trust_share_included"]) {
+    for (const k of ["status", "label", "rank", "deficit_streak", "reason", "year", "source", "reserve", "years", "trust_share_included", "reserve_basis"]) {
       assert.equal(got[k], want[k], c.name + ": " + k);
     }
     for (const k of ["reserve_share", "runway_years", "pupils_change"]) {
@@ -81,6 +81,84 @@ test("status parity with status.py for every generated case", { skip: !process.e
     }
   });
 });
+
+// The live shapes builders emit, copied from the built site's /data/sx/130932.json and /data/s/130932.json (William
+// Patten, 4 metrics kept): sx.source is a per-year map and sx.flags holds named flags beside flags.suspect.
+const LIVE_SX = {"years": ["2018-19", "2019-20", "2020-21", "2021-22", "2022-23", "2023-24", "2024-25", "2025-26"], "source": {"2018-19": "CFR", "2019-20": "CFR", "2020-21": "CFR", "2021-22": "CFR", "2022-23": "CFR", "2023-24": "CFR", "2024-25": "CFR", "2025-26": "CFR"}, "pupils": {"2018-19": 435.0, "2019-20": 443.0, "2020-21": 430.5, "2021-22": 429.0, "2022-23": 432.0, "2023-24": 427.5, "2024-25": 437.5, "2025-26": 432.5}, "m": {"total_income": {"2018-19": {"v": 3035769, "pp": 6979}, "2019-20": {"v": 3025090, "pp": 6829}, "2020-21": {"v": 2971071, "pp": 6901}, "2021-22": {"v": 3169383, "pp": 7388}, "2022-23": {"v": 3270918, "pp": 7572}, "2023-24": {"v": 3548990, "pp": 8302}, "2024-25": {"v": 3861666, "pp": 8827}, "2025-26": {"v": 3927968, "pp": 9082}}, "total_expenditure": {"2018-19": {"v": 2844921, "pp": 6540}, "2019-20": {"v": 2991578, "pp": 6753}, "2020-21": {"v": 3073370, "pp": 7139}, "2021-22": {"v": 3342036, "pp": 7790}, "2022-23": {"v": 3529501, "pp": 8170}, "2023-24": {"v": 3630857, "pp": 8493}, "2024-25": {"v": 3831287, "pp": 8757}, "2025-26": {"v": 4097753, "pp": 9475}}, "revenue_reserve": {"2018-19": {"v": 510395, "pp": 1173}, "2019-20": {"v": 543908, "pp": 1228}, "2020-21": {"v": 441609, "pp": 1026}, "2021-22": {"v": 268955, "pp": 627}, "2022-23": {"v": 10371, "pp": 24}, "2023-24": {"v": -71496, "pp": -167}, "2024-25": {"v": -41117, "pp": -94}, "2025-26": {"v": -210901, "pp": -488}}, "in_year_balance": {"2018-19": {"v": 190848, "pp": 439}, "2019-20": {"v": 33512, "pp": 76}, "2020-21": {"v": -102299, "pp": -238}, "2021-22": {"v": -172654, "pp": -402}, "2022-23": {"v": -258583, "pp": -599}, "2023-24": {"v": -81867, "pp": -192}, "2024-25": {"v": 30379, "pp": 69}, "2025-26": {"v": -169784, "pp": -393}}}, "flags": {"falling_rolls": null, "pass_through": null, "high_send": {"ehcp_pct": 5.5, "sen_share": 0.0652, "reason": "ehcp"}, "suspect": {}, "not_reported": {}}, "trust_central_pp": {}};
+const LIVE_S = {"urn": "130932", "name": "William Patten Primary School", "path": "/school/130932-william-patten-primary-school/", "council": {"code": "204", "name": "Hackney", "path": "/council/hackney/"}, "status": "in_deficit", "label": "In deficit", "reason": "In deficit by £211k, 5% of a year's income: it has spent more over the years than it received.", "year": "2025-26", "academy": false, "trust": null, "pupils": 432.5, "tags": {"governance": "council-run", "trust": null, "trust_size": null, "admissions": null, "faith": null, "phase": "Primary", "gender": "Mixed", "sixth_form": false}, "band": 1, "years": [{"y": "2018-19", "income": 3035769, "spend": 2844921, "balance": 190848, "reserve": 510395, "pupils": 435, "status": "large_reserves"}, {"y": "2019-20", "income": 3025090, "spend": 2991578, "balance": 33512, "reserve": 543908, "pupils": 443, "status": "large_reserves"}, {"y": "2020-21", "income": 2971071, "spend": 3073370, "balance": -102299, "reserve": 441609, "pupils": 430.5, "status": "large_reserves"}, {"y": "2021-22", "income": 3169383, "spend": 3342036, "balance": -172654, "reserve": 268955, "pupils": 429, "status": "large_reserves"}, {"y": "2022-23", "income": 3270918, "spend": 3529501, "balance": -258583, "reserve": 10371, "pupils": 432, "status": "heading_for_deficit"}, {"y": "2023-24", "income": 3548990, "spend": 3630857, "balance": -81867, "reserve": -71496, "pupils": 427.5, "status": "in_deficit"}, {"y": "2024-25", "income": 3861666, "spend": 3831287, "balance": 30379, "reserve": -41117, "pupils": 437.5, "status": "in_deficit"}, {"y": "2025-26", "income": 3927968, "spend": 4097753, "balance": -169784, "reserve": -210901, "pupils": 432.5, "status": "in_deficit"}], "pta": [{"charity_number": 1103834, "name": "WILLIAM PATTEN PARENTS TEACHERS & FRIENDS ASSOCIATION", "status": "Registered", "latest_income": 48547.0, "history": [{"period_end": "2025-08", "income": 48547.0, "expenditure": 50100.0}, {"period_end": "2024-08", "income": 32743.0, "expenditure": 36767.0}, {"period_end": "2023-08", "income": 32339.0, "expenditure": 23683.0}, {"period_end": "2022-08", "income": 15951.0, "expenditure": 9339.0}, {"period_end": "2021-08", "income": 12602.0, "expenditure": 21451.0}]}]};
+const CHARITY_1103834 = "https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_" +
+  "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_" +
+  "CharityDetailsPortlet_regId=1103834&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0";
+
+test("live sx shape: the source is read per year and named flags are not years", () => {
+  // Arrange
+  const sx = JSON.parse(JSON.stringify(LIVE_SX)), s = JSON.parse(JSON.stringify(LIVE_S));
+  // Act
+  const p = T.prefillFrom(sx, s);
+  // Assert
+  assert.equal(p.source, "CFR");
+  assert.ok(!/object/i.test(String(p.source)));
+  assert.deepEqual(p.flagged, []);
+  assert.equal(p.rows.length, 8);
+  assert.ok(p.rows.every((r) => r.source === "CFR" && r.period_end.endsWith("-03-31")));
+  assert.equal(T.assess(p.rows).status, "in_deficit");
+  assert.equal(T.assess(p.rows).reserve, -210901);
+  assert.equal(p.reserveBasis, "own");
+});
+
+test("live sx shape: only genuine per-year suspect entries are flagged", () => {
+  // Arrange
+  const sx = JSON.parse(JSON.stringify(LIVE_SX));
+  sx.flags.suspect = { "2021-22": ["pupils"], "2022-23": [] };
+  // Act
+  const p = T.prefillFrom(sx, LIVE_S);
+  // Assert
+  assert.deepEqual(p.flagged, ["2021-22"]);
+  assert.equal(p.rows.find((r) => r.year === "2021-22").flagged, true);
+  assert.deepEqual(T.flaggedYears({ falling_rolls: null, high_send: { reason: "ehcp" }, suspect: {}, not_reported: {} }), []);
+});
+
+test("an academy on the trust basis: one basis per year, the headline matches, pooled years are held by the trust", () => {
+  // Arrange: Mossbourne-like sx as series.py writes it
+  const years = ["2021-22", "2022-23", "2023-24", "2024-25"];
+  const own = { "2021-22": 4237000, "2022-23": 0, "2023-24": 0, "2024-25": 0 };
+  const sx = { years, source: Object.fromEntries(years.map((y) => [y, "AAR"])), pupils: Object.fromEntries(years.map((y) => [y, 1440])),
+    reserve_basis: "incl_trust_share",
+    m: { total_income: Object.fromEntries(years.map((y) => [y, { v: 14000000 }])),
+      total_expenditure: Object.fromEntries(years.map((y) => [y, { v: 13500000 }])),
+      in_year_balance: Object.fromEntries(years.map((y) => [y, { v: 500000 }])),
+      revenue_reserve: { "2024-25": { v: 3087254 } },
+      revenue_reserve_own: Object.fromEntries(years.map((y) => [y, { v: own[y] }])) },
+    flags: { suspect: {}, reserve_basis_missing: ["2021-22", "2022-23", "2023-24"], reserve_held_by_trust: ["2022-23", "2023-24", "2024-25"] } };
+  const s = { urn: "134693", name: "Example Academy", academy: true, tags: { trust_size: "multi" }, years: [] };
+  // Act
+  const p = T.prefillFrom(sx, s);
+  const last = p.rows[p.rows.length - 1];
+  const before = T.assess(p.rows.slice(0, 3));
+  // Assert
+  assert.equal(p.reserveBasis, "incl_trust_share");
+  assert.equal(last.revenue_reserve_incl_trust_share, 3087254);
+  assert.equal(last.revenue_reserve, 0);
+  assert.ok(p.rows.slice(0, 3).every((r) => !("revenue_reserve_incl_trust_share" in r)));
+  assert.equal(T.assess(p.rows).reserve, 3087254);
+  assert.equal(T.assess(p.rows).trust_share_included, true);
+  assert.match(T.assess(p.rows).reason, /including its share of the trust's reserve/);
+  assert.equal(before.status, "reserve_held_by_trust");
+  assert.equal(T.projectRows(p.rows, [{ income: 14000000, spend: 14100000 }])[0].revenue_reserve_incl_trust_share, 2987254);
+});
+
+test("the new status has its label and icon, and charity links are built with charityUrl", () => {
+  // Arrange / Act / Assert
+  assert.equal(T.ORDER[T.ORDER.length - 1], "reserve_held_by_trust");
+  assert.equal(T.LABELS.reserve_held_by_trust, "Reserve held by the trust");
+  assert.equal(T.ICONS.reserve_held_by_trust, "◇");
+  assert.equal(T.charityUrl(1103834), CHARITY_1103834);
+  assert.equal(T.charityUrl(" 1103834 "), CHARITY_1103834);
+  assert.equal(T.sourceOf({ "2024-25": "AAR" }, "2024-25", "CFR"), "AAR");
+  assert.equal(T.sourceOf({ "2024-25": "AAR" }, "2023-24", "CFR"), "CFR");
+  assert.equal(T.sourceOf("AAR", "2023-24", "CFR"), "AAR");
+});
+
 
 test("money and rounding follow Python's half-to-even formatting", () => {
   // Arrange / Act / Assert

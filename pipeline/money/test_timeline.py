@@ -63,5 +63,40 @@ class StatusByYearTest(unittest.TestCase):
         self.assertEqual(timeline.status_by_year([]), [])
 
 
+class OneBasisTest(unittest.TestCase):
+    """Every year on the page's one reserve basis; a pooled £0 is never 'tight'."""
+
+    def test_pooled_years_are_held_by_the_trust_and_the_latest_uses_the_share(self):
+        # Arrange: Mossbourne-like, own £4.2m, then £0 pooled twice, then a trust-inclusive £3.1m
+        mat = {"trust_type": "Multi Academy Trust (MAT)"}
+        rows = [row("1", "2022-08", 13_000_000, 11_600_000, 4_237_000, source="AAR", **mat),
+                row("1", "2023-08", 14_000_000, 13_400_000, 0, source="AAR", **mat),
+                row("1", "2024-08", 14_500_000, 15_000_000, 0, source="AAR", **mat),
+                row("1", "2025-08", 15_000_000, 13_500_000, 0, source="AAR", revenue_reserve_incl_trust_share=3_087_254, **mat)]
+        # Act
+        points = timeline.status_by_year(rows)
+        # Assert
+        self.assertEqual([p["status"] for p in points], ["large_reserves", "reserve_held_by_trust", "reserve_held_by_trust", "large_reserves"])
+        self.assertNotIn("tight", [p["status"] for p in points])
+        self.assertEqual([p["basis"] for p in points], ["own", "own", "own", "incl_trust_share"])
+        self.assertEqual(points[-1]["reserve"], 3_087_254)
+
+    def test_explicit_own_basis_is_used_in_every_year(self):
+        rows = [row("1", "2025-08", 2_000_000, 1_950_000, 90_000, source="AAR", revenue_reserve_incl_trust_share=120_000)]
+        points = timeline.status_by_year(rows, basis="own")
+        self.assertEqual((points[0]["reserve"], points[0]["basis"]), (90_000, "own"))
+
+    def test_reserve_per_pupil_is_left_out_when_the_pupils_do_not_match(self):
+        # Arrange: a federation lead's year with one school's pupils
+        rows = [row("1", f"{y}-03", 11_000_000, 10_900_000, 1_500_000, pupils=1_550) for y in (2019, 2020, 2021, 2024)]
+        rows.append(row("1", "2022-03", 12_500_000, 12_560_000, 1_580_000, pupils=437))
+        # Act
+        points = {p["year"]: p for p in timeline.status_by_year(rows)}
+        # Assert
+        self.assertIsNone(points["2021-22"]["reserve_pp"])
+        self.assertEqual(points["2021-22"]["pupils"], 437)
+        self.assertIsNotNone(points["2023-24"]["reserve_pp"])
+
+
 if __name__ == "__main__":
     unittest.main()

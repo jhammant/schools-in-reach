@@ -9,13 +9,16 @@ from __future__ import annotations
 
 from html import escape
 
-STATUS_ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves"]
+# Mirrors status.ORDER / status.LABELS: the five judgements, most pressing first, then the neutral
+# "reserve held by the trust" (an academy whose own £0 reserve is pooled by its trust), never a judgement.
+STATUS_ORDER = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves", "reserve_held_by_trust"]
 STATUS_LABELS = {
     "in_deficit": "In deficit",
     "heading_for_deficit": "Heading for deficit",
     "tight": "Tight",
     "healthy": "Healthy",
     "large_reserves": "Large reserves",
+    "reserve_held_by_trust": "Reserve held by the trust",
 }
 STATUS_ICONS = {
     "in_deficit": "▼",
@@ -23,7 +26,10 @@ STATUS_ICONS = {
     "tight": "●",
     "healthy": "✓",
     "large_reserves": "▲",
+    "reserve_held_by_trust": "◇",
 }
+HELD_BY_TRUST = "reserve_held_by_trust"
+TRUST_SHARE_WORDS = "including its share of the trust's reserve"
 
 
 def esc(value) -> str:
@@ -77,13 +83,29 @@ def _num(value):
     return value
 
 
+def _reserve_tip(label, v, point) -> str:
+    """One bar's words: the trust share named when the bar includes it, a pooled £0 named as held by the trust."""
+    if point.get("status") == HELD_BY_TRUST:
+        return f"{label}: {money(v)} reserve (held by the trust)"
+    if point.get("basis") == "incl_trust_share":
+        return f"{label}: {money(v)} reserve, {TRUST_SHARE_WORDS}"
+    return f"{label}: {money(v)} reserve"
+
+
 def reserve_bars(years: list[dict], width: int = 640, height: int = 200) -> str:
-    """Revenue reserve at the end of each year: bars up from zero when positive, down when negative."""
-    pts = [(y["year"], _num(y.get("reserve"))) for y in years]
-    pts = [(label, v) for label, v in pts if v is not None]
+    """Revenue reserve at the end of each year: bars up from zero when positive, down when negative. Points may
+    carry timeline.status_by_year's 'basis' and 'status': the label then says which bars include the trust's share."""
+    pts = [(y["year"], _num(y.get("reserve")), y) for y in years]
+    pts = [(label, v, y) for label, v, y in pts if v is not None]
     if not pts:
         return ""
-    values = [v for _, v in pts]
+    bases = {y.get("basis") for _, _, y in pts}
+    aria = "Revenue reserve at the end of each year"
+    if bases == {"incl_trust_share"}:
+        aria += f", {TRUST_SHARE_WORDS}"
+    elif "incl_trust_share" in bases:
+        aria += f"; bars marked as {TRUST_SHARE_WORDS} use that figure, the others the academy's own reserve"
+    values = [v for _, v, _ in pts]
     lo, hi = min(0, min(values)), max(0, max(values))
     if lo == hi:
         hi = 1
@@ -97,12 +119,12 @@ def reserve_bars(years: list[dict], width: int = 640, height: int = 200) -> str:
 
     slot = plot_w / len(pts)
     bar_w = min(40, slot - 6)
-    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="Revenue reserve at the end of each year">']
+    parts = [f'<svg class="chart" viewBox="0 0 {width} {height}" role="img" aria-label="{esc(aria)}">']
     for t in ticks:
         parts.append(f'<line class="grid" x1="{left}" x2="{width - right}" y1="{y_of(t):.1f}" y2="{y_of(t):.1f}"/>'
                      f'<text class="tick" x="{left - 6}" y="{y_of(t) + 4:.1f}" text-anchor="end">{esc(money(t))}</text>')
     zero = y_of(0)
-    for i, (label, v) in enumerate(pts):
+    for i, (label, v, point) in enumerate(pts):
         x = left + i * slot + (slot - bar_w) / 2
         y0, y1 = sorted((zero, y_of(v)))
         h = max(y1 - y0, 1)
@@ -113,7 +135,7 @@ def reserve_bars(years: list[dict], width: int = 640, height: int = 200) -> str:
             path = f"M{x:.1f},{zero:.1f}V{y0 + r:.1f}Q{x:.1f},{y0:.1f} {x + r:.1f},{y0:.1f}H{x + bar_w - r:.1f}Q{x + bar_w:.1f},{y0:.1f} {x + bar_w:.1f},{y0 + r:.1f}V{zero:.1f}Z"
         else:
             path = f"M{x:.1f},{zero:.1f}V{y1 - r:.1f}Q{x:.1f},{y1:.1f} {x + r:.1f},{y1:.1f}H{x + bar_w - r:.1f}Q{x + bar_w:.1f},{y1:.1f} {x + bar_w:.1f},{y1 - r:.1f}V{zero:.1f}Z"
-        tip = f"{label}: {money(v)} reserve"
+        tip = _reserve_tip(label, v, point)
         parts.append(f'<g class="mark" tabindex="0" data-tip="{esc(tip)}"><title>{esc(tip)}</title>'
                      f'<rect class="hit" x="{left + i * slot:.1f}" y="{top}" width="{slot:.1f}" height="{plot_h}"/>'
                      f'<path class="bar {cls}" d="{path}"/></g>')
@@ -164,7 +186,8 @@ def income_spend_lines(years: list[dict], width: int = 640, height: int = 200) -
 
 
 def status_bar(counts: dict, total: int | None = None) -> str:
-    """One stacked bar of how many schools sit in each status, with a text legend."""
+    """One stacked bar of how many schools sit in each status, with a text legend. The five judgements always
+    appear in the legend; academies whose reserve is held by the trust sit last, on their own, only when there are any."""
     counts = {s: _num(counts.get(s)) or 0 for s in STATUS_ORDER}
     total = total or sum(counts.values())
     if not total:
@@ -179,7 +202,7 @@ def status_bar(counts: dict, total: int | None = None) -> str:
         segs.append(f'<span class="seg s-{s}" style="width:{w:.2f}%" tabindex="0" data-tip="{esc(tip)}" title="{esc(tip)}"></span>')
         x += w
     legend = "".join(f'<li>{badge(s, "small")} <strong>{counts.get(s, 0):,}</strong> <span class="muted">({counts.get(s, 0) / total:.0%})</span></li>'
-                     for s in STATUS_ORDER)
+                     for s in STATUS_ORDER if s != HELD_BY_TRUST or counts[s] > 0)
     return f'<div class="statusbar" role="img" aria-label="Schools by financial status">{"".join(segs)}</div><ul class="statuslegend">{legend}</ul>'
 
 
