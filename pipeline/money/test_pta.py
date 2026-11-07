@@ -308,3 +308,32 @@ class RealDataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class ExclusionTest(unittest.TestCase):
+    def test_pre_schools_and_clubs_are_not_parents_associations(self):
+        # Arrange / Act / Assert
+        for name in ("HATFIELD HEATH PRE-SCHOOL ASSOCIATION", "ACORN PLAYGROUP PARENTS ASSOCIATION", "OAK AFTER SCHOOL CLUB FRIENDS"):
+            self.assertFalse(pta.is_parent_association(name), name)
+        self.assertTrue(pta.is_parent_association("CANVEY ISLAND INFANT SCHOOL AND NURSERY PARENT, TEACHER AND FRIENDS ASSOCIATION"))
+
+    def test_large_income_is_flagged_for_review(self):
+        rec = pta._charity_record({"registered_charity_number": 1, "charity_name": "FRIENDS OF X SCHOOL", "latest_income": 900_000,
+                                   "charity_registration_status": "Registered"}, "postcode", "same postcode")
+        self.assertIn("review", rec)
+        small = pta._charity_record({"registered_charity_number": 2, "charity_name": "X PTA", "latest_income": 9_000,
+                                     "charity_registration_status": "Registered"}, "postcode", "same postcode")
+        self.assertNotIn("review", small)
+
+    def test_independent_schools_are_not_loaded(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "england").mkdir()
+            (root / "la/999").mkdir(parents=True)
+            (root / "england/las.json").write_text(json.dumps({"las": [{"la_code": "999", "name": "Testshire"}]}), encoding="utf-8")
+            (root / "la/999/schools.json").write_text(json.dumps({"schools": [
+                {"urn": 1, "name": "State Primary", "type_group": "Academies"},
+                {"urn": 2, "name": "The German School", "type_group": "Independent schools"}]}), encoding="utf-8")
+            self.assertEqual([s["urn"] for s in pta.load_schools(root)], [1])

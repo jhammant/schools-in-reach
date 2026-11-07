@@ -188,7 +188,7 @@ def build_model(site, history_path, links_path, pta_path):
                 "status": None if member else health.assess(rows),
                 "phase": phase_group(latest, s), "london": int(code) in LONDON if code.isdigit() else False,
                 "fsm": s.get("fsm_pct") if s.get("fsm_pct") is not None else (latest or {}).get("fsm_pct"),
-                "pta": pta.get(urn, []),
+                "pta": [c for c in pta.get(urn, []) if not c.get("review")],
                 "trust": (s.get("trust") or (latest or {}).get("trust") or "").strip() or None,
                 "academy": (latest or {}).get("source") == "AAR",
             }

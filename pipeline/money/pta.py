@@ -116,9 +116,19 @@ def phases_conflict(school_phase, charity_phase) -> bool:
                 or (school_phase & SECONDARY and charity_phase & PRIMARY and not school_phase & PRIMARY))
 
 
+# Charities that sound like a parents' association but run something else: a pre-school, a club, the school itself.
+NOT_PTA = re.compile(r"\bpre[\s-]?schools?\b|\bplay\s?groups?\b|\btoddlers?\b|\bkindergartens?\b|\bafter[\s-]school\b|"
+                     r"\bout\s+of\s+school\b|\bbreakfast\s+club\b|\bholiday\s+club\b|\balumni\b|\bold\s+(boys|girls)\b|"
+                     r"\bformer\s+pupils\b", re.I)
+# A parents' association this large is more likely a school-owning or endowment charity: shown only after a manual check.
+REVIEW_INCOME = 500_000
+
+
 def is_parent_association(name) -> bool:
     """True when a charity name reads as a school parents' association."""
     text = str(name or "")
+    if NOT_PTA.search(text):
+        return False
     if PARENT_MARKERS.search(text):
         return True
     return bool(WEAK_MARKERS.search(text) and SCHOOL_WORDS.search(text))
@@ -175,6 +185,8 @@ def _charity_record(charity, method, evidence):
         "registered": _date(charity.get("date_of_registration")),
         "removed": _date(charity.get("date_of_removal")),
         "latest_income": charity.get("latest_income"),
+        **({"review": f"income over £{REVIEW_INCOME:,}: check it is a parents' association"}
+           if (charity.get("latest_income") or 0) > REVIEW_INCOME else {}),
         "history": [],
         "match": {"method": method, "evidence": evidence},
     }
@@ -342,6 +354,9 @@ def load_schools(site_data):
         if nation and nation != "England":
             continue
         for school in data.get("schools", []):
+            # State-funded schools only: an independent school's "association" is usually the charity that runs it.
+            if school.get("type_group") in ("Independent schools", "Colleges", "Universities") or "independent" in str(school.get("type") or "").lower():
+                continue
             school.setdefault("council", councils.get(path.parent.name))
             schools.append(school)
     return schools
