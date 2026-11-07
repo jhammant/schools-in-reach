@@ -1441,24 +1441,55 @@ def _charity_line(c, view) -> str:
     return "<li>" + " ".join(bits) + "</li>"
 
 
+def _pta_covered(nby) -> list:
+    """National school years with at least 60% as many schools as the best-covered one (areas.pta_window's rule):
+    charity returns are filed up to ten months after their year ends, so the newest year's median is early filers'."""
+    best = max(_num(e.get("schools")) or 0 for e in nby.values())
+    return sorted(y for y, e in nby.items() if (_num(e.get("schools")) or 0) >= 0.6 * best) or sorted(nby)
+
+
 def _pta_national(view, by_year=None) -> str:
-    """ctx['pta_national']'s latest median per pupil, as context whether or not this school has a registered PTA. With
-    phrasing.ratio_words and this school's PTA figure for the same school year, one sentence compares the two."""
+    """The England median PTA income per pupil, and the council's, as context whether or not this school has a
+    registered PTA. The year is the latest well-covered one in which this school's PTA has a figure (else the latest
+    well-covered one), and with phrasing.ratio_words one sentence compares this PTA with each, in that same year."""
     national = view.ctx.get("pta_national") or {}
     nby = {y: e for y, e in (national.get("by_year") or {}).items() if _num((e or {}).get("median_pp")) is not None}
     if not nby:
         return ""
-    ny = max(nby)
+    by_year = by_year or {}
+
+    def own(y):
+        return None if y in view.odd_pupils else _num((by_year.get(y) or {}).get("income_pp"))
+
+    covered = _pta_covered(nby)
+    ny = ([y for y in covered if own(y) is not None] or covered)[-1]
+    mine = own(ny)
+    if (by_year.get(ny) or {}).get("confidence") == "medium":
+        mine = None  # a lower-confidence match is shown, but never compared
     median = nby[ny]["median_pp"]
     html = (f'<p>Across England, the typical registered parents\' association raised '
             f'{site.money_figure("pta_per_pupil", median, None, ny, label="England: median PTA income per pupil")} '
             f'per pupil in {esc(ny)}.')
-    mine = None if ny in view.odd_pupils else _num(((by_year or {}).get(ny) or {}).get("income_pp"))
     words = ratio_words(mine, median)
-    if words and not (by_year.get(ny) or {}).get("confidence") == "medium":
+    if words:
         html += (f' This school\'s parents\' association raised {esc(words)} that in the same school year '
                  f'({exact_figure("pta_per_pupil", mine, ny, "This school: PTA income per pupil")} per pupil).')
-    return html + "</p>"
+    html += "</p>"
+    council = view.ctx.get("council") or {}
+    local = (((council.get("by_year") or {}).get(ny) or {}).get("all") or {})
+    cm = _num(local.get("pta_pp_median"))
+    if cm is not None:
+        name = council.get("name") or "this council"
+        count = _num(local.get("pta_schools"))
+        of = f" ({int(count):,} schools with a registered one)" if count else ""
+        html += (f'<p>In {esc(name)}, the typical registered parents\' association raised '
+                 f'{site.money_figure("pta_per_pupil", cm, None, ny, label=f"{name}: median PTA income per pupil")} '
+                 f'per pupil in {esc(ny)}{esc(of)}.')
+        local_words = ratio_words(mine, cm)
+        if local_words:
+            html += f' This school\'s raised {esc(local_words)} that.'
+        html += "</p>"
+    return html
 
 
 def pta_section(item, view) -> str:
