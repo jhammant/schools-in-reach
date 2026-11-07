@@ -51,8 +51,7 @@ CRAWL_VERSION = 2        # bump when the crawl rules change, so --resume re-craw
 MAX_WORKERS = 24
 HOST_INTERVAL = 1.0      # seconds between requests to one host
 IP_INTERVAL = 0.5        # and to one IP: two requests a second however many school sites it serves
-MAX_CRAWL_DELAY = 30.0   # a robots.txt Crawl-delay is honoured up to this in the main pass...
-SLOW_MAX_DELAY = 600.0   # ...and up to this in the slow lane; a longer one is a refusal
+MAX_CRAWL_DELAY = 30.0   # a robots.txt Crawl-delay is honoured up to this in the main pass, any longer in the slow lane
 TIMEOUT = 10
 RETRY_TIMEOUT = 20       # one more try, after the main pass, for homepages that timed out
 MAX_PAGES = 6            # HTML pages per school; robots.txt and redirect hops are requests, not pages
@@ -71,7 +70,8 @@ SEED = 20261107          # crawl order: shuffled, because platforms cluster by c
 CAP = {"pta": 3, "pta_sub": 2, "offsite_home": 1, "offsite_about": 1, "hub": 1}
 PTA_KINDS = {"pta", "pta_sub", "offsite_home", "offsite_about"}
 # Journal outcomes that --resume skips; the rest (error, incomplete, slow, crawler_error) are re-crawled.
-FINAL = {"hit", "no_pta", "review_only", "robots", "blocked"}
+# skipped: the register website is itself on the never-fetch lists (a Facebook page, a PDF).
+FINAL = {"hit", "no_pta", "review_only", "robots", "blocked", "skipped"}
 
 # ----------------------------------------------------------------- words
 
@@ -184,7 +184,7 @@ CHALLENGE_STATUS = {202, 403, 429, 503}
 
 SKIP_TAGS = {"script", "style", "noscript", "template", "svg"}
 
-Page = namedtuple("Page", "url html status err", defaults=(None,))   # status: ok | robots | blocked | slow | error
+Page = namedtuple("Page", "url html status err", defaults=(None,))   # ok | robots | blocked | slow | error | skipped
 Link = namedtuple("Link", "priority url kind depth")
 Charity = namedtuple("Charity", "name status removed tier postcode web")
 Verdict = namedtuple("Verdict", "accepted review rejects")
@@ -204,6 +204,11 @@ def plausible_number(n) -> bool:
 def host_key(url) -> str:
     host = (urlsplit(url).hostname or "").lower().strip(".")
     return host[4:] if host.startswith("www.") else host
+
+
+def _origin(url) -> str:
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}"
 
 
 def base_domain(host) -> str:
@@ -259,10 +264,11 @@ def norm_url(url) -> str:
 
 
 def site_key(url) -> str:
-    """Two register entries pointing at the same site share a key; a query string makes a different page."""
+    """Two register entries pointing at the same site share a key; a query string (case kept: it is often an
+    opaque id) makes a different page."""
     parts = urlsplit(url)
     key = host_key(url) + parts.path.rstrip("/").lower()
-    return key + "?" + parts.query.lower() if parts.query else key
+    return key + "?" + parts.query if parts.query else key
 
 
 def toggle_www(url) -> str:
@@ -582,7 +588,9 @@ def link_candidates(html, page_url, kind="home", depth=0, site=None, pta_sites=(
         elif same and kind == "pta" and depth < 2 and (text_hit or href_hit):
             new = (25, "pta_sub", depth + 1)
         elif not same and not on_pta_site and kind in ("home", "hub", "pta", "pta_sub"):
-            shallow = "/" not in parts.path.strip("/") and not parts.query
+            # A site's front or one page; on a PTA platform a mini-site lives under a path or query of its own
+            # (sites.google.com/view/<name>/home, pta-events.co.uk/<name>/index.cfm?event=home), any page of it.
+            shallow = _under(host, PLATFORMS) or ("/" not in parts.path.strip("/") and not parts.query)
             if _pta_host(host):
                 if not _under(host, PLATFORMS):
                     target = urlunsplit((parts.scheme, parts.netloc, "/", "", ""))
@@ -974,8 +982,9 @@ class Fetcher:
             rp.disallow_all = True
         return Robots(rp, verdict, status, float(delay) if delay else None)
 
-    def _fetch_robots(self, origin, verify, tally):
-        """(verdict, status, crawl delay, rules text) per crawl_spec §6; redirects followed by hand."""
+    def _fetch_robots(self, origin, verify, tally, nested=False):
+        """(verdict, status, crawl delay, rules text) per crawl_spec §6; redirects followed by hand, each hop
+        checked by _robots_hop first."""
         url = origin + "/robots.txt"
         for _ in range(MAX_REDIRECTS + 1):
             try:
@@ -988,6 +997,9 @@ class Fetcher:
                 return "deny", f"challenge_{status}", None, ""
             if 300 <= (status or 0) < 400 and final and final != url and not never_fetch(final):
                 url = norm_url(final)
+                refused = self._robots_hop(origin, url, verify, tally, nested)
+                if refused:
+                    return refused
                 continue
             if status == 200:
                 if "<html" in text[:500].lower():
@@ -1006,30 +1018,51 @@ class Fetcher:
             return "allow", f"http_{status}", None, ""
         return "allow", "too_many_redirects", None, ""
 
+    def _robots_hop(self, origin, url, verify, tally, nested):
+        """None when origin's robots.txt redirect to url may be followed, else the (verdict, status, delay, text)
+        origin gets instead. Another robots.txt, or a page on origin itself, is followed; a page on another origin
+        only when that origin's robots.txt allows it now. That look-up takes no lock and never goes off-site
+        again, so robots.txt files redirecting to each other cannot deadlock or loop."""
+        target = _origin(url)
+        if target == origin or (urlsplit(url).path == "/robots.txt" and not urlsplit(url).query):
+            return None
+        if nested:
+            return "deny", "redirect_offsite", None, ""
+        robots = self._robots.get(target) or self._learn(target, verify, tally, nested=True)
+        status, reason = self._verdict(robots, url)
+        if status == "ok":
+            return None
+        # A robots.txt we may not read is one we cannot reach: disallow all (RFC 9309 §2.3.1.4), or for an
+        # error retry next run.
+        return ("error" if status == "error" else "deny"), "redirect_" + reason, None, ""
+
+    def _learn(self, origin, verify, tally, nested=False) -> Robots:
+        verdict, status, delay, text = self._fetch_robots(origin, verify, tally, nested)
+        robots = self._robots_from(verdict, status, delay, text)
+        if status == "redirect_offsite":
+            return robots   # cut short only because it was looked up for another robots.txt: not origin's answer
+        self._robots[origin] = robots
+        if robots.delay:
+            host = host_key(origin)
+            with self._lock:
+                self._delay[host] = max(self._delay.get(host, 0), robots.delay)
+            self.limiter.defer(host, robots.delay)   # the robots.txt request starts the Crawl-delay clock
+        if verdict != "error" and not status.startswith("net_"):
+            self._remember(origin, robots, text)
+        return robots
+
     def robots(self, url, verify=True, tally=None) -> Robots:
-        parts = urlsplit(url)
-        origin = f"{parts.scheme}://{parts.netloc}"
+        origin = _origin(url)
         with self._lock:
             lock = self._locks[origin]
         with lock:
             cached = self._robots.get(origin)
             if cached and not (cached.status.startswith("net_") and not verify):
                 return cached
-            verdict, status, delay, text = self._fetch_robots(origin, verify, tally)
-            robots = self._robots_from(verdict, status, delay, text)
-            self._robots[origin] = robots
-            if robots.delay:
-                host = host_key(origin)
-                with self._lock:
-                    self._delay[host] = max(self._delay.get(host, 0), robots.delay)
-                self.limiter.defer(host, robots.delay)   # the robots.txt request starts the Crawl-delay clock
-            if verdict != "error" and not status.startswith("net_"):
-                self._remember(origin, robots, text)
-            return robots
+            return self._learn(origin, verify, tally)
 
     def robots_note(self, url) -> dict | None:
-        parts = urlsplit(url)
-        robots = self._robots.get(f"{parts.scheme}://{parts.netloc}")
+        robots = self._robots.get(_origin(url))
         return {"status": robots.status, "crawl_delay": robots.delay} if robots else None
 
     def allowed(self, url) -> bool:
@@ -1037,14 +1070,14 @@ class Fetcher:
 
     def _permission(self, url, verify=True, slow=False, tally=None):
         """('ok', None) or (page status, reason) for fetching url now."""
-        robots = self.robots(url, verify, tally)
+        return self._verdict(self.robots(url, verify, tally), url, slow)
+
+    def _verdict(self, robots, url, slow=False):
         if robots.verdict == "error":
             return "error", "robots_" + robots.status
         if robots.verdict == "deny":
             return "robots", "robots_" + robots.status
         delay = robots.delay or 0
-        if delay > SLOW_MAX_DELAY:
-            return "robots", f"crawl_delay_{delay:g}s"
         if delay > MAX_CRAWL_DELAY and not slow:
             return "slow", f"crawl_delay_{delay:g}s"
         try:
@@ -1056,10 +1089,15 @@ class Fetcher:
 
     def get(self, url, *, verify=True, timeout=None, slow=False, tally=None) -> Page:
         """One page, each redirect hop robots-checked and paced. slow=True honours a Crawl-delay above
-        MAX_CRAWL_DELAY in full (the slow lane), giving up with Stopped when self.stop is set."""
+        MAX_CRAWL_DELAY in full (the slow lane), giving up with Stopped when self.stop is set. A URL on the
+        never-fetch lists is 'skipped' unrequested, robots.txt included."""
         current = url
         for hop in range(MAX_REDIRECTS + 1):
-            if hop and never_fetch(current):
+            skip = never_fetch(current)
+            if skip and not hop:
+                self._count("skipped", tally)
+                return Page(current, "", "skipped", "never_fetch_" + skip)
+            if skip:
                 self._count("errors", tally)
                 return Page(current, "", "error", "redirect_to_skipped")
             status, reason = self._permission(current, verify, slow, tally)
@@ -1095,8 +1133,9 @@ def crawl_site(start_url, fetcher, enough=None, max_pages=MAX_PAGES, *, timeout=
     The homepage first (an unverified TLS retry after a certificate error, or www. toggled after a DNS
     failure; a meta refresh followed on a near-empty page), then links in priority order within the per-kind
     caps, until enough(candidates, domains) is true or max_pages pages have been tried. status is the
-    homepage's: ok | robots | blocked | slow | error. incomplete means a page failed in a way worth retrying;
-    deferred means a page needs the slow lane. domains are the sites crawled for the school.
+    homepage's: ok | robots | blocked | slow | error | skipped. incomplete means a page (the meta refresh
+    target included) failed in a way worth retrying; deferred means a page needs the slow lane. domains are
+    the sites crawled for the school.
     """
     candidates, trail, queue, seen, caps = [], [], [], set(), Counter()
     unverified, pta_sites = set(), set()
@@ -1105,9 +1144,15 @@ def crawl_site(start_url, fetcher, enough=None, max_pages=MAX_PAGES, *, timeout=
     def fetch(url, kind, depth, verify=True):
         page = fetcher.get(url, verify=verify and host_key(url) not in unverified, timeout=timeout, slow=slow, tally=tally)
         trail.append({"url": url, "final": page.url, "kind": kind, "depth": depth, "status": page.status, "err": page.err})
-        if page.status != "robots":
+        if page.status not in ("robots", "skipped"):
             state["pages"] += 1
         return page
+
+    def note_failure(page):
+        if page.status == "slow":
+            state["deferred"] = True
+        else:
+            state["incomplete"] = state["incomplete"] or transient(page)
 
     def result(status, site=None):
         domains = ({site} | pta_sites) if site else set()
@@ -1131,6 +1176,8 @@ def crawl_site(start_url, fetcher, enough=None, max_pages=MAX_PAGES, *, timeout=
             refreshed = fetch(target, "home_refresh", 0)
             if refreshed.status == "ok":
                 home, parsed = refreshed, parse(refreshed.html)
+            else:   # carry on with the stub, but a target that may answer later is worth a re-crawl
+                note_failure(refreshed)
     site = site_of(host_key(home.url))   # a homepage redirecting to another domain makes that the school's site
     school_host = host_key(home.url)
 
@@ -1164,10 +1211,8 @@ def crawl_site(start_url, fetcher, enough=None, max_pages=MAX_PAGES, *, timeout=
         seen.add(link.url.rstrip("/"))
         caps[link.kind] += 1
         page = fetch(link.url, link.kind, link.depth)
-        if page.status == "slow":
-            state["deferred"] = True
-        elif page.status != "ok":
-            state["incomplete"] = state["incomplete"] or transient(page)
+        if page.status != "ok":
+            note_failure(page)
         elif page.url.rstrip("/") not in seen or page.url == link.url:
             stop = visit(page, parse(page.html), link.kind, link.depth)
     return result("ok", site)
@@ -1292,17 +1337,23 @@ def _atomic_lines(path, rows):
 
 
 class Journal:
-    """results.jsonl: one line per finished school, appended and flushed under a lock; a later line for a URN wins."""
+    """results.jsonl: one line per finished school, appended and flushed under a lock; a later line for a URN wins.
+    A line cut short by a crash is skipped on reading, and ended before the next line is appended."""
 
     def __init__(self, path):
         self.path = Path(path)
         self._lock = threading.Lock()
 
     def append(self, line):
+        data = (json.dumps(line, ensure_ascii=False) + "\n").encode("utf-8")
         with self._lock:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(line, ensure_ascii=False) + "\n")
+            with open(self.path, "a+b") as f:
+                if f.seek(0, os.SEEK_END):
+                    f.seek(-1, os.SEEK_END)
+                    if f.read(1) != b"\n":
+                        data = b"\n" + data
+                f.write(data)
                 f.flush()
 
     def latest(self) -> dict[str, dict]:
@@ -1369,8 +1420,8 @@ def write_outputs(out, latest) -> dict:
         "schools": {urn: review[urn] for urn in sorted(review)}})
     failed = sorted(set(by["error"]) | set(by["incomplete"]) | set(by["slow"]) | set(by["crawler_error"]))
     _atomic_write(state_path(out), {"generated": now, "no_pta": sorted(by["no_pta"]), "robots": sorted(by["robots"]),
-                                    "blocked": sorted(by["blocked"]), "review": sorted(by["review_only"]),
-                                    "failed": failed, "held": held})
+                                    "blocked": sorted(by["blocked"]), "skipped": sorted(by["skipped"]),
+                                    "review": sorted(by["review_only"]), "failed": failed, "held": held})
     return {"kept": kept, "held": held, "review": review, "outcomes": outcomes, "failed": failed}
 
 
@@ -1496,7 +1547,8 @@ def run(schools, fetcher, registry, out, *, workers=MAX_WORKERS, shared=None, lo
         f"{len(kept):,} with a PTA number ({sum(map(len, kept.values())):,} charities), "
         f"{len(summary['held']):,} held as shared, {len(summary['review']):,} for review, {outcomes['no_pta']:,} none found, "
         f"{outcomes['robots']:,} robots-blocked, {outcomes['blocked']:,} behind a bot check, "
-        f"{len(summary['failed']):,} to retry with --resume; {stats['requests']:,} requests ({time.time() - start:.0f}s)")
+        f"{outcomes['skipped']:,} with a website never fetched, {len(summary['failed']):,} to retry with --resume; "
+        f"{stats['requests']:,} requests ({time.time() - start:.0f}s)")
     return dict(summary, interrupted=stop.is_set())
 
 

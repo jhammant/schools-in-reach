@@ -564,6 +564,27 @@ class CrawlTest(NoNetworkTest):
         self.assertIn("https://d.example/robots.txt", [c["url"] for c in web.calls])
         self.assertTrue(spaced(web.times("d.example"), 1.0), web.calls)
 
+    def test_robots_redirects_are_followed_only_where_allowed(self):
+        # Arrange: one robots.txt moves to an allowed page on a rules host, two others redirect to each other.
+        clock = FakeClock()
+        web = FakeWeb({"http://a.example/robots.txt": (301, "", "https://a.example/robots.txt"),
+                       "https://a.example/robots.txt": (302, "", "https://rules.example/a.txt"),
+                       "https://rules.example/robots.txt": "User-agent: *\nDisallow: /private\n",
+                       "https://rules.example/a.txt": "User-agent: *\nDisallow: /staff\n",
+                       "https://loop1.example/robots.txt": (302, "", "https://loop2.example/rules"),
+                       "https://loop2.example/robots.txt": (302, "", "https://loop1.example/rules")}, clock)
+        crawler = fetcher(web)
+        # Act
+        moved = crawler.robots("http://a.example/")
+        looped = crawler.robots("https://loop1.example/")
+        # Assert: a's rules come from the allowed page; the loop ends in a refusal without fetching either page.
+        self.assertEqual(moved.verdict, "rules")
+        self.assertFalse(crawler.allowed("http://a.example/staff"))
+        self.assertTrue(crawler.allowed("http://a.example/pta/"))
+        self.assertEqual(looped.verdict, "deny")
+        self.assertEqual([u for u in web.page_urls() if "loop" in u], [])
+        self.assertTrue(spaced(web.times("rules.example"), 1.0), web.calls)
+
     def test_crawl_delay_is_honoured_from_the_robots_request(self):
         # Arrange
         clock = FakeClock()
@@ -581,17 +602,22 @@ class CrawlTest(NoNetworkTest):
         clock = FakeClock()
         web = FakeWeb({"https://nettl.example/robots.txt": "User-agent: *\nCrawl-delay: 300\n",
                        "https://nettl.example/": page('<a href="/pta/">PTA</a>'),
-                       "https://never.example/robots.txt": "User-agent: *\nCrawl-delay: 12000\n"}, clock)
+                       "https://sleepy.example/robots.txt": "User-agent: *\nCrawl-delay: 12000\n",
+                       "https://sleepy.example/": page("<p>Welcome</p>")}, clock)
         crawler = fetcher(web)
         # Act
         main_pass = pta_crawl.crawl_site("https://nettl.example/", crawler)
         slow_lane = pta_crawl.crawl_site("https://nettl.example/", crawler, slow=True)
-        never = pta_crawl.crawl_site("https://never.example/", crawler, slow=True)
+        sleepy_main = pta_crawl.crawl_site("https://sleepy.example/", crawler)
+        sleepy_slow = pta_crawl.crawl_site("https://sleepy.example/", crawler, slow=True)
         # Assert
         self.assertEqual((main_pass.status, main_pass.trail[0]["err"]), ("slow", "crawl_delay_300s"))
         self.assertEqual((slow_lane.status, [p["kind"] for p in slow_lane.trail]), ("ok", ["home", "pta"]))
         self.assertTrue(spaced(web.times("nettl.example"), 300.0), web.times("nettl.example"))
-        self.assertEqual((never.status, never.trail[0]["err"]), ("robots", "crawl_delay_12000s"))
+        # However long the delay, the slow lane honours it in full rather than refusing the host.
+        self.assertEqual((sleepy_main.status, sleepy_main.trail[0]["err"]), ("slow", "crawl_delay_12000s"))
+        self.assertEqual(sleepy_slow.status, "ok")
+        self.assertTrue(spaced(web.times("sleepy.example"), 12000.0), web.times("sleepy.example"))
 
     def test_slow_lane_wait_gives_up_when_stopping(self):
         # Arrange
@@ -851,6 +877,23 @@ class MainTest(NoNetworkTest):
         self.assertEqual(rebuilt, first)
         self.assertEqual(sorted(json.loads(line)["urn"] for line in lines), ["100001", "100005", "130932"])
         self.assertEqual({json.loads(line)["pass"] for line in lines}, {"main"})
+
+    def test_never_fetched_websites_are_skipped_for_good(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Arrange: two register websites that are themselves on the never-fetch lists.
+            root = Path(tmp)
+            write_fixture(root, [
+                {"urn": 100006, "name": "Facebook Primary School", "website": "https://www.facebook.com/fbprimary"},
+                {"urn": 100007, "name": "Leaflet Primary School", "website": "https://leaflet.example/docs/home.pdf"}])
+            # Act
+            web, out, printed = self.run_main(root)
+            data, state = self.read(out), self.read(pta_crawl.state_path(out))
+            again, _, _ = self.run_main(root, "--resume")
+        # Assert: nothing requested, robots.txt included, and --resume does not come back to them.
+        self.assertEqual((web.calls, again.calls), ([], []))
+        self.assertEqual(data["meta"]["outcomes"], {"skipped": 2})
+        self.assertEqual((state["skipped"], state["failed"]), (["100006", "100007"], []))
+        self.assertIn("2 with a website never fetched", printed)
 
     def test_urns_and_council_filters(self):
         with tempfile.TemporaryDirectory() as tmp:
