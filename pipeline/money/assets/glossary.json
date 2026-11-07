@@ -334,8 +334,8 @@
   },
   "status_heading_for_deficit": {
     "label": "Heading for deficit",
-    "plain": "The school still has savings, but has spent more than it received for several years and will use them up soon unless something changes.",
-    "how": "Reserve above zero, in-year balance below zero in each of the last three years, and the reserve would run out within about three years at that rate.",
+    "plain": "The school still has savings, but has spent more than it received for two or more years running and would use them up within about three years unless something changes.",
+    "how": "Revenue reserve above zero, in-year balance below zero in at least the last two full years running, and at the average rate of those overspends the reserve would run out within three years (exactly three counts).",
     "source": "pipeline/money/status.py",
     "ifs": "framings.one_deficit_year"
   },

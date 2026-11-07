@@ -36,6 +36,21 @@ test("fmtMoney formats like charts.money", () => {
   assert.equal(M.fmtMoney("x"), "—");
 });
 
+test("unitOf and fmtUnit keep percentages and counts out of pounds", () => {
+  assert.equal(M.unitOf("in_deficit_pct", null, ""), "pct");
+  assert.equal(M.unitOf("total_income", null, "£1.2m £6,000 per pupil"), "money");
+  assert.equal(M.unitOf("reserve_share", null, "4.5%"), "pct");
+  assert.equal(M.unitOf("revenue_reserve_incl_trust_share", null, "£80k"), "money");
+  assert.equal(M.unitOf("schools", "n", ""), "n");
+  assert.equal(M.fmtUnit(12.4, "pct"), "12.4%");
+  assert.equal(M.fmtUnit(12, "pct"), "12%");
+  assert.equal(M.fmtUnit(-2.5, "pct", true), "-2.5%");
+  assert.equal(M.fmtUnit(1234, "n"), "1,234");
+  assert.equal(M.fmtUnit(null, "pct"), "—");
+  assert.equal(M.fmtUnit(1_234_567, "money"), "£1.2m");
+  assert.equal(M.fmtUnit(1_234_567, "money", false, true), "£1,234,567");
+});
+
 test("perPupil divides by the same row's pupils and is null without pupils", () => {
   assert.equal(M.perPupil(1_234_567, 300), 4115);
   assert.equal(M.perPupil(1000, null), null);

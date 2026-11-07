@@ -185,6 +185,10 @@ button.pin[aria-pressed="true"] { background: var(--accent-soft); border-color: 
 .pinbar .msg { flex-basis: 100%; font-size: .85rem; color: var(--card-2); }
 .pinbar .names { color: var(--card-2); font-size: .85rem; }
 body.has-pinbar main { padding-bottom: 120px; }
+.pin-import { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin: 24px 0 8px; padding: 14px 16px; border: 1px solid var(--line);
+  border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--card); font-size: .95rem; }
+.pin-import[hidden] { display: none; }
+.pin-import .lead { flex: 1 1 100%; color: var(--ink-2); }
 
 /* ---------- previews ---------- */
 .preview { position: fixed; z-index: 55; width: min(320px, calc(100vw - 16px)); padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius);
@@ -289,6 +293,6 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
   .listbox li, nav.main-nav a, button.pin { transition: background-color .12s; }
 }
 @media print {
-  header.top form.search, fieldset.audience, .pinbar, .drill, .drill-backdrop, .tooltip, .preview, button.pin { display: none !important; }
+  header.top form.search, fieldset.audience, .pinbar, .pin-import, .drill, .drill-backdrop, .tooltip, .preview, button.pin { display: none !important; }
   body { background: #fff; color: #000; }
 }

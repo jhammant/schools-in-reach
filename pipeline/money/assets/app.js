@@ -25,6 +25,24 @@
     var sign = v < 0 ? "-" : (signed && v > 0 ? "+" : "");
     return sign + "£" + Math.round(Math.abs(v)).toLocaleString("en-GB");
   }
+  // Units: "money" (the default), "pct" (a share, one decimal) or "n" (a count). Taken from an explicit
+  // data-unit, then a glossary key ending in _pct, then a % sign in the figure's own text.
+  function unitOf(key, explicit, text) {
+    if (explicit === "pct" || explicit === "n" || explicit === "money") return explicit;
+    if (/_pct$/.test(key || "")) return "pct";
+    var t = String(text == null ? "" : text);
+    if (t.indexOf("%") !== -1 && t.indexOf("£") === -1) return "pct";
+    return "money";
+  }
+  function fmtUnit(v, unit, signed, exact) {
+    if (unit === "pct" || unit === "n") {
+      if (v == null || typeof v !== "number" || !isFinite(v)) return "—";
+      var sign = v < 0 ? "-" : (signed && v > 0 ? "+" : ""), a = Math.abs(v);
+      if (unit === "n") return sign + Math.round(a).toLocaleString("en-GB");
+      return sign + (a >= 100 ? String(Math.round(a)) : String(+a.toFixed(1))) + "%";
+    }
+    return exact ? fmtExact(v, signed) : fmtMoney(v, signed);
+  }
   function perPupil(v, pupils) {
     if (v == null || typeof v !== "number" || !isFinite(v)) return null;
     if (typeof pupils !== "number" || !isFinite(pupils) || pupils <= 0) return null;
@@ -119,7 +137,7 @@
   var API = {
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
-    slugify: slugify
+    slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit
   };
   root.MoneyApp = API;
   if (typeof document === "undefined") return;
@@ -213,15 +231,17 @@
   function figureData(mf) {
     var key = mf.getAttribute("data-mf") || "";
     var g = term(key) || {};
+    var unit = unitOf(key, mf.getAttribute("data-unit"), mf.textContent), money = unit === "money";
     return {
       key: key,
+      unit: unit,
       label: mf.getAttribute("data-label") || g.label || key.replace(/_/g, " "),
       v: num(mf.getAttribute("data-v")),
-      pp: num(mf.getAttribute("data-pp")),
+      pp: money ? num(mf.getAttribute("data-pp")) : null,
       year: mf.getAttribute("data-year") || "",
       src: mf.getAttribute("data-src") || "",
-      similar: num(mf.getAttribute("data-cmp-similar")),
-      england: num(mf.getAttribute("data-cmp-england")),
+      similar: money ? num(mf.getAttribute("data-cmp-similar")) : null,
+      england: money ? num(mf.getAttribute("data-cmp-england")) : null,
       drill: mf.getAttribute("data-drill") || "",
       signed: mf.hasAttribute("data-signed"),
       plain: g.plain || "", how: g.how || "", source: g.source || ""
@@ -247,10 +267,13 @@
     var d = figureData(target);
     tip.appendChild(el("b", null, d.label + (d.year ? " · " + d.year : "")));
     if (d.plain) tip.appendChild(el("div", "plain", d.plain));
-    var row = el("div", "row");
-    row.appendChild(el("span", null, "Total"));
-    row.appendChild(el("span", "num", fmtExact(d.v, d.signed)));
-    tip.appendChild(row);
+    var row;
+    if (d.v != null) {
+      row = el("div", "row");
+      row.appendChild(el("span", null, d.unit === "pct" ? "Share" : d.unit === "n" ? "Count" : "Total"));
+      row.appendChild(el("span", "num", fmtUnit(d.v, d.unit, d.signed, true)));
+      tip.appendChild(row);
+    }
     if (d.pp != null) {
       row = el("div", "row");
       row.appendChild(el("span", null, "Per pupil"));
@@ -328,6 +351,7 @@
   }
   function closeDrill() {
     if (!drill || drill.hidden) return;
+    drillSeq++;
     drill.hidden = true;
     backdrop.hidden = true;
     drillStack = [];
@@ -335,7 +359,8 @@
     if (drillOpener && drillOpener.focus) drillOpener.focus();
     drillOpener = null;
   }
-  function sparkline(series) {
+  function sparkline(series, fmt) {
+    fmt = fmt || fmtMoney;
     var pts = (series || []).filter(function (s) { return s && typeof s.v === "number" && isFinite(s.v); });
     if (pts.length < 2) return null;
     var NS = "http://www.w3.org/2000/svg", W = 320, H = 72, L = 4, R = 4, T = 10, B = 16;
@@ -348,7 +373,7 @@
     svg.setAttribute("class", "spark");
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", pts.map(function (p) { return p.y + ": " + fmtMoney(p.v); }).join(", "));
+    svg.setAttribute("aria-label", pts.map(function (p) { return p.y + ": " + fmt(p.v); }).join(", "));
     if (lo < 0) {
       var z = document.createElementNS(NS, "line");
       z.setAttribute("class", "zero");
@@ -369,21 +394,37 @@
     });
     return svg;
   }
-  function figureSpan(key, v, pp, year, label, src) {
-    var s = el("span", "mf", fmtMoney(v));
+  // A money figure built in the browser, following the same data-* contract as site.money_figure() so the
+  // tooltip and drill-down work on it. opts: {unit, signed, similar, england, ppFirst (per-pupil as the
+  // headline, total in small print: used where the row is already "per pupil")}.
+  function figureSpan(key, v, pp, year, label, src, opts) {
+    opts = opts || {};
+    var unit = unitOf(key, opts.unit, "");
+    if (typeof v !== "number" || !isFinite(v)) v = null;
+    if (typeof pp !== "number" || !isFinite(pp) || unit !== "money") pp = null;
+    var ppFirst = !!opts.ppFirst && pp != null;
+    var s = el("span", "mf", ppFirst ? fmtExact(pp, opts.signed) : fmtUnit(v, unit, opts.signed, false));
     s.setAttribute("data-mf", key || "cfr_line");
     s.setAttribute("data-v", v == null ? "" : String(v));
     if (pp != null) s.setAttribute("data-pp", String(pp));
     s.setAttribute("data-year", year || "");
+    if (unit !== "money") s.setAttribute("data-unit", unit);
     if (label) s.setAttribute("data-label", label);
     if (src) s.setAttribute("data-src", src);
-    if (pp != null) { s.appendChild(document.createTextNode(" ")); s.appendChild(el("small", null, fmtExact(pp) + " per pupil")); }
+    if (opts.signed) s.setAttribute("data-signed", "1");
+    if (typeof opts.similar === "number") s.setAttribute("data-cmp-similar", String(Math.round(opts.similar)));
+    if (typeof opts.england === "number") s.setAttribute("data-cmp-england", String(Math.round(opts.england)));
+    var small = null;
+    if (ppFirst) { if (v != null) small = fmtMoney(v, opts.signed) + " total"; }
+    else if (pp != null) small = fmtExact(pp, opts.signed) + " per pupil";
+    if (small) { s.appendChild(document.createTextNode(" ")); s.appendChild(el("small", null, small)); }
     return s;
   }
-  function renderDrill(d, data) {
+  // Empties the panel and puts back its header (title + close button); returns the close button.
+  function drillShell(title) {
     drill.textContent = "";
     var head = el("header");
-    var h2 = el("h2", null, (data && data.title) || d.label);
+    var h2 = el("h2", null, title);
     h2.id = "drill-title";
     head.appendChild(h2);
     var close = el("button", "close", "×");
@@ -392,6 +433,10 @@
     close.addEventListener("click", closeDrill);
     head.appendChild(close);
     drill.appendChild(head);
+    return close;
+  }
+  function renderDrill(d, data) {
+    var close = drillShell((data && data.title) || d.label);
     if (drillStack.length > 1) {
       var back = el("button", "button quiet", "‹ Back");
       back.type = "button";
@@ -400,8 +445,12 @@
     }
     var year = (data && data.year) || d.year;
     if (year) drill.appendChild(el("p", "year", year));
-    var headline = el("p", "headline", fmtExact(d.v, d.signed));
-    if (d.pp != null) headline.appendChild(el("small", null, fmtExact(d.pp, d.signed) + " per pupil"));
+    var headline;
+    if (d.v == null && d.pp != null) headline = el("p", "headline", fmtExact(d.pp, d.signed) + " per pupil");
+    else {
+      headline = el("p", "headline", fmtUnit(d.v, d.unit, d.signed, true));
+      if (d.pp != null) headline.appendChild(el("small", null, fmtExact(d.pp, d.signed) + " per pupil"));
+    }
     drill.appendChild(headline);
     var s = compareText(d.pp, d.similar, "similar schools"), e = compareText(d.pp, d.england, "England");
     if (s || e) {
@@ -411,7 +460,7 @@
       if (e) { cmp.appendChild(el("span", null, "England")); cmp.appendChild(el("span", null, e)); }
       drill.appendChild(cmp);
     }
-    var spark = data && sparkline(data.series);
+    var spark = data && sparkline(data.series, function (v) { return fmtUnit(v, d.unit, false, false); });
     if (spark) { drill.appendChild(el("h3", null, "Over time")); drill.appendChild(spark); }
     if (data && Array.isArray(data.rows) && data.rows.length) {
       drill.appendChild(el("h3", null, "Breakdown"));
@@ -424,7 +473,7 @@
         th.scope = "row";
         tr.appendChild(th);
         var td = tr.insertCell();
-        td.appendChild(figureSpan(r.key, r.v, r.pp, year, r.label, data.src));
+        td.appendChild(figureSpan(r.key, r.v, r.pp, year, r.label, data.src, { unit: r.unit, signed: !!r.signed }));
       });
       drill.appendChild(table);
       enhanceFigures(table);
@@ -444,15 +493,26 @@
     }
     close.focus();
   }
+  // Each open bumps drillSeq; closing does too. A reply only renders if it belongs to the current open.
+  var drillSeq = 0;
   function openDrill(mf) {
     buildDrill();
     hideTip();
     var inPanel = drill.contains(mf);
     if (!inPanel) { drillOpener = mf; drillStack = []; }
+    var seq = ++drillSeq;
     drill.hidden = false;
     backdrop.hidden = false;
     document.body.style.overflow = "hidden";
+    // The dialog shell goes up at once, so focus moves inside it and Escape / the close button work while
+    // the glossary and breakdown are still loading.
+    var close = drillShell(figureData(mf).label);
+    var busy = el("p", "muted", "Loading…");
+    busy.setAttribute("role", "status");
+    drill.appendChild(busy);
+    close.focus();
     loadGlossary().then(function () {
+      if (seq !== drillSeq) return;
       var d = figureData(mf);
       var ref = d.drill;
       var loader;
@@ -464,6 +524,7 @@
       } else if (ref) loader = fetchJSON(ref);
       else loader = Promise.resolve(null);
       loader.then(function (data) {
+        if (seq !== drillSeq || drill.hidden) return;
         drillStack.push({ d: d, data: data });
         renderDrill(d, data);
       });
@@ -541,10 +602,43 @@
       clear.addEventListener("click", function () { pins = []; pinMsg = null; refreshPins(); });
       pinbar.appendChild(clear);
     }
-    var sl = storeGet("shortlist", null), pl = storeGet("plan", null);
-    [["shortlist", sl], ["plan", pl]].forEach(function (pair) {
-      if (!Array.isArray(pair[1]) || !pair[1].length) return;
-      var btn = el("button", null, "Import Schools in Reach " + pair[0] + " (" + pair[1].length + ")");
+    if (msg) {
+      var m = el("span", "msg", msg);
+      m.setAttribute("aria-live", "polite");
+      pinbar.appendChild(m);
+    }
+    refreshImports();
+  }
+  // One-tap import of Schools in Reach's saved "shortlist" and "plan". The controls sit in their own
+  // in-flow region ([data-pin-import] slot, else the end of <main>), so they are reachable before the first
+  // pin; the pin bar only appears once something is pinned. "Not now" (or an import) hides the region until
+  // the saved lists change.
+  var KEY_IMPORT_SEEN = "moneyImportSeen", importBox = null;
+  function importLists() {
+    return [["shortlist", storeGet("shortlist", null)], ["plan", storeGet("plan", null)]]
+      .filter(function (pair) { return Array.isArray(pair[1]) && pair[1].length; });
+  }
+  function importSignature(lists) {
+    return lists.map(function (pair) { return pair[0] + ":" + pair[1].map(String).sort().join(","); }).join("|");
+  }
+  function refreshImports() {
+    var lists = importLists();
+    var signature = importSignature(lists);
+    var show = lists.length && storeGet(KEY_IMPORT_SEEN, null) !== signature;
+    if (!importBox) {
+      if (!show) return;
+      importBox = el("div", "pin-import");
+      importBox.setAttribute("role", "region");
+      importBox.setAttribute("aria-label", "Schools saved on Schools in Reach");
+      var slot = $("[data-pin-import]") || document.getElementById("main") || document.body;
+      slot.appendChild(importBox);
+    }
+    importBox.textContent = "";
+    importBox.hidden = !show;
+    if (!show) return;
+    importBox.appendChild(el("span", "lead", "Pin the schools you saved on Schools in Reach to compare their money here."));
+    lists.forEach(function (pair) {
+      var btn = el("button", "button", "Import Schools in Reach " + pair[0] + " (" + pair[1].length + ")");
       btn.type = "button";
       btn.addEventListener("click", function () {
         loadIndex().then(function (rows) {
@@ -553,16 +647,16 @@
           pinMsg = r.added ? "Added " + r.added + " from your " + pair[0] + "." : "Nothing new to add from your " + pair[0] + ".";
           if (r.skipped) pinMsg += " " + r.skipped + " left out: up to " + pinLimits.school + " schools can be pinned.";
           if (r.unknown) pinMsg += " " + r.unknown + " without a money page.";
+          storeSet(KEY_IMPORT_SEEN, signature);
           refreshPins();
         });
       });
-      pinbar.appendChild(btn);
+      importBox.appendChild(btn);
     });
-    if (msg) {
-      var m = el("span", "msg", msg);
-      m.setAttribute("aria-live", "polite");
-      pinbar.appendChild(m);
-    }
+    var later = el("button", "button quiet", "Not now");
+    later.type = "button";
+    later.addEventListener("click", function () { storeSet(KEY_IMPORT_SEEN, signature); refreshImports(); });
+    importBox.appendChild(later);
   }
   function parsePin(b) {
     try { var item = JSON.parse(b.getAttribute("data-pin")); return item && item.id != null ? item : null; } catch (e) { return null; }
@@ -658,7 +752,7 @@
       if (list.hidden && (e.key === "ArrowDown") && input.value.trim()) { run(); return; }
       if (list.hidden) return;
       if (e.key === "ArrowDown") { e.preventDefault(); setActive(options.length ? (active + 1) % options.length : -1); }
-      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(options.length ? (active - 1 + options.length) % options.length : -1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setActive(!options.length ? -1 : active <= 0 ? options.length - 1 : active - 1); }
       else if (e.key === "Enter" && active >= 0) { e.preventDefault(); options[active].click(); }
       else if (e.key === "Escape") { hide(); }
     });
@@ -724,6 +818,11 @@
       cardFor = null;
       if (card) card.hidden = true;
     }
+    // Mouse: hover shows after a short delay, leaving hides. Keyboard: focus shows, blur hides.
+    // Touch: the first tap shows the card (and, on a link, does not follow it); a second tap follows the
+    // link or, on anything else, hides the card. Tapping elsewhere hides it.
+    var touched = null, touchedAt = 0;
+    function isTouch(e, t) { return e.pointerType === "touch" || (touched === t && Date.now() - touchedAt < 1000); }
     document.addEventListener("pointerover", function (e) {
       if (e.pointerType === "touch") return;
       var t = e.target.closest && e.target.closest("[data-preview]");
@@ -732,8 +831,16 @@
       timer = setTimeout(function () { show(t); }, 150);
     });
     document.addEventListener("pointerout", function (e) {
+      if (e.pointerType === "touch") return;
       var t = e.target.closest && e.target.closest("[data-preview]");
       if (t && !(e.relatedTarget && t.contains(e.relatedTarget))) hide();
+    });
+    document.addEventListener("pointerdown", function (e) {
+      if (e.pointerType !== "touch") return;
+      var t = e.target.closest && e.target.closest("[data-preview]");
+      touched = t || null;
+      touchedAt = Date.now();
+      if (!t && cardFor && !(card && card.contains(e.target))) hide();
     });
     document.addEventListener("focusin", function (e) {
       var t = e.target.closest && e.target.closest("[data-preview]");
@@ -742,7 +849,13 @@
     document.addEventListener("focusout", hide);
     document.addEventListener("click", function (e) {
       var t = e.target.closest && e.target.closest("[data-preview]");
-      if (t && t.tagName !== "A" && !t.closest("a")) { if (cardFor === t) hide(); else show(t); }
+      if (!t) return;
+      var link = t.tagName === "A" || !!t.closest("a");
+      if (link && !isTouch(e, t)) return;
+      var open = cardFor === t && card && !card.hidden;
+      if (open) { if (!link) hide(); return; }
+      e.preventDefault();
+      show(t);
     });
   })();
 
@@ -939,15 +1052,20 @@
       t.row("Pupils", function (i) { var p = at(i).pupils; return p == null ? "—" : Math.round(p).toLocaleString("en-GB"); });
       t.row("Reserve", function (i) { var s = at(i); return figureSpan("revenue_reserve", s.reserve, s.reserve_pp, s.year, null, s.check); });
       t.row("Reserve as % of income", function (i) { var s = at(i); return s.share == null ? "—" : (s.share * 100).toFixed(1) + "%"; });
-      t.row("Last year's balance", function (i) { var s = at(i); return fmtMoney(s.balance, true); });
+      t.row("Last year's balance", function (i) { var s = at(i); return figureSpan("in_year_balance", s.balance, s.balance_pp, s.year, null, s.check, { signed: true }); });
       t.row("Years spending more than income", function (i) { var s = at(i); return s.streak ? String(s.streak) : "—"; });
       t.row("Pupils since first year", function (i) { var s = at(i); return s.pupils_change == null ? "—" : (s.pupils_change > 0 ? "+" : "") + Math.round(s.pupils_change * 100) + "%"; });
+      // Per-pupil categories are money figures too (tooltip, drill-down). The shared school JSON carries
+      // totals only for income and spending; other categories keep data-v empty rather than guess.
+      var TOTALS = { total_income: "income", total_expenditure: "spend" };
       CATS.forEach(function (c) {
         t.row(c[1], function (i) {
-          var s = at(i), v = s.pp[c[0]];
-          if (typeof v !== "number") return "—";
-          var m = s.similar[c[0]];
-          return fmtExact(v) + (typeof m === "number" ? " (similar schools " + fmtExact(m) + ")" : "");
+          var s = at(i), pp = s.pp[c[0]];
+          if (typeof pp !== "number") return "—";
+          var total = TOTALS[c[0]] ? s[TOTALS[c[0]]] : null, m = s.similar[c[0]];
+          var span = figureSpan(c[0], total, pp, s.year, null, s.check, { ppFirst: true, similar: typeof m === "number" ? m : null });
+          if (typeof m === "number") { span.appendChild(document.createTextNode(" ")); span.appendChild(el("small", null, "similar schools " + fmtExact(m))); }
+          return span;
         });
       });
       t.row("Check at source", function (i) { var s = at(i); if (!s.check) return "—"; var a = el("a", null, "DfE benchmarking"); a.href = s.check; a.rel = "noopener"; return a; });
