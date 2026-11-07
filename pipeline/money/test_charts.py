@@ -188,7 +188,7 @@ class TrendChartTest(unittest.TestCase):
         # Act
         root = svg_root(trend(partial=["2024-25"]))
         cash = root.find(".//{*}g[@data-basis='cash']")
-        partial = cash.find("{*}path[@class='line partial']")
+        partial = next(p for p in cash.findall("{*}path") if "partial" in p.attrib["class"].split())
         # Assert
         self.assertIsNotNone(partial)
         self.assertIn("stroke-dasharray", partial.attrib)
@@ -198,8 +198,11 @@ class TrendChartTest(unittest.TestCase):
         # Act
         root = svg_root(trend())
         labels = [t.text for t in root.iter() if t.tag.split("}")[-1] == "text" and t.attrib.get("class") == "direct"]
-        # Assert: one label per line (cash, real and the always-visible line).
+        # Assert: one label per line (cash, real and the always-visible line); a label keeps its colour in both bases.
         self.assertEqual(sorted(labels), ["Similar schools", "This school", "This school"])
+        classes = {g.attrib["data-basis"]: g.find("{*}path").attrib["class"].split() for g in root.iter() if "data-basis" in g.attrib}
+        self.assertIn("s1", classes["cash"])
+        self.assertIn("s1", classes["real"])
 
     def test_bases_sit_in_groups_with_real_hidden_by_default(self):
         # Act
@@ -228,7 +231,10 @@ class TrendChartTest(unittest.TestCase):
         bad = "<script>alert('x')</script> & Co"
         cases = {"escaped": trend(title=bad, desc=bad, lines=[{"label": bad, "values": {"2024-25": 1}, "basis": "cash"}]),
                  "empty": trend(lines=[]), "all_none": trend(lines=[{"label": "x", "values": {y: None for y in YEARS}}]),
-                 "no_years": trend(years=[]), "negative": trend(lines=[{"label": "Reserve", "values": {"2023-24": -50_000, "2024-25": 20_000}}])}
+                 "no_years": trend(years=[]), "negative": trend(lines=[{"label": "Reserve", "values": {"2023-24": -50_000, "2024-25": 20_000}}]),
+                 "one_line_empty": trend(lines=[{"label": "Empty", "values": {y: None for y in YEARS}, "basis": "cash"},
+                                                {"label": "Full", "values": {y: 1_000 for y in YEARS}, "basis": "cash"}]),
+                 "single_year": trend(years=["2024-25"], lines=[{"label": "One", "values": {"2024-25": 5}}])}
         for name, markup in cases.items():
             with self.subTest(name):
                 # Act
