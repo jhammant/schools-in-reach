@@ -51,6 +51,7 @@ NAV = [
     ("Debts", "/debts/"),
     ("Compare", "/compare/"),
     ("Guides", "/guides/"),
+    ("Tools", "/tools/"),
 ]
 
 AUDIENCES = [

@@ -8,19 +8,25 @@ Inputs are local and rebuilt by pipelines; no network:
 - pipeline/.cache/money/pta.json from pipeline/money/pta.py (optional)
 - pipeline/money/data/la_dsg.json (council high-needs balances, committed)
 
-Writes site_money/, served at https://money.schoolsinreach.com: national, council, constituency,
-school, trust, compare, about and stub pages at clean paths; /data/{search,status}.json,
-/data/s/<urn>.json and /data/a/<id>.json for the app; sitemap, robots and 404. Long tables
-continue on /2/, /3/… pages so every page stays under PAGE_BUDGET. pipeline/seo/build_pages.py reads
-/data/status.json to link school pages here.
+Writes site_money/, served at https://money.schoolsinreach.com: national, England, region, council,
+constituency, school, trust, debts, PTFA, compare, about and stub pages at clean paths;
+/data/{search,status}.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's multi-year SERIES) and
+/data/a/<id>.json for the app; sitemap, robots and 404. Every open register school except colleges and
+universities gets a page. Long tables continue on /2/, /3/… pages sized against the page around them,
+so pages stay under AREA_PAGE_TARGET where they can and always under PAGE_BUDGET (SCHOOL_PAGE_BUDGET
+for /school/ pages). pipeline/seo/build_pages.py reads /data/status.json to link school pages here.
 
 Pages are wrapped by pipeline/money/site.py (the app shell) when it is present, else by a
-minimal fallback below with the same signatures. areas.py, timeline.py and deflator.py are
-optional too: pages gain tags, a status timeline and real-terms figures when they import.
+minimal fallback below with the same signatures. The other modules are optional too, each through a
+lazy import with the renderers below as the fallback: areas.py (tags and area statistics), timeline.py,
+deflator.py (real terms), series.py (the SERIES behind charts and drills), school_page.py (the school
+dashboard) and area_pages.py (the area dashboards). After the core pages, the extensions in EXTENSIONS
+(map, deck, Wrapped, guides) write their own pages through write_pages(env).
 """
 import argparse
 import csv
 import hashlib
+import importlib
 import json
 import math
 import re
@@ -54,6 +60,18 @@ try:
     from pipeline.money import deflator
 except ImportError:
     deflator = None
+try:
+    from pipeline.money import series
+except ImportError:  # unit B1's SERIES: local_series below follows the same contract
+    series = None
+try:
+    from pipeline.money import school_page
+except ImportError:  # unit B2's school dashboard: render_school below is the fallback
+    school_page = None
+try:
+    from pipeline.money import area_pages
+except ImportError:  # unit B3's area dashboards: render_council, render_trust, ... are the fallback
+    area_pages = None
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE_MONEY = "https://money.schoolsinreach.com"
@@ -88,9 +106,35 @@ INCOME_LINES = [
 TOP_N = 10
 # No rendered page may reach PAGE_BUDGET. Schools in Reach keeps its pages under 40 KB; here every £ figure
 # carries data-* metadata for the app and the shell is richer, so the ceiling is 48 KB (about 8 KB gzipped).
+# School dashboards carry several years of every line, so /school/ pages get SCHOOL_PAGE_BUDGET.
 PAGE_BUDGET = 48_000
-TABLE_BUDGET = 24_000  # bytes of table rows on one page, leaving room for the page around them
-DSG_YEARS = 6          # years of DSG balances listed on a page (the area JSON carries them all)
+SCHOOL_PAGE_BUDGET = 64_000
+AREA_PAGE_TARGET = 40_000  # paged tables are cut so each page, shell included, stays under this when it can
+SX_BUDGET = 12_000         # bytes of one /data/sx/<urn>.json
+SIMILAR_MIN = 5            # similar schools with a value before their median is passed to a page
+DSG_YEARS = 6              # years of DSG balances listed on a page (the area JSON carries them all)
+SCHOOL_HEAD = '<link rel="stylesheet" href="/assets/school.css"><script src="/assets/trend.js" defer></script>'
+AREA_HEAD = '<link rel="stylesheet" href="/assets/areas.css"><script src="/assets/trend.js" defer></script>'
+EXTENSIONS = ("map_page", "deck", "wrapped", "guides")
+NOT_SCHOOLS = {"Further education", "Higher education institutions", "Sixth form centres"}
+NOT_SCHOOL_GROUPS = {"Colleges", "Universities"}
+# series.METRICS when series.py is absent: (row key, glossary key, group), in the SHARED order.
+METRICS = [(k, k, "income") for k in ("total_income", "grant_funding_government", "sen_funding", "pupil_premium", "self_generated_income",
+                                      "donations_revenue", "donations_capital", "facilities_income", "catering_income", "other_dfe_grants")]
+METRICS += [(k, k, "spend") for k in ("total_expenditure", "teaching_staff", "supply_staff", "education_support_staff", "admin_clerical_staff",
+                                     "premises_staff", "catering_staff", "other_staff_costs", "total_staff", "premises", "energy", "occupation",
+                                     "catering", "educational_supplies", "supplies_services", "bought_in_services")]
+METRICS += [(k, k, "balance") for k in ("revenue_reserve", "in_year_balance")]
+SIMILAR_SERIES = ("total_income", "total_expenditure", "grant_funding_government", "revenue_reserve")
+SX_CORE = {"total_income", "total_expenditure", "revenue_reserve", "in_year_balance", "grant_funding_government", "total_staff",
+           "sen_funding", "other_dfe_grants", "donations_revenue"}  # kept in a SERIES file whatever its size
+AUDIENCE_LINKS = [
+    ("Parents and carers", "/guides/parents/", "What a school's money means and the questions worth asking."),
+    ("Governors", "/guides/governors/", "Reading the budget, reserves and the trend before a finance meeting."),
+    ("PTFA committees", "/ptfa/", "What parents' associations raise and how it compares with similar schools."),
+    ("School leaders", "/guides/school-leaders/", "Your school's figures beside similar schools and the national picture."),
+    ("Pupils", "/guides/pupils/", "Where a school's money comes from and what it is spent on."),
+]
 URN = re.compile(r"[0-9]{1,8}")
 PATH = re.compile(r"/(?:[a-z0-9-]+/)*")
 STUBS = [
@@ -118,7 +162,7 @@ class _FallbackShell:
     BASE_MONEY = BASE_MONEY
     BASE_SIR = BASE_SIR
     NAV = [("Find a school", "/"), ("Map", "/map/"), ("Areas", "/areas/"), ("Trusts", "/trust/"),
-           ("PTFA", "/ptfa/"), ("Debts", "/debts/"), ("Compare", "/compare/"), ("Guides", "/guides/")]
+           ("PTFA", "/ptfa/"), ("Debts", "/debts/"), ("Compare", "/compare/"), ("Guides", "/guides/"), ("Tools", "/tools/")]
 
     @staticmethod
     def _num(value):
@@ -257,12 +301,14 @@ def load_predecessors(path):
 
 
 def load_dsg(path):
-    """pipeline/money/data/la_dsg.json, or an empty shape when the file is missing or unreadable."""
+    """pipeline/money/data/la_dsg.json (every key, such as its statutory-override note), or an empty
+    shape when the file is missing or unreadable."""
     try:
         doc = json.loads(Path(path).read_text(encoding="utf-8")) if path else {}
     except (OSError, ValueError):
         doc = {}
-    return {"las": doc.get("las") or {}, "england": doc.get("england") or {},
+    doc = doc if isinstance(doc, dict) else {}
+    return {**doc, "las": doc.get("las") or {}, "england": doc.get("england") or {},
             "interventions": doc.get("interventions") or {}, "source": doc.get("source")}
 
 
@@ -307,6 +353,192 @@ def full_years(rows):
 def per_pupil(row, key):
     value, pupils = (row or {}).get(key), (row or {}).get("pupils")
     return value / pupils if value is not None and pupils else None
+
+
+def metric_value(row, key):
+    """A row's figure for a METRICS key. other_dfe_grants (pension, NI and other DfE grants, added by
+    finance_history) is derived from its source line when the row predates it."""
+    row = row or {}
+    value = row.get(key)
+    if value is None and key == "other_dfe_grants":
+        value = row.get("aar_other_dfe_revenue_grants" if row.get("source") == "AAR" else "cfr_additional_grants_i18")
+    return value
+
+
+def suspect(row, key):
+    return key in ((row or {}).get("suspect") or ())
+
+
+def clean_pp(row, key):
+    """£ per pupil for a median: None when the value is missing, has no pupils or is flagged suspect."""
+    if suspect(row, key):
+        return None
+    value, pupils = metric_value(row, key), (row or {}).get("pupils")
+    return value / pupils if value is not None and pupils else None
+
+
+def is_independent(school):
+    return school.get("type_group") == "Independent schools" or "independent" in str(school.get("type") or "").lower()
+
+
+def is_school(school):
+    """Colleges and universities are on the register but are not schools here."""
+    return school.get("type") not in NOT_SCHOOLS and school.get("type_group") not in NOT_SCHOOL_GROUPS
+
+
+def local_pta_year(period_end, source):
+    """The school year holding a charity return: April-March for a CFR school, September-August for an AAR one."""
+    y, m = int(period_end[:4]), int(period_end[5:7])
+    start = y if m >= (9 if source == "AAR" else 4) else y - 1
+    return f"{start}-{str(start + 1)[2:]}"
+
+
+def pta_year_label(period_end, rows):
+    """SHARED PTA year rule for one school: the label of the school year containing period_end, using
+    the source of the school's own row for that year, else its nearest year's source."""
+    rule = getattr(series, "pta_year", None) or local_pta_year
+    labelled = {(year_label(r), r.get("source")) for r in rows}
+    for source in ("CFR", "AAR"):
+        label = local_pta_year(period_end, source)
+        if (label, source) in labelled:
+            return rule(period_end, source)
+    nearest = min(rows, key=lambda r: abs(_months(r["period_end"]) - _months(period_end)), default=None)
+    return rule(period_end, (nearest or {}).get("source") or "CFR")
+
+
+def _months(period_end):
+    return int(period_end[:4]) * 12 + int(period_end[5:7])
+
+
+def year_pupils(rows, label):
+    """Pupils on roll in the school year `label`, from the school's own full-year return, else any return."""
+    for pool in (full_years(rows), rows):
+        for r in pool:
+            if year_label(r) == label and r.get("pupils"):
+                return r["pupils"]
+    return None
+
+
+def pta_history_status(charity):
+    """B4's history_status, derived from the history when pta.json predates it."""
+    if charity.get("history_status"):
+        return charity["history_status"]
+    years = [int(h["period_end"][:4]) for h in charity.get("history") or [] if h.get("income") and h.get("period_end")]
+    if years and max(years) >= 2024:
+        return "current"
+    return "recent" if years and max(years) >= 2019 else "historical"
+
+
+def pta_share(charity):
+    """A charity shared by an infant and a junior school is split equally between them."""
+    return 1 / (1 + len(charity.get("shared_with") or []))
+
+
+def local_series(rows, pta=None, *, sen_share_q3=None):
+    """series.school_series's contract when series.py is absent: cash, per pupil and real figures for
+    METRICS, the funding gap, PTA by school year and the suspect / not-reported flags. The site's
+    falling-rolls, pass-through and high-SEND flags are left to series.py (None here)."""
+    years = full_years(rows)
+    out = {"years": [], "source": {}, "pupils": {}, "m": {}, "gap": {}, "pta": {},
+           "flags": {"falling_rolls": None, "pass_through": None, "high_send": None, "suspect": {}, "not_reported": {}},
+           "trust_central_pp": {}}
+    for r in years:
+        y, pupils = year_label(r), r.get("pupils")
+        out["years"].append(y)
+        out["source"][y] = r.get("source")
+        if pupils:
+            out["pupils"][y] = round(pupils, 1)
+        if r.get("suspect"):
+            out["flags"]["suspect"][y] = list(r["suspect"])
+        for key, _, _ in METRICS:
+            value = metric_value(r, key)
+            if value is None or (key == "pupil_premium" and r.get("source") == "AAR"):
+                continue
+            cell, real = {"v": round(value)}, real_terms(value, r)
+            if pupils:
+                cell["pp"] = round(value / pupils)
+            if real is not None:
+                cell["r"] = round(real)
+                if pupils:
+                    cell["rpp"] = round(real / pupils)
+            out["m"].setdefault(key, {})[y] = cell
+        gov, spend = (out["m"].get("grant_funding_government") or {}).get(y), (out["m"].get("total_expenditure") or {}).get(y)
+        if gov and spend and "pp" in gov and "pp" in spend:
+            out["gap"][y] = {"gov_pp": gov["pp"], "spend_pp": spend["pp"], "gov_rpp": gov.get("rpp"), "spend_rpp": spend.get("rpp")}
+        if r.get("trust_central_spend_per_pupil") is not None:
+            out["trust_central_pp"][y] = round(r["trust_central_spend_per_pupil"])
+    if any(r.get("source") == "AAR" for r in years):
+        out["flags"]["not_reported"]["pupil_premium"] = "not reported in academy accounts"
+    by_year = {}
+    for c in pta or []:
+        if c.get("review"):
+            continue
+        share = pta_share(c)
+        for h in c.get("history") or []:
+            if h.get("income") is None or not h.get("period_end"):
+                continue
+            label = pta_year_label(h["period_end"], rows) if rows else local_pta_year(h["period_end"], "CFR")
+            slot = by_year.setdefault(label, {"income": 0, "spend": 0, "top": (0, None), "confidence": "high"})
+            income, spend = h["income"] * share, (h.get("expenditure") or 0) * share
+            slot["income"] += income
+            slot["spend"] += spend
+            slot["top"] = max(slot["top"], (income, c.get("charity_number")), key=lambda t: t[0])
+            if (c.get("match") or {}).get("confidence") == "medium":
+                slot["confidence"] = "medium"
+    for label in sorted(by_year):
+        slot, pupils = by_year[label], year_pupils(rows, label)
+        out["pta"][label] = {"income": round(slot["income"]), "spend": round(slot["spend"]),
+                             "income_pp": round(slot["income"] / pupils) if pupils else None,
+                             "spend_pp": round(slot["spend"] / pupils) if pupils else None,
+                             "charity_number": slot["top"][1], "confidence": slot["confidence"]}
+    return out
+
+
+def school_series(item, sen_share_q3=None):
+    """The school's SERIES: series.school_series when it imports, else local_series."""
+    build = getattr(series, "school_series", None) or local_series
+    return build(item["rows"], item["pta"], sen_share_q3=sen_share_q3)
+
+
+def sen_share(row):
+    rule = getattr(series, "sen_share", None)
+    if rule is not None:
+        return rule(row)
+    income, sen = (row or {}).get("total_income"), (row or {}).get("sen_funding")
+    return sen / income if sen is not None and income else None
+
+
+def series_json(doc, limit=SX_BUDGET):
+    """A SERIES dict as compact JSON of `limit` bytes or less. Over the limit the least-used parts go
+    first: empty metrics, then the real-terms totals ('r', detailed lines first; every per-pupil real
+    figure stays, and those are what drills and Wrapped read), then whole detailed lines from the end
+    of METRICS. The core lines always stay; anything still over the limit is an error."""
+    def dumps(d):
+        return json.dumps(d, ensure_ascii=False, separators=(",", ":"))
+
+    def fits(d):
+        return len(dumps(d).encode("utf-8")) <= limit
+
+    if fits(doc):
+        return dumps(doc)
+    m = {k: {y: dict(c) for y, c in v.items()} for k, v in (doc.get("m") or {}).items() if v}
+    doc = dict(doc, m=m)
+    order = [k for k, _, _ in (getattr(series, "METRICS", None) or METRICS)]
+    detail = sorted((k for k in m if k not in SX_CORE), key=lambda k: -order.index(k) if k in order else -len(order) - 1)
+
+    def drop_r(keys):
+        for k in keys:
+            for c in m[k].values():
+                c.pop("r", None)
+
+    steps = [lambda: drop_r(detail), lambda: drop_r([k for k in m if k in SX_CORE])] + [lambda k=k: m.pop(k) for k in detail]
+    for step in [lambda: None] + steps:
+        step()
+        if fits(doc):
+            return dumps(doc)
+    raise ValueError(f"SERIES file too large ({len(dumps(doc).encode('utf-8')):,} bytes) even with only its core lines")
+
+
 
 
 def phase_group(row, school):
@@ -373,14 +605,12 @@ def build_model(site, history_path, links_path, pta_path):
             raise ValueError(f"Two councils share the page {council['path']}: {la['name']}")
         councils.append(council)
         for s in json.loads(reg_path.read_text(encoding="utf-8")).get("schools", []):
-            if closed(s):
+            if closed(s) or not is_school(s):
                 continue
             urn = str(s["urn"])
             if not URN.fullmatch(urn):
                 raise ValueError(f"Bad URN {urn!r} in the {la['name']} register")
             rows = school_rows(urn, by_urn, pred)
-            if not rows:
-                continue
             years = full_years(rows)
             latest = years[-1] if years else None
             own = by_urn.get(urn, [])
@@ -397,7 +627,11 @@ def build_model(site, history_path, links_path, pta_path):
                 "trust": (s.get("trust") or (latest or {}).get("trust") or "").strip() or None,
                 "academy": (latest or {}).get("source") == "AAR",
                 "constituency": (s.get("constituency") or "").strip() or None,
+                "la": code, "la_name": la["name"], "pupils": (latest or {}).get("pupils"),
+                "lat": s.get("lat"), "lon": s.get("lon"), "independent": is_independent(s),
             }
+            item["profile"] = profile_of(item, data)
+            item["tags"] = (item["profile"] or {}).get("tags") or {}
             if urn in paths:
                 raise ValueError(f"URN {urn} appears in two registers: {paths[urn]['name']} and {council['name']}")
             paths[urn] = council
@@ -459,7 +693,7 @@ def compare_rows(s):
     out = []
     for key, label in COMPARE_KEYS:
         mine = per_pupil(s["latest"], key)
-        others = sorted(v for v in (per_pupil(o["latest"], key) for o in s["similar"]) if v is not None)
+        others = sorted(v for v in (clean_pp(o["latest"], key) for o in s["similar"]) if v is not None)
         if mine is None or len(others) < 10:
             continue
         q = statistics.quantiles(others, n=4)
@@ -471,7 +705,7 @@ def similar_medians(item):
     """Median £ per pupil among similar schools for each compared line, when 10 or more have it."""
     sim = {}
     for k, _ in COMPARE_KEYS + [("total_expenditure", ""), ("total_income", "")]:
-        vals = [v for v in (per_pupil(o["latest"], k) for o in item["similar"]) if v is not None]
+        vals = [v for v in (clean_pp(o["latest"], k) for o in item["similar"]) if v is not None]
         if len(vals) >= 10:
             sim[k] = statistics.median(vals)
     return sim
@@ -553,13 +787,15 @@ def details_table(summary, headers, rows):
     return f'<details class="tableview"><summary>{esc(summary)}</summary>{table(headers, rows)}</details>'
 
 
-def sortable(headers, rows, css=""):
-    html = table(headers, rows, css=f"sortable {css}".strip())
+def sortable(headers, rows, css="", caption=""):
+    html = table(headers, rows, caption=caption, css=f"sortable {css}".strip())
     return html.replace('<table class="responsive', '<table data-sortable class="responsive', 1)
 
 
 def status_cell(item):
-    return badge(item["status"]["status"], "small") if item.get("status") else '<span class="muted">No full-year return</span>'
+    if item.get("status"):
+        return badge(item["status"]["status"], "small")
+    return '<span class="muted">Independent school</span>' if item.get("independent") else '<span class="muted">No full-year return</span>'
 
 
 def school_link(item):
@@ -643,7 +879,7 @@ def questions(item, cmp):
 
 def profile_of(item, data_root):
     """areas.school_profile for this school, or None when the module is absent or fails."""
-    if areas is None:
+    if areas is None or data_root is None:
         return None
     try:
         return areas.school_profile(item["school"], item["council"]["code"], data_root)
@@ -686,7 +922,44 @@ def tags_line(profile):
 
 # ----------------------------------------------------------------- pages
 
-def render_school(item, metadata, data_root=None):
+def pta_html(item):
+    """Each matched charity's returns by school year (the SHARED PTA year rule), with that year's pupils;
+    a charity shared with another school counts its share only."""
+    html = ""
+    for n, c in enumerate(item["pta"][:2]):
+        share = pta_share(c)
+        dated = [h for h in c.get("history") or [] if h.get("income") is not None and h.get("period_end")]
+        dated.sort(key=lambda h: h["period_end"])
+        lines = []
+        for h in dated[-3:] if n == 0 else dated[-1:]:
+            label = pta_year_label(h["period_end"], item["rows"])
+            pupils = year_pupils(item["rows"], label)
+            spend = h.get("expenditure")
+            lines.append((h, label, mf("pta_income", h["income"] * share, pupils, label),
+                          mf("pta_spending", spend * share if spend is not None else None, pupils, label)))
+        status = pta_history_status(c)
+        name = f'<a href="{CHARITY}{esc(c["charity_number"])}">{esc(c["name"])}</a> (charity {esc(c["charity_number"])}'
+        if status == "historical" and dated:
+            until = c.get("last_income_year") or dated[-1]["period_end"][:4]
+            html += f'<p>{name}). Had a registered PTA until {esc(until)}.</p>'
+        elif lines:
+            h, label, income, _ = lines[-1]
+            html += f'<p>{name}, {esc(c.get("status") or "")}) raised {income} in {esc(label)}, its latest return (year ending {esc(h["period_end"])}).</p>'
+        else:
+            html += f'<p>{name}, {esc(c.get("status") or "")}).</p>'
+        if (c.get("match") or {}).get("confidence") == "medium":
+            html += '<p class="muted small">This charity was matched with lower confidence.</p>'
+        if share < 1:
+            html += f'<p class="muted small">Shared with {len(c["shared_with"])} other school{"s" if len(c["shared_with"]) > 1 else ""}, so this school\'s figures are its equal share.</p>'
+        if n == 0 and len(lines) > 1:
+            html += table(["School year", "Income", "Spending"], [[f'{esc(label)} <span class="muted small">(year ending {esc(h["period_end"])})</span>', income, spend]
+                                                                   for h, label, income, spend in lines])
+    return html + ('<p class="muted small">Matched to this school from the Charity Commission register. Parent associations\' money isn\'t in the school\'s accounts above. '
+                   'Money a parents\' association gives the school can also appear in the school\'s own donations income, so the two are never added together. '
+                   'Per-pupil figures use the pupils on roll in the school year each return falls in.</p>')
+
+
+def render_school(item, metadata):
     s, st = item["school"], item["status"]
     council = item["council"]
     crumbs = [("School Money", "/"), (council["name"], council["path"]), (item["name"], item["path"])]
@@ -701,9 +974,21 @@ def render_school(item, metadata, data_root=None):
         return page(shorten(f"{item['name']} finances | School Money", 70),
                     shorten(f"{item['name']} reports its finances jointly with its federation. See the federation's combined figures.", 160),
                     item["path"], body, crumbs, metadata, indexable=False)
+    if not st and item.get("independent"):
+        body = (f'<h1>{esc(item["name"])}: school finances</h1>' + tags_line(item.get("profile"))
+                + '<p class="lead">Independent schools don\'t publish accounts to the DfE, so there are no income, spending or reserve figures to show here.</p>'
+                '<p>Many independent schools are charities: their accounts may be on the '
+                '<a href="https://register-of-charities.charitycommission.gov.uk/charity-search">Charity Commission register</a>.</p>'
+                f'<p><a href="{BASE_SIR}{esc(item["site_path"])}">Admissions and inspections for {esc(item["name"])}</a> · '
+                f'<a href="{esc(council["path"])}">All {esc(council["name"])} school finances</a></p>' + sources(compact=True))
+        return page(shorten(f"{item['name']} | School Money", 70),
+                    shorten(f"{item['name']} is an independent school. Independent schools don't publish accounts to the DfE.", 160),
+                    item["path"], body, crumbs, metadata, indexable=False)
     if not st:
-        body = (f'<h1>{esc(item["name"])}: school finances</h1><p class="lead">No full-year finance return is published for this school yet, '
-                f'usually because it opened, converted to an academy or changed trust part-way through the year.</p><p>Check at source: {check}.</p>' + sources())
+        why = ("usually because it opened, converted to an academy or changed trust part-way through the year"
+               if item["rows"] else "and no finance return for it is in the DfE's published data")
+        body = (f'<h1>{esc(item["name"])}: school finances</h1>' + tags_line(item.get("profile"))
+                + f'<p class="lead">No full-year finance return is published for this school yet, {why}.</p><p>Check at source: {check}.</p>' + sources())
         return page(shorten(f"{item['name']} finances | School Money", 70), shorten(f"Finance returns for {item['name']}.", 160),
                     item["path"], body, crumbs, metadata, indexable=False)
     latest, years = item["latest"], item["years"]
@@ -713,7 +998,7 @@ def render_school(item, metadata, data_root=None):
     span = f"{points[0]['year']} to {points[-1]['year']}" if len(points) > 1 else points[0]["year"]
     kind = "academy (accounts return, September–August)" if item["academy"] else "council-run school (CFR return, April–March)"
     sim = similar_medians(item)
-    profile = profile_of(item, data_root) if data_root else None
+    profile = item.get("profile")
     body = f'<h1>{esc(item["name"])}: school finances</h1>'
     body += f'<p class="status-line">{badge(st["status"], "large")} {pin("school", item["urn"], item["name"])}</p><p class="lead">{reason_html(item)}</p>'
     body += (f'<p class="muted small">Latest full year {esc(year)}, as a {kind}. '
@@ -730,13 +1015,13 @@ def render_school(item, metadata, data_root=None):
     reserve_tile = mf(reserve_key, st["reserve"], pupils, year, src=src) + f'<span class="sub">{pct(st["reserve_share"])} of a year\'s income</span>'
     real = real_terms(st["reserve"], latest)
     if real is not None and deflator is not None:
-        reserve_tile += f'<span class="sub">{mf("real_terms", real, pupils, year, label="Reserve in 2025-26 prices")} {esc(deflator.real_label())}</span>'
+        reserve_tile += f'<span class="sub">{mf("real_terms", real, pupils, year, label="Reserve in 2025-26 prices", src=src)} {esc(deflator.real_label())}</span>'
     body += tiles([
         ("Reserve at year end", reserve_tile),
         ("Last year's balance", mf("in_year_balance", latest.get("in_year_balance"), pupils, year, src=src, signed=True) + '<span class="sub">income minus spending</span>'),
         ("Income", mf("total_income", latest.get("total_income"), pupils, year, src=src, cmp_similar=sim.get("total_income"), drill=income_drill)),
         ("Spending", mf("total_expenditure", latest.get("total_expenditure"), pupils, year, src=src, cmp_similar=sim.get("total_expenditure"), drill=spend_drill)),
-        ("Pupils", f'{pupils or 0:,.0f}' + (f'<span class="sub">{change:+.0%} since {esc(points[0]["year"])}</span>' if change is not None else "")),
+        ("Pupils", f'{pupils or 0:,.1f}' + (f'<span class="sub">{change:+.0%} since {esc(points[0]["year"])}</span>' if change is not None else "")),
     ]) + income_script + spend_script
     if item["academy"]:
         trust = item["trust"]
@@ -756,9 +1041,13 @@ def render_school(item, metadata, data_root=None):
         body += '<p class="timeline">Status by year: ' + " ".join(f'<span class="tl">{esc(t["year"])} {badge(t["status"], "small")}</span>' for t in line) + "</p>"
     body += f'<h2>Reserve at the end of each year, {esc(span)}</h2>' + charts.reserve_bars(points)
     body += f'<h2>Income and spending, {esc(span)}</h2>' + charts.income_spend_lines(points)
+    def year_figure(key, value, p):
+        cls = "suspect" if suspect(p["row"], key) else ""
+        return mf(key, value, p["pupils"], p["year"], src=src, cls=cls)
+
     body += details_table("Show the figures as a table", ["Year", "Income", "Spending", "Reserve", "Pupils"],
-                          [[esc(p["year"]), mf("total_income", p["income"], p["pupils"], p["year"]), mf("total_expenditure", p["spend"], p["pupils"], p["year"]),
-                            mf("revenue_reserve", p["reserve"], p["pupils"], p["year"]), f'{p["pupils"]:,.0f}' if p["pupils"] else "—"] for p in points])
+                          [[esc(p["year"]), year_figure("total_income", p["income"], p), year_figure("total_expenditure", p["spend"], p),
+                            year_figure("revenue_reserve", p["reserve"], p), f'{p["pupils"]:,.1f}' if p["pupils"] else "—"] for p in points])
     cmp = compare_rows(item)
     if cmp:
         rank = reserve_rank(item)
@@ -772,27 +1061,21 @@ def render_school(item, metadata, data_root=None):
                      f'similar schools typically spend {mf("per_pupil", sim["total_expenditure"], None, year, label="Similar schools: median spending per pupil")} per pupil.')
         body += "</p>" + charts.compare_dots(cmp)
         body += details_table("Show the comparison as a table", ["Spending", "This school", "Similar schools (median per pupil)"],
-                              [[esc(r["label"]), mf(r["key"], latest.get(r["key"]), pupils, year, cmp_similar=r["median"]),
+                              [[esc(r["label"]), mf(r["key"], latest.get(r["key"]), pupils, year, cmp_similar=r["median"], src=src),
                                 mf("per_pupil", r["median"], None, year)] for r in cmp])
         near = ",".join([item["urn"]] + [o["urn"] for o in item["similar"][:3]])
         body += (f'<p><a class="button" href="/compare/?urns={esc(near)}">Compare side by side with the 3 most similar schools</a></p>'
                  '<details class="tableview"><summary>Which schools are these?</summary><ul class="nearby">'
                  + "".join(f'<li>{school_link(o)} {status_cell(o)}</li>' for o in item["similar"][:6]) + "</ul></details>")
-    income = [(g, label, latest[k]) for k, g, label in INCOME_LINES if latest.get(k)]
+    academy_year = latest.get("source") == "AAR"
+    income = [(g, label, latest[k]) for k, g, label in INCOME_LINES if latest.get(k) and not (academy_year and k == "pupil_premium")]
     if income:
-        body += f'<h2 id="income">Where the money comes from, {esc(year)}</h2>' + table(
-            ["Source", "Amount"], [[esc(label), mf(g, v, pupils, year)] for g, label, v in income])
+        rows = [[esc(label), mf(g, v, pupils, year, src=src)] for g, label, v in income]
+        if academy_year:
+            rows.append(["Pupil premium", '<span class="muted">not reported in academy accounts</span>'])
+        body += f'<h2 id="income">Where the money comes from, {esc(year)}</h2>' + table(["Source", "Amount"], rows)
     if item["pta"]:
-        body += "<h2>Money raised by parents</h2>"
-        for n, c in enumerate(item["pta"][:2]):
-            hist = [h for h in c.get("history", []) if h.get("income") is not None][-3:] if n == 0 else []
-            body += (f'<p><a href="{CHARITY}{esc(c["charity_number"])}">{esc(c["name"])}</a> (charity {esc(c["charity_number"])}, {esc(c.get("status") or "")}) '
-                     + (f'raised {mf("pta_income", c.get("latest_income"), pupils, year)} in its latest year.'
-                        if c.get("latest_income") is not None else "") + "</p>")
-            if hist:
-                body += table(["Year ending", "Income", "Spending"],
-                              [[esc(h["period_end"]), mf("pta_income", h["income"], pupils, h["period_end"]), mf("pta_spending", h.get("expenditure"), pupils, h["period_end"])] for h in hist])
-        body += '<p class="muted small">Matched to this school from the Charity Commission register. Parent associations\' money isn\'t in the school\'s accounts above; per-pupil figures use the school\'s latest roll.</p>'
+        body += "<h2>Money raised by parents</h2>" + pta_html(item)
     qs = questions(item, cmp)
     if qs:
         body += "<h2>Questions to ask the school</h2><p>Useful for parents, governors and PTA committees.</p><ul>" + "".join(f"<li>{q}</li>" for q in qs) + "</ul>"
@@ -808,19 +1091,27 @@ def render_school(item, metadata, data_root=None):
     return page(title, description, item["path"], body, crumbs, metadata)
 
 
-def chunk_rows(rows, budget=TABLE_BUDGET):
-    """Split table rows into pages whose rows weigh at most `budget` bytes, so a council or
-    trust with hundreds of schools never pushes one page past PAGE_BUDGET."""
-    pages, current, size = [], [], 0
-    for cells in rows:
-        weight = sum(len(c.encode("utf-8")) for c in cells) + 60 * len(cells)
-        if current and size + weight > budget:
-            pages.append(current)
-            current, size = [], 0
-        current.append(cells)
-        size += weight
-    pages.append(current)
-    return pages
+def row_weights(headers, rows):
+    """Bytes each row adds to table(headers, rows), and the bytes of the table around them, from
+    table()'s own markup (an empty row's tags plus the cells' own bytes)."""
+    blank = [""] * len(headers)
+    one, two = (len(table(headers, [blank] * n).encode("utf-8")) for n in (1, 2))
+    row = two - one
+    return [row + sum(len(str(c).encode("utf-8")) for c in cells) for cells in rows], one - row
+
+
+def chunk_rows(weights, first, later):
+    """Cut rows (by their byte weights) into pages: page 1 holds up to `first` bytes of rows, later
+    pages `later`; every page holds at least one row. Returns [(start, end)] index ranges."""
+    ranges, start, size = [], 0, 0
+    for i, w in enumerate(weights):
+        budget = first if not ranges else later
+        if i > start and size + w > budget:
+            ranges.append((start, i))
+            start, size = i, 0
+        size += w
+    ranges.append((start, len(weights)))
+    return ranges
 
 
 def page_path(path, n):
@@ -837,18 +1128,31 @@ def pager(path, n, total):
     return '<nav class="pager" aria-label="Pages">' + " · ".join(parts) + "</nav>"
 
 
-def paged(path, headers, rows, frame, metadata):
+def paged(path, headers, rows, frame, metadata, *, caption="", indexable=True, extra_head="", target=AREA_PAGE_TARGET):
     """One sortable table over as many pages as its rows need: [(path, html)]. frame(n, total,
-    table_html) returns (title, description, crumbs, body) with the table placed in the body."""
-    chunks = chunk_rows(rows)
-    out = []
-    for n, chunk in enumerate(chunks, 1):
+    table_html) returns (title, description, crumbs, body) with the table placed in the body.
+    Each page's rows are sized against its real frame (shell, intro, outro), so pages stay under
+    `target` bytes whenever the frame alone leaves room; every page holds at least one row."""
+
+    def render(n, total, table_html):
         where = page_path(path, n)
-        table_html = sortable(headers, chunk) + pager(path, n, len(chunks)) if chunk else ""
-        title, description, crumbs, body = frame(n, len(chunks), table_html)
+        title, description, crumbs, body = frame(n, total, table_html)
         if n > 1:
             crumbs = crumbs + [(f"Page {n}", where)]
-        out.append((where, page(title, description, where, body, crumbs, metadata)))
+        return where, page(title, description, where, body, crumbs, metadata, indexable=indexable, extra_head=extra_head)
+
+    if not rows:
+        return [render(1, 1, "")]
+    weights, base = row_weights(headers, rows)
+    base += len(sortable(headers, [[""] * len(headers)], caption=caption).encode("utf-8")) - len(table(headers, [[""] * len(headers)]).encode("utf-8"))
+    room = base + len(pager(path, 999, 999).encode("utf-8")) + 120  # table head, pager and page-number digits
+    first = target - len(render(1, 2, "")[1].encode("utf-8")) - room
+    later = target - len(render(2, 2, "")[1].encode("utf-8")) - room
+    ranges = chunk_rows(weights, first, later)
+    out = []
+    for n, (a, b) in enumerate(ranges, 1):
+        table_html = sortable(headers, rows[a:b], caption=caption) + pager(path, n, len(ranges))
+        out.append(render(n, len(ranges), table_html))
     return out
 
 
@@ -927,10 +1231,10 @@ def render_council(council, metadata, dsg=None):
     def frame(n, total, table_html):
         body = f'<h1>{esc(name)} school finances</h1>'
         if n > 1:
-            body += (f'<p class="lead">Every school in {esc(name)} with a full-year return, worst first: page {n} of {total}. '
+            body += (f'<p class="lead">Every school in {esc(name)} with a full-year return, schools in deficit first: page {n} of {total}. '
                      f'<a href="{esc(council["path"])}">Back to the summary</a>.</p>' + sort_note(total) + table_html + check)
             return (shorten(f"{name} school finances, page {n} | School Money", 70),
-                    shorten(f"Page {n} of {total}: every school in {name} with a full-year finance return, worst first, from DfE returns.", 160), crumbs, body)
+                    shorten(f"Page {n} of {total}: every school in {name} with a full-year finance return, schools in deficit first, from DfE returns.", 160), crumbs, body)
         body += f'<p class="status-line">{pin("area", "council-" + council["code"], name)}</p>'
         if items:
             body += (f'<p class="lead"><strong>{len(deficit):,} of {len(items):,}</strong> schools in {esc(name)} were in deficit in their latest return, '
@@ -951,11 +1255,11 @@ def render_council(council, metadata, dsg=None):
                      + "".join(f"<li>{school_link(i)}</li>" for i in back[:TOP_N]) + "</ul>"
                      + (f'<p class="muted small">And {len(back) - TOP_N:,} more, in the table below.</p>' if len(back) > TOP_N else ""))
         if table_html:
-            body += "<h2>Every school, worst first</h2>" + sort_note(total) + table_html
+            body += "<h2>Every school, schools in deficit first</h2>" + sort_note(total) + table_html
         members = [i for i in council["schools"] if not i["status"]]
         if members:
             body += ('<p class="muted small">Not shown: ' + ", ".join(school_link(i) for i in members[:TOP_N])
-                     + (f" and {len(members) - TOP_N:,} others" if len(members) > TOP_N else "") + ' (in a federation\'s combined return, or no full-year return yet).</p>')
+                     + (f" and {len(members) - TOP_N:,} others" if len(members) > TOP_N else "") + ' (in a federation\'s combined return, no full-year return yet, or independent schools, which don\'t publish accounts to the DfE).</p>')
         return title, description, crumbs, body + check
 
     return paged(council["path"], COUNCIL_HEADERS, council_rows(items), frame, metadata)
@@ -1038,7 +1342,7 @@ def render_national(councils, schools, metadata, dsg=None):
     body += "<h2>Largest reserves for their size</h2><p>A big reserve is a cushion, but it is also money not yet spent on current pupils.</p>" + ranked(
         large[:TOP_N - 4], ["School", "Council", "Reserve", "% of income"], lambda i: [
             school_link(i), council_link(i["council"]), reserve_cell(i), pct(i["status"]["reserve_share"])])
-    busiest = sorted((c for c in councils if any(i["status"] for i in c["schools"])), key=lambda c: -len(council_summary(c)[1]))[:TOP_N]
+    busiest = sorted((c for c in councils if any(i["status"] for i in c["schools"])), key=lambda c: -len(council_summary(c)[1]))[:TOP_N - 4]
     if busiest:
         body += ("<h2>Councils with the most schools in deficit</h2>" + ranked(busiest, COUNCIL_INDEX_HEADERS, council_cells)
                  + '<p><a class="button" href="/council/">Every council</a></p>')
@@ -1071,7 +1375,7 @@ def render_trust(name, items, metadata):
     def frame(n, pages, table_html):
         body = f'<h1>{esc(name)}: academy finances</h1>'
         if n > 1:
-            body += (f'<p class="lead">Academies of {esc(name)} with a full-year return, worst first: page {n} of {pages}. '
+            body += (f'<p class="lead">Academies of {esc(name)} with a full-year return, academies in deficit first: page {n} of {pages}. '
                      f'<a href="{esc(path)}">Back to the summary</a>.</p>' + sort_note(pages) + table_html + sources())
             return (shorten(f"{name} academy finances, page {n} | School Money", 70),
                     shorten(f"Page {n} of {pages}: {name}'s academies and their financial status from DfE accounts returns.", 160), crumbs, body)
@@ -1080,7 +1384,7 @@ def render_trust(name, items, metadata):
         body += charts.status_bar(counts)
         body += ('<p class="note">A trust can move money between its academies, so a school shown in deficit may be supported by the trust '
                  'as a whole. The trust-wide figure is the better guide to whether the trust is in difficulty.</p>')
-        body += "<h2>Academies, worst first</h2>" + sort_note(pages) + table_html + sources()
+        body += "<h2>Academies, those in deficit first</h2>" + sort_note(pages) + table_html + sources()
         return shorten(f"{name} academy finances | School Money", 70), description, crumbs, body
 
     return paged(path, COUNCIL_HEADERS, council_rows(items), frame, metadata)
@@ -1257,18 +1561,20 @@ def school_json(item, data_root=None, profile=None, line=None):
     return out
 
 
-def area_stats(items, year):
-    """Reduced yearly summary for a set of schools when areas.py is absent: None where fewer than 5."""
-    rows = [(i, r) for i in items for r in i["years"] if year_label(r) == year]
+def area_stats(items, year, source=None):
+    """Reduced yearly summary for a set of schools when areas.py is absent: None where fewer than 5.
+    source "CFR" or "AAR" keeps only that year's returns of that kind, whatever the school is now.
+    deficit_total and deficit_pp are negative, as in areas.py."""
+    rows = [(i, r) for i in items for r in i["years"] if year_label(r) == year and source in (None, r.get("source"))]
     if len(rows) < 5:
         return None
     reserves = [(reserve_of(r), r.get("pupils")) for _, r in rows]
     deficits = [(v, p) for v, p in reserves if v is not None and v < 0]
     deficit_pupils = sum(p for _, p in deficits if p)
-    deficit_total = -sum(v for v, _ in deficits)
+    deficit_total = sum(v for v, _ in deficits)
 
     def med(key):
-        vals = [per_pupil(r, key) for _, r in rows]
+        vals = [clean_pp(r, key) for _, r in rows]
         vals = [v for v in vals if v is not None]
         return round(statistics.median(vals)) if vals else None
 
@@ -1283,15 +1589,27 @@ def reduced_area(name, items):
     years = sorted({year_label(r) for i in items for r in i["years"]})
     by_year = {}
     for y in years:
-        groups = {"all": items, "council-run": [i for i in items if not i["academy"]], "academy": [i for i in items if i["academy"]]}
-        by_year[y] = {g: area_stats(members, y) for g, members in groups.items()}
+        # Each return counts under its own source: a converted academy's earlier CFR years are council-run.
+        by_year[y] = {"all": area_stats(items, y), "council-run": area_stats(items, y, "CFR"), "academy": area_stats(items, y, "AAR")}
     return {"name": name, "pupils_by_year": dict(pupils_by_year(items)),
             "schools_by_year": {y: sum(1 for i in items for r in i["years"] if year_label(r) == y) for y in years},
             "by_year": by_year, "dsg": {}, "statuses_latest": dict(Counter(i["status"]["status"] for i in items if i["status"]))}
 
 
-def area_documents(councils, schools, pta, dsg, data_root, by_urn):
-    """{area id: document} for /data/a/<id>.json, from areas.build_areas when it imports."""
+def build_area_doc(schools, pta, dsg, data_root):
+    """(areas.build_areas over the model's schools, error) — (None, None) without areas.py, (None, message)
+    when it fails, so the build falls back to the reduced statistics and says why."""
+    if areas is None:
+        return None, None
+    try:
+        registers = [dict(i["school"], la_code=i["council"]["code"]) for i in schools]
+        return areas.build_areas({i["urn"]: i["rows"] for i in schools if i["rows"]}, registers, pta, dsg, data_root), None
+    except Exception as exc:  # B3's module reads optional files; the site still builds on reduced statistics
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+def area_documents(councils, schools, built, dsg):
+    """{area id: document} for /data/a/<id>.json, from the areas document when there is one."""
     regions = defaultdict(list)
     for c in councils:
         if c.get("region"):
@@ -1300,13 +1618,6 @@ def area_documents(councils, schools, pta, dsg, data_root, by_urn):
     for i in schools:
         if i["constituency"]:
             constituencies[i["constituency"]].append(i)
-    built = None
-    if areas is not None:
-        try:
-            registers = [dict(i["school"], la_code=i["council"]["code"]) for i in schools]
-            built = areas.build_areas({i["urn"]: i["rows"] for i in schools}, registers, pta, dsg, data_root)
-        except Exception:
-            built = None
     docs = {}
 
     def put(ident, kind, name, path, fallback_items):
@@ -1339,6 +1650,193 @@ def area_documents(councils, schools, pta, dsg, data_root, by_urn):
     for name, items in constituencies.items():
         put(f"constituency-{items[0]['constituency_path'].strip('/').split('/')[-1]}", "constituency", name, items[0]["constituency_path"], items)
     return docs
+
+
+def areas_for_extensions(built, docs):
+    """The areas document for write_pages(env): areas.build_areas's, else one assembled from the reduced docs."""
+    if built:
+        return built
+    out = {"england": docs.get("england"), "regions": {}, "councils": {}, "constituencies": {}}
+    for ident, doc in docs.items():
+        if doc["type"] == "region":
+            out["regions"][doc["name"]] = doc
+        elif doc["type"] == "council":
+            out["councils"][ident.removeprefix("council-")] = doc
+        elif doc["type"] == "constituency":
+            out["constituencies"][ident.removeprefix("constituency-")] = doc
+    return out
+
+
+# ----------------------------------------------------------------- school dashboard context
+
+def real_label():
+    if deflator is None:
+        return None
+    try:
+        return deflator.real_label()
+    except Exception:
+        return None
+
+
+def sen_share_q3(schools):
+    """Upper quartile of the SEN share of income in assessed schools' latest full years, or None."""
+    values = sorted(v for v in (sen_share(i["latest"]) for i in schools if i["status"]) if v is not None)
+    return statistics.quantiles(values, n=4)[2] if len(values) >= 4 else None
+
+
+def similar_ctx(item):
+    """ctx 'similar' and 'similar_series': medians of similar schools' £ per pupil, from SIMILAR_MIN
+    schools with a value, leaving out values flagged suspect. 'similar' uses the school's own latest year."""
+    year = year_label(item["latest"]) if item.get("latest") else None
+    by_year = defaultdict(lambda: defaultdict(list))
+    keys = [k for k, _, _ in (getattr(series, "METRICS", None) or METRICS)]
+    for o in item["similar"]:
+        for r in o["years"]:
+            label = year_label(r)
+            for k in keys if label == year else SIMILAR_SERIES:
+                v = clean_pp(r, k)
+                if v is not None:
+                    by_year[k][label].append(v)
+    latest = {k: round(statistics.median(by_year[k][year])) for k in keys if len(by_year[k][year]) >= SIMILAR_MIN}
+    trend = {k: {y: round(statistics.median(v)) for y, v in sorted(by_year[k].items()) if len(v) >= SIMILAR_MIN} for k in SIMILAR_SERIES}
+    return latest, trend
+
+
+def school_ctx(item, shared):
+    """The SHARED 'CTX CONTRACT' for school_page.render."""
+    similar, similar_series = similar_ctx(item)
+    doc = shared.get("areas") or {}
+    return {"series": school_series(item, shared.get("sen_q3")), "profile": item.get("profile"), "timeline": timeline_of(item) or [],
+            "similar": similar, "similar_series": similar_series,
+            "council": (doc.get("councils") or {}).get(item["council"]["code"]) if doc else None,
+            "england": doc.get("england") if doc else None, "pta_national": doc.get("pta") if doc else None,
+            "ifs": shared.get("ifs") or {}, "real_label": real_label(), "check_url": fbit_school(item),
+            "sir_url": _shell().BASE_SIR + item["site_path"]}
+
+
+def school_crumbs(item):
+    council = item["council"]
+    return [("School Money", "/"), (council["name"], council["path"]), (item["name"], item["path"])]
+
+
+def school_page_html(item, metadata, shared):
+    """(html, indexable, SERIES or None) for one school: the school dashboard when school_page.py and
+    series.py import and the school has a status, else render_school."""
+    if school_page is not None and series is not None and item["status"]:
+        ctx = school_ctx(item, shared)
+        result = school_page.render(item, ctx)
+        indexable = bool(result.get("indexable", True))
+        html = page(result["title"], result["description"], item["path"], result["body"], school_crumbs(item), metadata,
+                    indexable=indexable, extra_head=getattr(school_page, "EXTRA_HEAD", SCHOOL_HEAD))
+        return html, indexable, ctx["series"]
+    return render_school(item, metadata), bool(item["status"]), None
+
+
+# ----------------------------------------------------------------- area dashboards
+
+def area_ctx(shared, councils, schools, trust_path):
+    """The SHARED area renderers' ctx: IFS, DSG, real-terms caption, the areas document and every page path."""
+    doc = shared["areas"] or {}
+    by_name = {i["constituency"]: i["constituency_path"] for i in schools if i["constituency"]}
+    constituency = {code: by_name[a["name"]] for code, a in (doc.get("constituencies") or {}).items() if a.get("name") in by_name}
+    regions = {c["region"] for c in councils if c.get("region")}
+    return {"ifs": shared.get("ifs") or {}, "dsg": shared.get("dsg") or {}, "real_label": real_label(), "areas": doc,
+            "paths": {"council": {c["code"]: c["path"] for c in councils}, "region": {r: f"/areas/{slug(r)}/" for r in regions},
+                      "constituency": constituency, "trust": dict(trust_path)}}
+
+
+def area_result_pages(path, crumbs, result, metadata):
+    """An area renderer's result as [(path, html)]: page 1 is its intro, table and outro; pages 2+
+    carry the title, a link back to the summary, the table and the pager."""
+    title, description = result["title"], result["description"]
+    heading = title.split(" | ")[0]
+    tbl = result.get("table") or None
+    filters = (tbl or {}).get("filters") or ""
+    indexable = bool(result.get("indexable", True))
+
+    def frame(n, total, table_html):
+        if n == 1:
+            return title, description, crumbs, result.get("intro", "") + (filters + table_html if table_html else "") + result.get("outro", "")
+        body = (f'<h1>{esc(heading)}</h1><p class="lead">Page {n} of {total}. <a href="{esc(path)}">Back to the summary</a>.</p>'
+                + filters + sort_note(total) + table_html)
+        return shorten(f"{heading}, page {n} | School Money", 70), shorten(f"Page {n} of {total}. {description}", 160), crumbs, body
+
+    rows = (tbl or {}).get("rows") or []
+    return paged(path, (tbl or {}).get("headers") or [], rows, frame, metadata, caption=(tbl or {}).get("caption") or "",
+                 indexable=indexable, extra_head=AREA_HEAD)
+
+
+def region_index(regions_doc, metadata):
+    """/areas/: every region with its schools' latest statuses, linking to its dashboard."""
+    rows = []
+    for name in sorted(regions_doc):
+        counts = (regions_doc[name] or {}).get("statuses_latest") or {}
+        total, deficit = sum(counts.values()), counts.get("in_deficit", 0)
+        rows.append([f'<a href="/areas/{esc(slug(name))}/" data-preview="area:region-{esc(slug(name))}">{esc(name)}</a>',
+                     f'<span data-sort="{total}">{total:,}</span>', f'<span data-sort="{deficit}">{deficit:,}</span>',
+                     f'<span data-sort="{deficit / total if total else 0:.4f}">{pct(deficit / total) if total else "—"}</span>'])
+    crumbs = [("School Money", "/"), ("Areas", "/areas/")]
+    body = ('<h1>School finances by region</h1><p class="lead">Each English region\'s schools: how many have a full-year return, how many are in deficit, '
+            'and the trend in funding and spending per pupil on each region\'s page.</p>'
+            + (sort_note(1) + sortable(["Region", "Schools with a return", "In deficit", "% in deficit"], rows) if rows else "<p>No region has a school with a return yet.</p>")
+            + '<p><a href="/england/">England as a whole</a> · <a href="/council/">Every council</a> · <a href="/constituency/">Constituencies</a></p>' + sources())
+    return page("School finances by region | School Money", "School finances in each English region: schools in deficit and money per pupil, from DfE returns.",
+                "/areas/", body, crumbs, metadata, extra_head=AREA_HEAD)
+
+
+def render_constituency_index(constituencies, metadata):
+    """/constituency/: every parliamentary constituency with a school on the site, A to Z."""
+    rows = []
+    for (name, path), items in sorted(constituencies.items(), key=lambda kv: kv[0][0].casefold()):
+        assessed = [i for i in items if i["status"]]
+        deficit = sum(i["status"]["status"] == "in_deficit" for i in assessed)
+        rows.append([f'<a href="{esc(path)}">{esc(name)}</a>', f'<span data-sort="{len(assessed)}">{len(assessed):,}</span>',
+                     f'<span data-sort="{deficit}">{deficit:,}</span>'])
+    crumbs = [("School Money", "/"), ("Constituencies", "/constituency/")]
+
+    def frame(n, total, table_html):
+        body = ('<h1>School finances by constituency</h1><p class="lead">Every parliamentary constituency in England with the number of its schools '
+                'that have a full-year return and how many of them are in deficit.</p>'
+                + (sort_note(total) + table_html if table_html else "<p>No constituency has a school on the site yet.</p>") + sources())
+        suffix = f", page {n}" if n > 1 else ""
+        return (shorten(f"School finances by constituency{suffix} | School Money", 70),
+                shorten(f"Constituencies in England{suffix}: schools with a finance return and how many are in deficit, from DfE returns.", 160), crumbs, body)
+
+    return paged("/constituency/", ["Constituency", "Schools with a return", "In deficit"], rows, frame, metadata)
+
+
+def render_home(schools, metadata, england):
+    """'/' with the area dashboards: search, the five audience entry points and England's headline."""
+    assessed = [i for i in schools if i["status"]]
+    body = ('<h1>School money: how England\'s schools are funded, what they spend and what they hold in reserve</h1>'
+            f'<p class="lead">Published DfE figures for {len(assessed):,} state schools, explained for the people who care about them. '
+            'Figures are a starting point for a conversation with a school, not a verdict on it.</p>'
+            '<form class="finder" action="/search/" role="search"><label for="find">Find a school</label>'
+            '<input id="find" name="q" type="search" placeholder="School name, town or postcode" autocomplete="off"><button type="submit">Find</button></form>'
+            '<h2>Start here</h2><ul class="audiences">'
+            + "".join(f'<li><a href="{esc(p)}"><strong>{esc(who)}</strong></a> {esc(why)}</li>' for who, p, why in AUDIENCE_LINKS) + "</ul>"
+            '<h2>England at a glance</h2>' + (area_pages.headline(england) if england else "")
+            + '<p><a class="button" href="/england/">England\'s schools in detail</a></p>'
+            '<p><a href="/areas/">Regions</a> · <a href="/council/">Councils</a> · <a href="/constituency/">Constituencies</a> · <a href="/trust/">Academy trusts</a> · '
+            '<a href="/debts/">Debts</a> · <a href="/ptfa/">PTFA</a> · <a href="/map/">Map</a> · <a href="/compare/">Compare schools</a> · <a href="/about/">How it works</a></p>'
+            + sources())
+    description = shorten(f"How {len(assessed):,} English state schools are funded, what they spend and their reserves, from DfE returns, for parents, governors and PTFAs.", 160)
+    return page("School finances in England | School Money", description, "/", body, [("School Money", "/")], metadata, extra_head=AREA_HEAD)
+
+
+def run_extensions(env, skipped):
+    """Each EXTENSIONS module's write_pages(env), in order: [(path, indexable)]. A module that cannot be
+    imported is skipped (and named in `skipped`); any other error fails the build."""
+    written = []
+    for name in EXTENSIONS:
+        try:
+            mod = importlib.import_module(f"pipeline.money.{name}")
+        except ImportError as exc:
+            skipped.append(f"{name} ({exc})")
+            continue
+        for path, indexable in mod.write_pages(env) or []:
+            written.append((path, bool(indexable)))
+    return written
 
 
 def search_index(councils, schools, trusts):
@@ -1390,7 +1888,10 @@ def write_sitemaps(out, urls, today, limit=45_000):
 def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "pipeline/money/data/la_dsg.json"):
     started = time.perf_counter()
     site = Path(site).resolve()
-    out = Path(out).resolve() if out else ROOT / "site_money"
+    out = Path(out) if out else ROOT / "site_money"
+    if out.is_symlink():  # before resolving: resolve() would follow the link and the old tree would be deleted
+        raise ValueError(f"Refusing to replace symlink: {out}")
+    out = out.resolve()
     index_html = site / "index.html"
     metadata = HeadMetadata(index_html.read_text(encoding="utf-8")) if index_html.is_file() else None
     councils, schools, by_urn = build_model(site, history_path, links_path, pta_path)
@@ -1399,7 +1900,10 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
     pta_doc = json.loads(pta_path.read_text(encoding="utf-8")) if pta_path and pta_path.exists() else {}
     data_root = site / "data"
     today = date.today().isoformat()
-    urls = []
+    built, areas_error = build_area_doc(schools, pta_doc, dsg, data_root)
+    shared = {"areas": built, "ifs": ifs, "dsg": dsg, "sen_q3": sen_share_q3(schools)}
+    dashboards = area_pages is not None and bool(built)
+    urls, school_sizes, skipped = [], [], []
     out.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".site_money-build-", dir=out.parent) as staging:
         stage = Path(staging) / "site_money"
@@ -1407,15 +1911,16 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
         written = set()
 
         def write(path, html):
-            """One page at a clean path, never twice, never at or over the size budget."""
+            """One page at a clean path, never twice, never at or over its size budget."""
             if not PATH.fullmatch(path):
                 raise ValueError(f"Unsafe page path {path!r}")
             if path in written:
                 raise ValueError(f"Two pages share the path {path}")
             written.add(path)
             size = len(html.encode("utf-8"))
-            if size >= PAGE_BUDGET:
-                raise ValueError(f"Page too large ({size:,} bytes): {path}")
+            budget = SCHOOL_PAGE_BUDGET if path.startswith("/school/") else PAGE_BUDGET
+            if size >= budget:
+                raise ValueError(f"Page too large ({size:,} bytes, budget {budget:,}): {path}")
             target = stage / path.lstrip("/") / "index.html"
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(html, encoding="utf-8")
@@ -1426,51 +1931,128 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
                 if indexable:
                     urls.append((path, today))
 
-        write("/", render_national(councils, schools, metadata, dsg))
-        urls.append(("/", today))
-        write_all(render_council_index(councils, metadata))
-        for c in councils:
-            if c["schools"]:
-                write_all(render_council(c, metadata, dsg), indexable=any(i["status"] for i in c["schools"]))
-        for item in schools:
-            write(item["path"], render_school(item, metadata, data_root))
-            if item["status"]:
-                urls.append((item["path"], today))
         trusts = trusts_of(schools)
-        write_all(render_trust_index(trusts, metadata))
-        for name, items in trusts.items():
-            write_all(render_trust(name, items, metadata))
+        trust_path = {name: items[0]["trust_path"] for name, items in trusts.items()}
         constituencies = defaultdict(list)
         for i in schools:
             if i["constituency"]:
                 constituencies[(i["constituency"], i["constituency_path"])].append(i)
-        for (name, path), items in constituencies.items():
-            write_all(render_constituency(name, path, items, metadata), indexable=any(i["status"] for i in items))
         regions = defaultdict(list)
         for c in councils:
             if c.get("region") and c["schools"]:
                 regions[c["region"]].append(c)
+        actx = area_ctx(shared, councils, schools, trust_path) if dashboards else None
+
+        def dashboard(path, crumbs, result):
+            pages = area_result_pages(path, crumbs, result, metadata)
+            write_all(pages, indexable=bool(result.get("indexable", True)))
+
+        # National, England and regions
+        if dashboards:
+            write("/", render_home(schools, metadata, built.get("england")))
+            urls.append(("/", today))
+            dashboard("/england/", [("School Money", "/"), ("England", "/england/")],
+                      area_pages.render_area("england", "england", built.get("england"), schools, actx))
+            write("/areas/", region_index(built.get("regions") or {}, metadata))
+            urls.append(("/areas/", today))
+        else:
+            write("/", render_national(councils, schools, metadata, dsg))
+            urls.append(("/", today))
         for name, cs in regions.items():
-            write(f"/areas/{slug(name)}/", render_region(name, f"/areas/{slug(name)}/", cs, metadata))
-            urls.append((f"/areas/{slug(name)}/", today))
+            path = f"/areas/{slug(name)}/"
+            region = (built.get("regions") or {}).get(name) if dashboards else None
+            if region is not None:
+                dashboard(path, [("School Money", "/"), ("Areas", "/areas/"), (name, path)],
+                          area_pages.render_area("region", name, region, [i for c in cs for i in c["schools"]], actx))
+            else:
+                write(path, render_region(name, path, cs, metadata))
+                urls.append((path, today))
+
+        # Councils
+        council_areas = {}
+        for c in councils:
+            a = (built.get("councils") or {}).get(c["code"]) if dashboards else None
+            if a is not None and c["schools"]:
+                council_areas[c["code"]] = dict(a, code=c["code"], name=c["name"], path=c["path"], region=c.get("region"))
+        if dashboards and council_areas:
+            dashboard("/council/", [("School Money", "/"), ("Councils", "/council/")], area_pages.render_council_league(council_areas, actx))
+        else:
+            write_all(render_council_index(councils, metadata))
+        for c in councils:
+            if not c["schools"]:
+                continue
+            if c["code"] in council_areas:
+                dashboard(c["path"], [("School Money", "/"), ("Councils", "/council/"), (c["name"], c["path"])],
+                          area_pages.render_area("council", c["code"], council_areas[c["code"]], c["schools"], actx))
+            else:
+                write_all(render_council(c, metadata, dsg), indexable=any(i["status"] for i in c["schools"]))
+
+        # Schools, and each one's SERIES for drills and Wrapped
+        series_docs = {}
+        for item in schools:
+            html, indexable, doc = school_page_html(item, metadata, shared)
+            write(item["path"], html)
+            school_sizes.append(len(html.encode("utf-8")))
+            if item["status"]:
+                series_docs[item["urn"]] = doc
+                if indexable:
+                    urls.append((item["path"], today))
+
+        # Trusts
+        trust_areas = {}
+        if dashboards:
+            by_name = {a.get("name"): (key, a) for key, a in (built.get("trusts") or {}).items() if a and a.get("name")}
+            for name in trusts:
+                if name in by_name:
+                    key, a = by_name[name]
+                    trust_areas[key] = dict(a, name=name, path=trust_path[name])
+        if trust_areas:
+            dashboard("/trust/", [("School Money", "/"), ("Academy trusts", "/trust/")], area_pages.render_trust_index(trust_areas, actx))
+        else:
+            write_all(render_trust_index(trusts, metadata))
+        matched = {a["name"]: a for a in trust_areas.values()}
+        for name, items in trusts.items():
+            if name in matched:
+                path = trust_path[name]
+                dashboard(path, [("School Money", "/"), ("Academy trusts", "/trust/"), (name, path)],
+                          area_pages.render_trust(matched[name], items, actx))
+            else:
+                write_all(render_trust(name, items, metadata))
+
+        # Constituencies
+        write_all(render_constituency_index(constituencies, metadata))
+        constituency_areas = {a.get("name"): (code, a) for code, a in ((built or {}).get("constituencies") or {}).items() if a} if dashboards else {}
+        for (name, path), items in constituencies.items():
+            if name in constituency_areas:
+                code, a = constituency_areas[name]
+                dashboard(path, [("School Money", "/"), ("Constituencies", "/constituency/"), (name, path)],
+                          area_pages.render_area("constituency", code, a, items, actx))
+            else:
+                write_all(render_constituency(name, path, items, metadata), indexable=any(i["status"] for i in items))
+
+        # Debts and PTFA
+        if dashboards:
+            dashboard("/debts/", [("School Money", "/"), ("Debts", "/debts/")], area_pages.render_debts(built, actx))
+            dashboard("/ptfa/", [("School Money", "/"), ("PTFA", "/ptfa/")], area_pages.render_ptfa(built, schools, actx))
         write("/compare/", render_compare(metadata))
         write("/about/", render_about(metadata, dsg, ifs))
         urls += [("/compare/", today), ("/about/", today)]
-        for path, title, text, links in STUBS:
-            write(path, render_stub(path, title, text, links, metadata))
-        (stage / "404.html").write_text(render_404(metadata), encoding="utf-8")
-        (stage / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /data/\nSitemap: {BASE_MONEY}/sitemap.xml\n", encoding="utf-8")
+
+        # Data for the app
         data = stage / "data"
-        (data / "s").mkdir(parents=True)
-        (data / "a").mkdir()
+        for sub in ("s", "sx", "a"):
+            (data / sub).mkdir(parents=True, exist_ok=True)
         statuses = {}
         for item in schools:
             if not item["status"]:
                 continue
-            doc = school_json(item, data_root, profile_of(item, data_root), timeline_of(item))
+            doc = school_json(item, data_root, item.get("profile"), timeline_of(item))
             (data / "s" / f"{item['urn']}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            sx = series_docs.get(item["urn"]) or school_series(item, shared["sen_q3"])
+            (data / "sx" / f"{item['urn']}.json").write_text(series_json(sx), encoding="utf-8")
             statuses[item["urn"]] = {"status": item["status"]["status"], "label": item["status"]["label"], "path": item["path"]}
-        for ident, doc in area_documents(councils, schools, pta_doc, dsg, data_root, by_urn).items():
+        docs = area_documents(councils, schools, built, dsg)
+        for ident, doc in docs.items():
             if not re.fullmatch(r"[a-z0-9-]+", ident):
                 raise ValueError(f"Unsafe area id {ident!r}")
             (data / "a" / f"{ident}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -1480,6 +2062,18 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
         assets.mkdir()
         for asset in _shell().asset_files():
             shutil.copyfile(asset, assets / Path(asset).name)
+
+        # Extensions (map, deck, Wrapped, guides), then stubs for whatever no page has claimed
+        env = {"out": stage, "write": write, "page": _shell().page, "items": schools, "areas": areas_for_extensions(built, docs),
+               "today": today, "og_image": getattr(metadata, "image", None) or None}
+        for path, indexable in run_extensions(env, skipped):
+            if indexable:
+                urls.append((path, today))
+        for path, title, text, links in STUBS:
+            if path not in written:
+                write(path, render_stub(path, title, text, links, metadata))
+        (stage / "404.html").write_text(render_404(metadata), encoding="utf-8")
+        (stage / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /data/\nSitemap: {BASE_MONEY}/sitemap.xml\n", encoding="utf-8")
         write_sitemaps(stage, urls, today)
         if out.is_symlink():
             raise ValueError(f"Refusing to replace symlink: {out}")
@@ -1489,6 +2083,8 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
     counts = Counter(i["status"]["status"] for i in schools if i["status"])
     return {"schools": len(schools), "with_status": sum(counts.values()), "councils": len(councils), "trusts": len(trusts),
             "constituencies": len(constituencies), "statuses": dict(counts), "pages": len(urls), "out": str(out),
+            "school_page_median": round(statistics.median(school_sizes)) if school_sizes else 0,
+            "school_page_max": max(school_sizes, default=0), "areas_error": areas_error, "skipped_extensions": skipped,
             "runtime": time.perf_counter() - started}
 
 
@@ -1508,8 +2104,15 @@ def main():
     print(f"School Money: {summary['pages']:,} indexable pages in {summary['out']}; {summary['schools']:,} schools ({summary['with_status']:,} with a status), "
           f"{summary['councils']} councils, {summary['constituencies']:,} constituencies, {summary['trusts']:,} trusts; {summary['runtime']:.1f}s")
     print("Statuses:", ", ".join(f"{STATUS_LABELS[k]} {summary['statuses'].get(k, 0):,}" for k in STATUS_ORDER))
+    print(f"School pages: median {summary['school_page_median']:,} bytes, largest {summary['school_page_max']:,} bytes (budget {SCHOOL_PAGE_BUDGET:,})")
     print("Shell:", "pipeline/money/site.py" if shell is not None else "built-in fallback",
-          "| areas:", "yes" if areas else "no", "| timeline:", "yes" if timeline else "no", "| deflator:", "yes" if deflator else "no")
+          "| areas:", "yes" if areas else "no", "| timeline:", "yes" if timeline else "no", "| deflator:", "yes" if deflator else "no",
+          "| series:", "yes" if series else "local", "| school page:", "yes" if school_page else "fallback",
+          "| area pages:", "yes" if area_pages else "fallback")
+    if summary["areas_error"]:
+        print("areas.build_areas failed, reduced area statistics used:", summary["areas_error"])
+    if summary["skipped_extensions"]:
+        print("Extensions skipped:", "; ".join(summary["skipped_extensions"]))
 
 
 if __name__ == "__main__":

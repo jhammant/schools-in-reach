@@ -2,8 +2,11 @@
    Pure helpers are exported as globalThis.MoneyApp (loadable under node for tests); DOM wiring
    runs only in a browser. All data goes through textContent: no HTML built from strings of data.
 
-   Reads: /assets/glossary.json, /data/search.json, /data/s/<urn>.json, /data/a/<id>.json,
+   Reads: /assets/glossary.json, /data/search.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's
+          SERIES, for data-drill="/data/sx/<urn>.json#m:<metric>"), /data/a/<id>.json,
           /data/postcodes/<district>.json (optional, 404 = no suggestions).
+   Tables: table[data-sortable] sorts by column; a preceding .table-filters[data-filters] filters rows by
+          their [data-tags] (group:value slugs); rows of pinned schools move to the top on load.
    Stores: localStorage moneyAudience ("parent"|...), moneyPinned ([{type,id,name,p}]).
    Imports: Schools in Reach's localStorage "shortlist" and "plan" (arrays of URNs). */
 (function (root) {
@@ -134,10 +137,78 @@
     }).catch(function () { return null; });
   }
 
+  // A SERIES file (/data/sx/<urn>.json) as the drill payload {title, year, rows, series, src} for one metric.
+  // Totals break down into their own lines for the chosen year, and each line drills into its own series.
+  var SX_REF = /^(\/data\/sx\/[0-9]+\.json)#m:([a-z0-9_]+)$/;
+  var STAFF = ["teaching_staff", "supply_staff", "education_support_staff", "admin_clerical_staff", "premises_staff", "catering_staff", "other_staff_costs"];
+  var BREAKDOWN = {
+    total_income: ["grant_funding_government", "sen_funding", "pupil_premium", "other_dfe_grants", "self_generated_income",
+                   "donations_revenue", "donations_capital", "facilities_income", "catering_income"],
+    total_expenditure: STAFF.concat(["premises", "energy", "occupation", "catering", "educational_supplies", "supplies_services", "bought_in_services"]),
+    total_staff: STAFF
+  };
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  function seriesDrill(sx, metric, opts) {
+    opts = opts || {};
+    var all = sx && sx.m && typeof sx.m === "object" ? sx.m : null;
+    var m = all && all[metric];
+    if (!m || typeof m !== "object") return null;
+    var years = (Array.isArray(sx.years) ? sx.years : []).filter(function (y) { return m[y] && isNum(m[y].v); });
+    if (!years.length) return null;
+    var label = typeof opts.label === "function" ? opts.label : function (k) { return String(k).replace(/_/g, " "); };
+    var suspect = (sx.flags && sx.flags.suspect) || {};
+    function flagged(y, k) { return Array.isArray(suspect[y]) && suspect[y].indexOf(k) !== -1; }
+    var year = opts.year && years.indexOf(opts.year) !== -1 ? opts.year : years[years.length - 1];
+    var rows = (BREAKDOWN[metric] || []).map(function (k) {
+      var c = all[k] && all[k][year];
+      if (!c || !isNum(c.v)) return null;
+      var r = { key: k, label: label(k), v: c.v, pp: isNum(c.pp) ? c.pp : null };
+      if (opts.file) r.drill = opts.file + "#m:" + k;
+      if (flagged(year, k)) r.suspect = true;
+      return r;
+    }).filter(Boolean);
+    return {
+      title: opts.title || label(metric), year: year, rows: rows,
+      series: years.map(function (y) {
+        var p = { y: y, v: m[y].v, pp: isNum(m[y].pp) ? m[y].pp : null };
+        if (flagged(y, metric)) p.suspect = true;
+        return p;
+      }),
+      src: opts.src || null
+    };
+  }
+  // Table filters: tags are "group:value" slugs separated by spaces. A row shows when, for every group with
+  // an active filter, it carries one of that group's active values.
+  function parseTags(text) {
+    var out = {};
+    String(text == null ? "" : text).split(/\s+/).forEach(function (t) {
+      var i = t.indexOf(":");
+      if (i < 1 || i === t.length - 1) return;
+      var g = t.slice(0, i);
+      (out[g] = out[g] || []).push(t.slice(i + 1));
+    });
+    return out;
+  }
+  function rowShown(tags, active) {
+    return Object.keys(active || {}).every(function (g) {
+      var want = active[g] || [];
+      if (!want.length) return true;
+      var mine = (tags && tags[g]) || [];
+      return want.some(function (v) { return mine.indexOf(v) !== -1; });
+    });
+  }
+  // Rows of pinned schools first (in their existing order), then the rest; returns a new array.
+  function pinnedFirst(rows, urnOf, pinned) {
+    var top = [], rest = [];
+    (rows || []).forEach(function (r) { (pinned[String(urnOf(r))] ? top : rest).push(r); });
+    return top.concat(rest);
+  }
+
   var API = {
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
-    slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit
+    slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
+    rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF
   };
   root.MoneyApp = API;
   if (typeof document === "undefined") return;
@@ -412,6 +483,7 @@
     if (label) s.setAttribute("data-label", label);
     if (src) s.setAttribute("data-src", src);
     if (opts.signed) s.setAttribute("data-signed", "1");
+    if (typeof opts.drill === "string" && opts.drill) s.setAttribute("data-drill", opts.drill);
     if (typeof opts.similar === "number") s.setAttribute("data-cmp-similar", String(Math.round(opts.similar)));
     if (typeof opts.england === "number") s.setAttribute("data-cmp-england", String(Math.round(opts.england)));
     var small = null;
@@ -472,8 +544,9 @@
         var th = el("th", null, r.label || (term(r.key) || {}).label || r.key || "");
         th.scope = "row";
         tr.appendChild(th);
+        if (r.suspect) { tr.className = "suspect"; th.appendChild(el("small", null, " (figure under review)")); }
         var td = tr.insertCell();
-        td.appendChild(figureSpan(r.key, r.v, r.pp, year, r.label, data.src, { unit: r.unit, signed: !!r.signed }));
+        td.appendChild(figureSpan(r.key, r.v, r.pp, year, r.label, data.src, { unit: r.unit, signed: !!r.signed, drill: r.drill }));
       });
       drill.appendChild(table);
       enhanceFigures(table);
@@ -515,12 +588,17 @@
       if (seq !== drillSeq) return;
       var d = figureData(mf);
       var ref = d.drill;
-      var loader;
+      var loader, sx = SX_REF.exec(ref);
       if (ref && ref.charAt(0) === "#") {
         var script = document.getElementById(ref.slice(1));
         var inline = null;
         try { inline = script ? JSON.parse(script.textContent) : null; } catch (err) { inline = null; }
         loader = Promise.resolve(inline);
+      } else if (sx) {
+        loader = fetchJSON(sx[1]).then(function (doc) {
+          return seriesDrill(doc, sx[2], { year: d.year, src: d.src, title: d.label, file: sx[1],
+            label: function (k) { return (term(k) || {}).label || String(k).replace(/_/g, " "); } });
+        });
       } else if (ref) loader = fetchJSON(ref);
       else loader = Promise.resolve(null);
       loader.then(function (data) {
@@ -891,6 +969,65 @@
       th.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sort(); } });
     });
   });
+
+  // ---------------------------------------------------------------- table filters and pinned rows
+  function bodyRows(t) {
+    var body = t.tBodies && t.tBodies[0];
+    return body ? Array.prototype.slice.call(body.rows) : [];
+  }
+  function rowUrn(r) {
+    var a = r.querySelector("[data-preview]");
+    var ref = a ? a.getAttribute("data-preview") || "" : "";
+    return ref.indexOf("school:") === 0 ? ref.slice(7) : "";
+  }
+  // Each filter block applies to the first sortable table after it in the page.
+  var filterTargets = [], pendingFilters = [];
+  $$("[data-filters], table[data-sortable]").forEach(function (n) {
+    if (n.hasAttribute("data-filters")) pendingFilters.push(n);
+    else { pendingFilters.forEach(function (f) { filterTargets.push([f, n]); }); pendingFilters = []; }
+  });
+  filterTargets.forEach(function (pair) {
+    var box = pair[0], t = pair[1];
+    var count = el("span", "filter-count muted small");
+    count.setAttribute("aria-live", "polite");
+    box.appendChild(count);
+    function apply() {
+      var active = {};
+      $$("button[data-filter]", box).forEach(function (b) {
+        var tag = parseTags(b.getAttribute("data-filter"));
+        if (b.getAttribute("aria-pressed") !== "true") return;
+        Object.keys(tag).forEach(function (g) { active[g] = (active[g] || []).concat(tag[g]); });
+      });
+      var rows = bodyRows(t), shown = 0;
+      rows.forEach(function (r) {
+        var holder = r.querySelector("[data-tags]");
+        var ok = rowShown(parseTags(holder ? holder.getAttribute("data-tags") : ""), active);
+        r.hidden = !ok;
+        if (ok) shown++;
+      });
+      count.textContent = Object.keys(active).length ? "Showing " + shown + " of " + rows.length : "";
+    }
+    $$("button[data-filter]", box).forEach(function (b) {
+      if (!b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+        apply();
+      });
+    });
+  });
+  (function pinnedRows() {
+    var pinned = {};
+    pins.forEach(function (p) { if (p.type === "school") pinned[String(p.id)] = true; });
+    if (!Object.keys(pinned).length) return;
+    $$("table[data-sortable]").forEach(function (t) {
+      var body = t.tBodies && t.tBodies[0];
+      if (!body) return;
+      pinnedFirst(bodyRows(t), rowUrn, pinned).forEach(function (r) {
+        if (pinned[rowUrn(r)]) r.classList.add("pinned");
+        body.appendChild(r);
+      });
+    });
+  })();
 
   // ---------------------------------------------------------------- compare page (#compare-app)
   (function compare() {

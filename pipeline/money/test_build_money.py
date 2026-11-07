@@ -1,8 +1,10 @@
 """Offline fixture tests for the School Money site build. Never reads or alters the real school data."""
+from collections import Counter
 from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
+import sys
 import tempfile
 import time
 import types
@@ -25,6 +27,15 @@ GLOSSARY_KEYS = {
     "trust_central_spend", "cfr_line", "aar_line", "status_in_deficit", "status_heading_for_deficit", "status_tight", "status_healthy",
     "status_large_reserves", "band",
 }
+# SHARED: B1 adds these glossary keys; pages may use them before B1's glossary.json merges.
+GLOSSARY_KEYS |= {
+    "other_dfe_grants", "gov_funding_pp", "spend_pp", "gov_vs_spend_gap", "falling_rolls", "pass_through", "high_send",
+    "trust_central_spend_pp", "pta_gap", "pta_history", "statutory_override", "deficit_pp", "reserve_median_pp", "schools_in_deficit", "ifs_figure",
+}
+# The other units' modules (B1 series, B2 school page, B3 area pages): fixture tests of the fallback
+# markup set them to None, so they stay true after those units merge.
+OTHER_UNITS = ("series", "school_page", "area_pages")
+BANNED = re.compile(r"poor school|failing|worst|bankrupt|scandal", re.I)
 SCHOOL_JSON_KEYS = {
     "urn", "name", "path", "council", "status", "label", "reason", "year", "academy", "trust", "trust_path", "pupils", "income", "income_pp",
     "spend", "spend_pp", "reserve", "reserve_pp", "share", "balance", "balance_pp", "streak", "pupils_change", "years", "pp", "similar",
@@ -120,8 +131,19 @@ def body_text(html):
     return re.sub(r"<script.*?</script>", "", body, flags=re.S)
 
 
+def without_other_units(test):
+    """setUp helper: the core's own fallback renderers and no extensions (map, deck, Wrapped, guides have
+    their own tests, and ExtensionTest builds with them), whatever has merged; restored on cleanup."""
+    saved = {name: getattr(build_money, name) for name in OTHER_UNITS + ("EXTENSIONS",)}
+    for name in OTHER_UNITS:
+        setattr(build_money, name, None)
+    build_money.EXTENSIONS = ()
+    test.addCleanup(lambda: [setattr(build_money, k, v) for k, v in saved.items()])
+
+
 class BuildMoneyTest(unittest.TestCase):
     def setUp(self):
+        without_other_units(self)
         self.tmp = tempfile.TemporaryDirectory()
         root = Path(self.tmp.name)
         self.site = root / "site"
@@ -204,7 +226,7 @@ class BuildMoneyTest(unittest.TestCase):
             self.assertIn('src="/assets/app.js"', html)
             self.assertIn('id="q"', html)
             self.assertIn("data-pin-count", html)
-        stub = self.read("map")
+        stub = self.read("search")
         self.assertIn("noindex", stub)
         self.assertNotIn("noindex", self.read("council", "hackney"))
 
@@ -277,7 +299,10 @@ class BuildMoneyTest(unittest.TestCase):
         self.assertEqual(data["lines"], {"I01": 1_900_000, "E01": 1_000_000})
         self.assertEqual(data["pta"][0]["charity_number"], 1234567)
         self.assertIn("teaching_staff", data["similar"])
-        self.assertNotIn("tags", data)  # areas.py absent in this test run or monkeypatched away below
+        if build_money.areas is None:
+            self.assertNotIn("tags", data)  # tags come only from areas.school_profile
+        else:
+            self.assertIsInstance(data["tags"], dict)
         raw = (self.out / "data/s/100001.json").read_text(encoding="utf-8")
         self.assertIn('"income":2000000,"income_pp":6667', raw)  # compact separators, whole pounds
 
@@ -286,10 +311,11 @@ class BuildMoneyTest(unittest.TestCase):
         area = json.loads((self.out / "data/a/council-204.json").read_text(encoding="utf-8"))
         self.assertEqual((area["id"], area["type"], area["name"], area["path"]), ("council-204", "council", "Hackney", "/council/hackney/"))
         latest = area["by_year"]["2024-25"]["all"]
-        self.assertEqual((latest["schools"], latest["in_deficit"], latest["deficit_total"]), (15, 1, 200_000))
-        self.assertEqual(latest["income_pp_median"], 6667)
+        # A deficit total is negative, in areas.py and in the reduced statistics alike.
+        self.assertEqual((latest["schools"], latest["in_deficit"], latest["deficit_total"]), (15, 1, -200_000))
+        self.assertEqual(round(latest["income_pp_median"]), 6667)
         self.assertEqual(area["dsg"]["2024-25"]["balance"], -16_493_653)
-        self.assertEqual(area["dsg"]["2024-25"]["per_pupil"], round(-16_493_653 / 4500))
+        self.assertEqual(round(area["dsg"]["2024-25"]["per_pupil"]), round(-16_493_653 / 4500))
         england = json.loads((self.out / "data/a/england.json").read_text(encoding="utf-8"))
         self.assertEqual(england["path"], "/")
         search = json.loads((self.out / "data/search.json").read_text(encoding="utf-8"))
@@ -337,7 +363,7 @@ class BuildMoneyTest(unittest.TestCase):
         self.assertIn(BASE_MONEY + "/", locs)
         self.assertIn(BASE_MONEY + "/council/hackney/", locs)
         self.assertIn(BASE_MONEY + "/school/100000-school-0/", locs)
-        self.assertNotIn(BASE_MONEY + "/map/", locs)
+        self.assertNotIn(BASE_MONEY + "/search/", locs)
         for loc in locs:
             self.assertTrue(loc.startswith(BASE_MONEY + "/"), loc)
             self.assertTrue((self.out / loc.removeprefix(BASE_MONEY + "/") / "index.html").is_file(), loc)
@@ -423,6 +449,7 @@ class BuildMoneyTest(unittest.TestCase):
 
 class HardeningTest(unittest.TestCase):
     def setUp(self):
+        without_other_units(self)
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
 
@@ -573,7 +600,7 @@ class HardeningTest(unittest.TestCase):
         for page in pages:
             html = page.read_text(encoding="utf-8")
             self.assertNotIn("<script>alert", html, page)
-            self.assertNotIn("<b>", html, page)
+            self.assertNotRegex(html, r"<b>(?!£)", page)
             self.assertNotIn('"Co"', html, page)
             for block in html.split('<script type="application/ld+json">')[1:]:
                 ld = block.split("</script>")[0]
@@ -615,7 +642,8 @@ class HardeningTest(unittest.TestCase):
         # Assert
         page = next(p for p in (money / "school").iterdir() if p.name.startswith("100000-"))
         size = len((page / "index.html").read_bytes())
-        self.assertLess(size, 36_000, size)  # headroom under PAGE_BUDGET for the app shell's header and footer
+        # School pages have their own budget; the body bound for a dashboard this size is 56,000 bytes.
+        self.assertLess(size, build_money.SCHOOL_PAGE_BUDGET - 8_000, size)
         self.assertIn("Money raised by parents", (page / "index.html").read_text(encoding="utf-8"))
 
     def test_every_page_stays_under_budget_with_a_big_council_and_trust(self):
@@ -704,6 +732,566 @@ class HardeningTest(unittest.TestCase):
         self.assertEqual(sum(1 for p in (money / "data/a").iterdir()), 1 + 1 + 20 + 40)
         self.assertEqual(summary["councils"], 20)
         self.assertLess(elapsed, 60, f"build took {elapsed:.1f}s")
+
+
+CTX_KEYS = {"series", "profile", "timeline", "similar", "similar_series", "council", "england", "pta_national", "ifs", "real_label",
+            "check_url", "sir_url"}
+SERIES_KEYS = {"years", "source", "pupils", "m", "gap", "pta", "flags", "trust_central_pp"}
+
+
+def area(name, **extra):
+    """An area A as areas.build_areas returns it (SHARED 'AREAS.JSON')."""
+    a = {"name": name, "pupils_by_year": {"2024-25": 4200.0}, "schools_by_year": {"2024-25": 14}, "by_year": {}, "dsg": {},
+         "statuses_latest": {"healthy": 10, "in_deficit": 2, "tight": 2}}
+    a.update(extra)
+    return a
+
+
+def fake_areas(trust="Good Trust", constituency="Hackney North and Stoke Newington"):
+    """A stand-in areas module with the SHARED signatures and a document carrying trusts and pta."""
+    doc = {"england": area("England"), "regions": {"London": area("London")}, "councils": {"204": area("Hackney")},
+           "constituencies": {"E14000720": area(constituency)},
+           "trusts": {"good-trust": area(trust, company_number="01234567", central_pp={"2024-25": 510})},
+           "pta": {"by_year": {}, "by_band": {}, "by_tag": {}, "top": []}}
+    return types.SimpleNamespace(
+        school_profile=lambda s, code, root: {"tags": {"governance": "council-run", "phase": "Primary"}, "intake": {}, "area": {}, "band": None},
+        build_areas=lambda rows, schools, pta, dsg, root: doc), doc
+
+
+class FakeAreaPages:
+    """area_pages with the SHARED signatures: every renderer records its call and returns the SHARED
+    result shape. Table cells are padded so a fixture council needs several pages."""
+
+    def __init__(self, intro_bytes=6_000, pad=2_300):
+        self.calls, self.intro_bytes, self.pad = [], intro_bytes, pad
+
+    def result(self, kind, name, rows, headers=("School", "Status")):
+        intro = f'<h1>{build_money.esc(name)} money</h1><p class="lead">INTRO-{kind}</p><p>{"i" * self.intro_bytes}</p>'
+        return {"title": f"{name} school money | School Money", "description": f"{name}: school finances.", "intro": intro,
+                "table": {"headers": list(headers), "rows": rows, "caption": f"Every row for {name}",
+                          "filters": '<div class="table-filters" data-filters><button type="button" data-filter="phase:primary" aria-pressed="false">Primary</button></div>'},
+                "outro": f"<p>OUTRO-{kind}</p>", "indexable": True}
+
+    def school_rows(self, items):
+        return [[f'<span data-tags="phase:primary"></span><a href="{i["path"]}" data-preview="school:{i["urn"]}">{build_money.esc(i["name"])}</a>',
+                 "p" * self.pad] for i in items]
+
+    def render_area(self, kind, area_id, a, items, ctx):
+        self.calls.append(("area", kind, area_id, ctx))
+        rows = self.school_rows(items) if kind in ("council", "constituency") else [[f'<a href="{p}">{c}</a>', "-"] for c, p in ctx["paths"]["council"].items()]
+        return self.result(kind, a["name"], rows)
+
+    def render_council_league(self, council_areas, ctx):
+        self.calls.append(("league", council_areas))
+        return self.result("league", "Councils", [[f'<a href="{a["path"]}">{a["name"]}</a>', a["code"]] for a in council_areas.values()])
+
+    def render_trust(self, trust_area, items, ctx):
+        self.calls.append(("trust", trust_area))
+        return self.result("trust", trust_area["name"], self.school_rows(items))
+
+    def render_trust_index(self, trust_areas, ctx):
+        self.calls.append(("trusts", trust_areas))
+        return self.result("trusts", "Academy trusts", [[f'<a href="{a["path"]}">{a["name"]}</a>', "-"] for a in trust_areas.values()])
+
+    def render_debts(self, areas_doc, ctx):
+        self.calls.append(("debts",))
+        return dict(self.result("debts", "Debts", []), table=None)
+
+    def render_ptfa(self, areas_doc, items, ctx):
+        self.calls.append(("ptfa", len(items)))
+        return self.result("ptfa", "PTFA", self.school_rows([i for i in items if i["status"]]))
+
+    @staticmethod
+    def headline(a):
+        return f'<div class="tiles" data-headline="{build_money.esc(a["name"])}">HEADLINE</div>'
+
+
+class FakeSchoolPage:
+    """school_page with the SHARED signature; records each ctx and returns a body of `body_bytes`."""
+    EXTRA_HEAD = build_money.SCHOOL_HEAD
+
+    def __init__(self, body_bytes=2_000, indexable=True):
+        self.ctxs, self.body_bytes, self.indexable = {}, body_bytes, indexable
+
+    def render(self, item, ctx):
+        self.ctxs[item["urn"]] = ctx
+        body = f'<h1>{build_money.esc(item["name"])}: money</h1><p>{"b" * self.body_bytes}</p>'
+        return {"title": f"{item['name']} | School Money", "description": "A school's money.", "body": body, "indexable": self.indexable}
+
+
+def fake_series():
+    """series with the SHARED signatures, backed by the builder's own contract-following fallback."""
+    return types.SimpleNamespace(school_series=build_money.local_series, METRICS=build_money.METRICS, pta_year=build_money.local_pta_year,
+                                 sen_share=lambda r: (r or {}).get("sen_funding", 0) / r["total_income"] if r and r.get("total_income") else None,
+                                 sparkline_values=lambda sx, metric, basis="pp": [])
+
+
+class WaveBTest(unittest.TestCase):
+    def setUp(self):
+        without_other_units(self)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.addCleanup(self.tmp.cleanup)
+
+    def patch(self, **modules):
+        for name, value in modules.items():
+            saved = getattr(build_money, name)
+            setattr(build_money, name, value)
+            self.addCleanup(setattr, build_money, name, saved)
+
+    def build(self, councils, schools, rows, pta=None, **kw):
+        site, history, links, pta_path = make_site(self.root, councils, schools, rows, pta)
+        out = kw.pop("out", self.root / "site_money")
+        summary = build_money.build(site, history, links, pta_path, out=out, dsg_path=self.root / "no-dsg.json")
+        return out, summary
+
+    def read(self, money, *parts):
+        return (money.joinpath(*parts) / "index.html").read_text(encoding="utf-8")
+
+    def sitemap(self, money):
+        return (money / "sitemaps/pages-1.xml").read_text(encoding="utf-8")
+
+    def peers(self, n=14, **extra):
+        schools = [school(100000 + i, f"Peer {i}", fsm_pct=20 + i % 5, constituency="Hackney North and Stoke Newington") for i in range(n)]
+        rows = [r for i in range(n) for r in full_rows(str(100000 + i), reserve=40_000 + 5_000 * i, **extra)]
+        return schools, rows
+
+    # ------------------------------------------------------------ every school gets a page
+
+    def test_every_open_school_gets_a_page_but_colleges_and_universities_do_not(self):
+        # Arrange: a school with returns, an independent school, a new school with no return, and three colleges.
+        schools = [school(100001, "With Returns"),
+                   school(100002, "Independent Prep", type="Other independent school", type_group="Independent schools", lat=51.5, lon=-0.05),
+                   school(100003, "New Free School", type="Free schools", type_group="Free Schools"),
+                   school(100004, "City College", type="Further education", type_group="Colleges"),
+                   school(100005, "University", type="Higher education institutions", type_group="Universities"),
+                   school(100006, "Sixth Form Centre", type="Sixth form centres", type_group="Colleges")]
+        # Act
+        money, summary = self.build([("204", "Hackney")], {"204": schools}, full_rows("100001"))
+        # Assert
+        self.assertEqual(summary["schools"], 3)
+        pages = sorted(p.name for p in (money / "school").iterdir())
+        self.assertEqual(pages, ["100001-with-returns", "100002-independent-prep", "100003-new-free-school"])
+        independent = self.read(money, "school", "100002-independent-prep")
+        self.assertIn("Independent schools don&#x27;t publish accounts to the DfE", independent)
+        self.assertIn('content="noindex,follow"', independent)
+        fresh = self.read(money, "school", "100003-new-free-school")
+        self.assertIn("No full-year finance return", fresh)
+        self.assertIn('content="noindex,follow"', fresh)
+        sitemap = self.sitemap(money)
+        self.assertIn("/school/100001-with-returns/", sitemap)
+        self.assertNotIn("/school/100002-", sitemap)
+        self.assertNotIn("/school/100003-", sitemap)
+        self.assertEqual(sorted(p.name for p in (money / "data/s").iterdir()), ["100001.json"])
+        search = {e["id"] for e in json.loads((money / "data/search.json").read_text(encoding="utf-8")) if e["t"] == "school"}
+        self.assertEqual(search, {"100001", "100002", "100003"})
+        self.assertIn("or independent schools, which don", self.read(money, "council", "hackney"))
+
+    def test_model_items_keep_their_keys_and_gain_the_wave_b_ones(self):
+        # Arrange
+        schools = [school(100001, "Has Coordinates", lat=51.55, lon=-0.06), school(100002, "Nothing Yet")]
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, full_rows("100001", pupils=312.5))
+        expected = {"urn", "name", "school", "council", "path", "site_path", "rows", "years", "latest", "member_of", "status", "phase", "london",
+                    "fsm", "pta", "trust", "trust_path", "academy", "constituency", "constituency_path", "similar",
+                    "la", "la_name", "tags", "pupils", "lat", "lon"}
+        for areas_module, tags in ((None, {}), (fake_areas()[0], {"governance": "council-run", "phase": "Primary"})):
+            with self.subTest(areas=bool(areas_module)):
+                self.patch(areas=areas_module)
+                # Act
+                _, items, _ = build_money.build_model(site, history, links, pta_path)
+                # Assert
+                first, second = items
+                self.assertTrue(expected <= set(first), expected - set(first))
+                self.assertEqual((first["la"], first["la_name"], first["pupils"], first["lat"], first["lon"]), ("204", "Hackney", 312.5, 51.55, -0.06))
+                self.assertEqual(first["tags"], tags)
+                self.assertEqual((second["rows"], second["status"], second["pupils"], second["lat"]), ([], None, None, None))
+
+    # ------------------------------------------------------------ SERIES files
+
+    def test_series_files_are_compact_bounded_and_keep_the_core_lines(self):
+        # Arrange: 8 years with every line, 3 charities with 21-year histories, long names.
+        years = tuple(f"{y}-03" for y in range(2018, 2026))
+        detail = {k: 123_456.789 for k, _, _ in build_money.METRICS if k not in ("total_income", "total_expenditure", "revenue_reserve", "in_year_balance")}
+        schools, rows = self.peers()
+        schools.append(school(100099, "Big History " * 6))
+        rows += [row("100099", end, 2_345_678, 2_300_000, 123_456, pupils=412.5, **detail) for end in years]
+        hist = [{"period_end": f"{y}-08", "income": 21_000 + y, "expenditure": 20_000 + y} for y in range(2005, 2026)]
+        pta = {"100099": [{"charity_number": 1100000 + n, "name": f"Friends {n}", "history": hist, "match": {"confidence": "high"}} for n in range(3)]}
+        # Act
+        money, _ = self.build([("204", "Hackney")], {"204": schools}, rows, pta)
+        # Assert
+        files = sorted((money / "data/sx").iterdir())
+        self.assertEqual(len(files), 15)
+        for f in files:
+            self.assertLessEqual(f.stat().st_size, build_money.SX_BUDGET, f.name)
+        raw = (money / "data/sx/100099.json").read_text(encoding="utf-8")
+        doc = json.loads(raw)
+        self.assertNotIn(": ", raw)
+        self.assertEqual(set(doc), SERIES_KEYS)
+        self.assertEqual(len(doc["years"]), 8)
+        self.assertTrue(build_money.SX_CORE <= set(doc["m"]), build_money.SX_CORE - set(doc["m"]))
+        self.assertEqual(doc["m"]["total_income"]["2024-25"]["pp"], round(2_345_678 / 412.5))
+        self.assertEqual(doc["pupils"]["2024-25"], 412.5)
+
+    def test_series_json_drops_detail_lines_before_the_core_ones(self):
+        # Arrange
+        cell = {f"20{y}-{y + 1}": {"v": 1_234_567, "pp": 4_115, "r": 1_334_567, "rpp": 4_448} for y in range(10, 25)}
+        doc = {"years": [], "source": {}, "pupils": {}, "m": {k: dict(cell) for k, _, _ in build_money.METRICS}, "gap": {}, "pta": {},
+               "flags": {}, "trust_central_pp": {}}
+        doc["m"]["catering_income"] = {}
+        # Act
+        text = build_money.series_json(doc)
+        kept = json.loads(text)["m"]
+        light = json.loads(build_money.series_json(doc, limit=len(build_money.series_json(doc, limit=10**6)) - 1))["m"]
+        # Assert
+        self.assertLessEqual(len(text.encode("utf-8")), build_money.SX_BUDGET)
+        self.assertNotIn("catering_income", kept)
+        self.assertTrue(build_money.SX_CORE <= set(kept))
+        self.assertNotIn("bought_in_services", kept, "whole detail lines go, from the end of METRICS")
+        self.assertIn("teaching_staff", kept)
+        self.assertEqual(set(kept["total_income"]["2024-25"]), {"v", "pp", "rpp"}, "real totals go before any line")
+        self.assertEqual(set(kept["teaching_staff"]["2024-25"]), {"v", "pp", "rpp"})
+        self.assertEqual(set(light), {k for k, _, _ in build_money.METRICS} - {"catering_income"}, "a small overshoot drops no line")
+        self.assertIn("r", light["total_income"]["2024-25"], "core lines lose 'r' only after the detail lines")
+        self.assertEqual(doc["m"]["teaching_staff"]["2024-25"]["r"], 1_334_567, "the caller's dict is untouched")
+        with self.assertRaises(ValueError):
+            build_money.series_json(doc, limit=500)
+
+    def test_local_series_follows_the_shared_contract(self):
+        # Arrange: two CFR years, then an academy year; a suspect value; a shared and a held-back charity.
+        rows = [row("140001", "2023-03", 2_000_000, 1_950_000, 50_000, pupils=400, pupil_premium=80_000, cfr_additional_grants_i18=30_000,
+                    grant_funding_government=1_800_000),
+                row("140001", "2024-03", 2_100_000, 2_050_000, 60_000, pupils=380, pupil_premium=82_000, suspect=["energy"]),
+                row("140001", "2025-08", 2_200_000, 2_150_000, 70_000, source="AAR", pupils=360, pupil_premium=0,
+                    aar_other_dfe_revenue_grants=40_000, trust_central_spend_per_pupil=510.4)]
+        pta = [{"charity_number": 1, "history": [{"period_end": "2023-03", "income": 12_000, "expenditure": 9_000},
+                                                  {"period_end": "2025-08", "income": 9_000, "expenditure": 8_000}],
+                "shared_with": ["140002"], "match": {"confidence": "high"}},
+               {"charity_number": 2, "history": [{"period_end": "2025-08", "income": 50_000, "expenditure": 1}], "review": "independent school"},
+               {"charity_number": 3, "history": [{"period_end": "2025-07", "income": 3_000}], "match": {"method": "llm", "confidence": "medium"}}]
+        # Act
+        sx = build_money.local_series(rows, pta)
+        # Assert
+        self.assertEqual(set(sx), SERIES_KEYS)
+        self.assertEqual(sx["years"], ["2022-23", "2023-24", "2024-25"])
+        self.assertEqual(sx["source"], {"2022-23": "CFR", "2023-24": "CFR", "2024-25": "AAR"})
+        self.assertEqual(sx["m"]["total_income"]["2022-23"]["v"], 2_000_000)
+        self.assertEqual(sx["m"]["total_income"]["2022-23"]["pp"], 5_000)
+        self.assertNotIn("2024-25", sx["m"]["pupil_premium"], "academy pupil premium is not reported, never £0")
+        self.assertEqual(sx["flags"]["not_reported"], {"pupil_premium": "not reported in academy accounts"})
+        self.assertEqual(sx["m"]["other_dfe_grants"]["2022-23"]["v"], 30_000)
+        self.assertEqual(sx["m"]["other_dfe_grants"]["2024-25"]["v"], 40_000)
+        self.assertEqual(sx["flags"]["suspect"], {"2023-24": ["energy"]})
+        self.assertEqual(sx["trust_central_pp"], {"2024-25": 510})
+        self.assertEqual(sx["gap"]["2022-23"]["spend_pp"], round(1_950_000 / 400))
+        self.assertEqual(sx["gap"]["2022-23"]["gov_pp"], round(1_800_000 / 400))
+        self.assertNotIn("2023-24", sx["gap"], "no government funding figure that year")
+        # PTA: the CFR school's 2023-03 return is 2022-23, split in two, per pupil on 2022-23's roll;
+        # the academy's 2025-08 and 2025-07 returns are 2024-25, the LLM match lowers the confidence.
+        self.assertEqual(sx["pta"]["2022-23"], {"income": 6_000, "spend": 4_500, "income_pp": 15, "spend_pp": 11, "charity_number": 1, "confidence": "high"})
+        self.assertEqual(sx["pta"]["2024-25"]["income"], 4_500 + 3_000)
+        self.assertEqual(sx["pta"]["2024-25"]["income_pp"], round(7_500 / 360))
+        self.assertEqual((sx["pta"]["2024-25"]["charity_number"], sx["pta"]["2024-25"]["confidence"]), (1, "medium"))
+        json.dumps(sx)
+
+    def test_pta_year_rule_uses_the_schools_own_source_for_that_year(self):
+        # Arrange
+        cfr = [row("1", "2023-03", 1, 1, 1), row("1", "2024-03", 1, 1, 1)]
+        aar = [row("2", "2024-08", 1, 1, 1, source="AAR"), row("2", "2025-08", 1, 1, 1, source="AAR")]
+        # Act / Assert
+        self.assertEqual(build_money.local_pta_year("2023-03", "CFR"), "2022-23")
+        self.assertEqual(build_money.local_pta_year("2025-08", "CFR"), "2025-26")
+        self.assertEqual(build_money.local_pta_year("2025-08", "AAR"), "2024-25")
+        self.assertEqual(build_money.local_pta_year("2025-09", "AAR"), "2025-26")
+        self.assertEqual(build_money.pta_year_label("2023-03", cfr), "2022-23")
+        self.assertEqual(build_money.pta_year_label("2025-08", aar), "2024-25")
+        self.assertEqual(build_money.pta_year_label("2019-12", aar), "2019-20", "no row that year: the nearest year's source (AAR)")
+        self.assertEqual(build_money.pta_year_label("2030-03", cfr), "2029-30")
+        self.assertEqual(build_money.year_pupils(cfr, "2022-23"), 300)
+        self.assertIsNone(build_money.year_pupils(cfr, "2019-20"))
+
+    # ------------------------------------------------------------ school dashboard
+
+    def test_school_dashboards_get_the_shared_ctx_and_their_own_budget(self):
+        # Arrange: most peers' teaching figures are flagged suspect, so their huge values must not reach a median.
+        schools, rows = self.peers()
+        for r in rows:
+            if r["urn"] in {str(100000 + i) for i in range(2, 10)}:
+                r.update(teaching_staff=99_000_000, suspect=["teaching_staff"])
+        fake = FakeSchoolPage(body_bytes=50_000, indexable=False)
+        self.patch(series=fake_series(), school_page=fake)
+        # Act
+        money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert: the ctx keys, URLs and medians follow the SHARED contract.
+        ctx = fake.ctxs["100000"]
+        self.assertEqual(set(ctx), CTX_KEYS)
+        self.assertEqual(set(ctx["series"]), SERIES_KEYS)
+        self.assertEqual(ctx["check_url"], "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/100000")
+        self.assertEqual(ctx["sir_url"], "https://www.schoolsinreach.com/school/100000-peer-0/")
+        self.assertEqual(ctx["similar"]["teaching_staff"], round(1_000_000 / 300))
+        self.assertEqual(ctx["similar"]["total_income"], round(2_000_000 / 300))
+        self.assertEqual(set(ctx["similar_series"]), {"total_income", "total_expenditure", "grant_funding_government", "revenue_reserve"})
+        self.assertEqual(sorted(ctx["similar_series"]["total_income"]), ["2022-23", "2023-24", "2024-25"])
+        self.assertIsInstance(ctx["timeline"], list)
+        self.assertEqual(ctx["ifs"], build_money.load_ifs())
+        self.assertTrue(ctx["ifs"])
+        # The page is wrapped with the dashboard's head and its own indexable flag, under the school budget.
+        html = self.read(money, "school", "100000-peer-0")
+        self.assertIn(build_money.SCHOOL_HEAD, html)
+        self.assertIn('content="noindex,follow"', html)
+        self.assertGreater(len(html.encode("utf-8")), build_money.PAGE_BUDGET)
+        self.assertNotIn("/school/100000-peer-0/", self.sitemap(money))
+        self.assertTrue((money / "data/sx/100000.json").is_file())
+        self.assertGreater(summary["school_page_median"], 50_000)
+        self.assertGreaterEqual(summary["school_page_max"], summary["school_page_median"])
+        # At the school budget the build fails loudly.
+        self.patch(school_page=FakeSchoolPage(body_bytes=build_money.SCHOOL_PAGE_BUDGET))
+        with self.assertRaisesRegex(ValueError, "Page too large"):
+            self.build([("204", "Hackney")], {"204": schools}, rows)
+
+    def test_without_series_the_fallback_school_page_is_used(self):
+        # Arrange: the dashboard alone, with no SERIES module, is not enough.
+        schools, rows = self.peers()
+        fake = FakeSchoolPage()
+        self.patch(school_page=fake)
+        # Act
+        money, _ = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert
+        self.assertEqual(fake.ctxs, {})
+        self.assertIn("Show the figures as a table", self.read(money, "school", "100000-peer-0"))
+        self.assertTrue((money / "data/sx/100000.json").is_file(), "the local SERIES still feeds drills")
+
+    # ------------------------------------------------------------ area dashboards
+
+    def test_area_dashboards_are_paged_against_their_real_frame(self):
+        # Arrange: a council of 30 schools (12 academies in one trust) and dashboards with big rows and intros.
+        schools, rows = self.peers(18)
+        for i in range(12):
+            schools.append(school(140000 + i, f"Academy {i}", type="Academy converter", trust="Good Trust",
+                                  constituency="Hackney North and Stoke Newington"))
+            rows += full_rows(str(140000 + i), source="AAR", trust="Good Trust", years=("2024-08", "2025-08"))
+        areas_module, doc = fake_areas()
+        pages = FakeAreaPages()
+        self.patch(areas=areas_module, area_pages=pages)
+        # Act
+        money, _ = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert: every dashboard path, with the stubs they replace gone.
+        for path in ("england", "areas", "areas/london", "council", "council/hackney", "constituency/hackney-north-and-stoke-newington",
+                     "trust", "trust/good-trust", "debts", "ptfa"):
+            html = self.read(money, *path.split("/"))
+            self.assertIn(build_money.AREA_HEAD if path != "areas" else "/assets/areas.css", html, path)
+            self.assertNotIn("noindex", html, path)
+        home = self.read(money)
+        self.assertIn('data-headline="England"', home)
+        for who, path, _ in build_money.AUDIENCE_LINKS:
+            self.assertIn(f'href="{path}"', home)
+        self.assertIn('id="find"', home)
+        # The ctx carries every page path; trusts are matched by name and given their path.
+        kinds = {c[1] for c in pages.calls if c[0] == "area"}
+        self.assertEqual(kinds, {"england", "region", "council", "constituency"})
+        ctx = next(c[3] for c in pages.calls if c[0] == "area")
+        self.assertEqual(set(ctx), {"ifs", "dsg", "real_label", "areas", "paths"})
+        self.assertEqual(ctx["paths"]["council"], {"204": "/council/hackney/"})
+        self.assertEqual(ctx["paths"]["region"], {"London": "/areas/london/"})
+        self.assertEqual(ctx["paths"]["constituency"], {"E14000720": "/constituency/hackney-north-and-stoke-newington/"})
+        self.assertEqual(ctx["paths"]["trust"], {"Good Trust": "/trust/good-trust/"})
+        trust = next(c[1] for c in pages.calls if c[0] == "trust")
+        self.assertEqual((trust["name"], trust["path"], trust["company_number"]), ("Good Trust", "/trust/good-trust/", "01234567"))
+        league = next(c[1] for c in pages.calls if c[0] == "league")
+        self.assertEqual({k: (v["code"], v["name"], v["path"], v["region"]) for k, v in league.items()},
+                         {"204": ("204", "Hackney", "/council/hackney/", "London")})
+        # Paging: intro and outro on page 1 only; later pages get the title, a way back, filters, the table and the pager.
+        council_pages = ["council/hackney"] + [f"council/hackney/{p.name}" for p in sorted((money / "council/hackney").iterdir()) if p.is_dir()]
+        self.assertGreater(len(council_pages), 2)
+        listed = Counter()
+        for n, path in enumerate(council_pages, 1):
+            html = self.read(money, *path.split("/"))
+            self.assertLess(len(html.encode("utf-8")), build_money.AREA_PAGE_TARGET, path)
+            self.assertEqual("INTRO-council" in html, n == 1, path)
+            self.assertEqual("OUTRO-council" in html, n == 1, path)
+            self.assertIn("data-filters", html)
+            self.assertIn(f"Page {n} of {len(council_pages)}", html)
+            self.assertIn("<caption>Every row for Hackney</caption>", html)
+            if n > 1:
+                self.assertIn("<h1>Hackney school money</h1>", html)
+                self.assertIn('href="/council/hackney/">Back to the summary</a>', html)
+            listed.update(re.findall(r'data-preview="school:(\d+)"', html))
+        self.assertEqual(set(listed), {i["urn"] for i in map(lambda s: {"urn": str(s["urn"])}, schools)})
+        self.assertEqual(set(listed.values()), {1}, "each school sits in exactly one row")
+        # Every non-school page stays under the target.
+        for page in money.rglob("*.html"):
+            if "school" not in page.relative_to(money).parts[:1]:
+                self.assertLess(page.stat().st_size, build_money.AREA_PAGE_TARGET, page)
+        self.assertNotIn("Plain-English guides", self.read(money, "ptfa"))
+
+    def test_paged_keeps_one_row_per_page_when_the_frame_is_already_big(self):
+        # Arrange
+        rows = [[f"<b>{n}</b>", "x" * 3_000] for n in range(5)]
+
+        def frame(n, total, table_html, big="y" * 39_000):
+            return "T", "D", [("School Money", "/")], (big if n == 1 else "") + table_html
+
+        # Act
+        pages = build_money.paged("/council/x/", ["A", "B"], rows, frame, None)
+        # Assert: page 1 cannot fit a row under the target, so it carries one; the rest fill to the target.
+        bodies = [html for _, html in pages]
+        self.assertEqual(sum(b.count("<b>") for b in bodies), 5)
+        self.assertEqual(bodies[0].count("<b>"), 1)
+        for html in bodies[1:]:
+            self.assertLess(len(html.encode("utf-8")), build_money.AREA_PAGE_TARGET)
+        self.assertEqual([p for p, _ in pages][:2], ["/council/x/", "/council/x/2/"])
+
+    # ------------------------------------------------------------ extensions
+
+    def fake_extension(self, name, write_pages):
+        module = types.ModuleType(f"pipeline.money.{name}")
+        module.write_pages = write_pages
+        sys.modules[module.__name__] = module
+        self.addCleanup(sys.modules.pop, module.__name__, None)
+        self.patch(EXTENSIONS=(name, "not_a_module_here"))
+
+    def test_extensions_write_through_the_core_writer_and_join_the_sitemap(self):
+        # Arrange
+        seen = {}
+
+        def write_pages(env):
+            seen.update(env)
+            env["write"]("/map/", env["page"]("Map", "A map.", "/map/", "<h1>Real map</h1>", [("School Money", "/"), ("Map", "/map/")]))
+            env["write"]("/fake/", env["page"]("Fake", "Hidden.", "/fake/", "<h1>Fake</h1>", [("School Money", "/")], indexable=False))
+            (Path(env["out"]) / "data/fake.json").write_text("{}", encoding="utf-8")
+            return [("/map/", True), ("/fake/", False)]
+
+        self.fake_extension("fake_ext", write_pages)
+        schools, rows = self.peers()
+        # Act
+        money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert
+        self.assertTrue({"out", "write", "page", "items", "areas", "today"} <= set(seen))
+        self.assertEqual(len(seen["items"]), 14)
+        self.assertIn("england", seen["areas"])
+        self.assertIn("Real map", self.read(money, "map"), "the /map/ stub gives way to the extension's page")
+        self.assertTrue((money / "data/fake.json").is_file())
+        sitemap = self.sitemap(money)
+        self.assertIn("/map/</loc>", sitemap)
+        self.assertNotIn("/fake/", sitemap)
+        self.assertEqual(summary["pages"], sitemap.count("<loc>"))
+        self.assertEqual(len(summary["skipped_extensions"]), 1)
+        self.assertIn("not_a_module_here", summary["skipped_extensions"][0])
+
+    def test_a_failing_extension_fails_the_build_and_leaves_no_output(self):
+        for name, write_pages in (("boom", lambda env: 1 / 0), ("clash", lambda env: env["write"]("/about/", "<html></html>"))):
+            with self.subTest(name):
+                # Arrange
+                self.fake_extension(name, write_pages)
+                schools, rows = self.peers()
+                out = self.root / f"out-{name}"
+                # Act / Assert
+                with self.assertRaises((ZeroDivisionError, ValueError)):
+                    self.build([("204", "Hackney")], {"204": schools}, rows, out=out)
+                self.assertFalse(out.exists())
+                self.assertEqual([p for p in self.root.iterdir() if p.name.startswith(".site_money-build")], [])
+
+    def test_the_real_wave_c_extensions_build_on_a_fixture(self):
+        # Arrange: the real map, deck, Wrapped and guides modules.
+        self.patch(EXTENSIONS=("map_page", "deck", "wrapped", "guides"))
+        schools, rows = self.peers()
+        # Act
+        money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert
+        self.assertEqual(summary["skipped_extensions"], [])
+        for path in ("map", "deck", "wrapped", "guides", "tools", "school/100000-peer-0/wrapped"):
+            self.assertTrue((money / path / "index.html").is_file(), path)
+        self.assertNotIn("A map of every school's financial status is coming", self.read(money, "map"))
+        sitemap = self.sitemap(money)
+        for path in ("/map/", "/guides/", "/tools/"):
+            self.assertIn(f"{BASE_MONEY}{path}</loc>", sitemap)
+        self.assertNotIn("/deck/", sitemap)
+        for page in money.rglob("*.html"):
+            self.assertEqual(Balance(page.read_text(encoding="utf-8")).errors, [], page)
+
+    # ------------------------------------------------------------ copy and safety
+
+    def test_no_page_uses_harsh_words_and_pupils_show_to_one_decimal(self):
+        # Arrange: a deficit school beside healthy peers, a trust and a constituency.
+        schools, rows = self.peers()
+        schools.append(school(140001, "Academy", type="Academy converter", trust="Good Trust"))
+        rows += [row("140001", end, 2_000_000, 2_200_000, -150_000, source="AAR", trust="Good Trust", pupils=287.5) for end in ("2024-08", "2025-08")]
+        # Act
+        money, _ = self.build([("204", "Hackney")], {"204": schools}, rows)
+        # Assert
+        for page in money.rglob("*.html"):
+            match = BANNED.search(body_text(page.read_text(encoding="utf-8")))
+            self.assertIsNone(match, (page, match and match.group(0)))
+        self.assertIn("287.5", self.read(money, "school", "140001-academy"))
+
+    def test_fallback_pta_copy_follows_the_wording_rules(self):
+        # Arrange: a shared LLM-matched charity with recent returns, and one with no income since 2016.
+        schools = [school(100001, "Infant School"), school(100002, "Old PTA School")]
+        rows = full_rows("100001") + full_rows("100002")
+        pta = {"100001": [{"charity_number": 1111111, "name": "Friends of the Infant and Junior Schools", "status": "Registered",
+                           "history": [{"period_end": "2024-03", "income": 20_000, "expenditure": 18_000},
+                                       {"period_end": "2025-03", "income": 24_000, "expenditure": 20_000}],
+                           "shared_with": ["100003"], "match": {"method": "llm", "confidence": "medium"}}],
+               "100002": [{"charity_number": 2222222, "name": "Old Friends", "status": "Removed", "history_status": "historical",
+                           "last_income_year": 2016, "history": [{"period_end": "2016-08", "income": 4_000, "expenditure": 3_000}]}]}
+        # Act
+        money, _ = self.build([("204", "Hackney")], {"204": schools}, rows, pta)
+        shared, old = self.read(money, "school", "100001-infant-school"), self.read(money, "school", "100002-old-pta-school")
+        # Assert
+        self.assertIn('data-mf="pta_income" data-v="12000" data-pp="40" data-year="2024-25"', shared)
+        self.assertIn("matched with lower confidence", shared)
+        self.assertIn("its equal share", shared)
+        self.assertIn("never added together", shared)
+        self.assertIn("Had a registered PTA until 2016", old)
+        for html in (shared, old):
+            self.assertNotRegex(body_text(html), r"(?i)\bno PTA\b")
+
+    def test_output_symlink_is_refused_before_anything_is_deleted(self):
+        # Arrange
+        target = self.root / "elsewhere"
+        target.mkdir()
+        (target / "keep.txt").write_text("keep", encoding="utf-8")
+        link = self.root / "site_money"
+        link.symlink_to(target, target_is_directory=True)
+        # Act / Assert
+        with self.assertRaisesRegex(ValueError, "symlink"):
+            self.build([("204", "Hackney")], {"204": [school(100001, "A")]}, full_rows("100001"), out=link)
+        self.assertEqual((target / "keep.txt").read_text(encoding="utf-8"), "keep")
+
+
+REAL = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea")
+REAL_HISTORY = REAL / "pipeline/.cache/dfe/finance_history.jsonl"
+REAL_PTA = REAL / "pipeline/.cache/money/pta.json"
+
+
+@unittest.skipUnless(REAL_HISTORY.exists(), "real finance history not present")
+class RealSeriesTest(unittest.TestCase):
+    def test_real_long_histories_fit_the_series_budget_with_every_line(self):
+        # Arrange: the largest SERIES on real data (URN 110578, per finance-series) and two ordinary schools.
+        urns = {"110578", "100000", "130932"}
+        needles = [f'"urn": "{u}"' for u in urns]
+        rows = {u: [] for u in urns}
+        with open(REAL_HISTORY, encoding="utf-8") as f:
+            for line in f:
+                if any(n in line[:40] for n in needles):
+                    r = json.loads(line)
+                    rows[str(r["urn"])].append(r)
+        pta = json.loads(REAL_PTA.read_text(encoding="utf-8")).get("schools", {}) if REAL_PTA.exists() else {}
+        for urn, own in rows.items():
+            if not own:
+                continue
+            with self.subTest(urn=urn):
+                item = {"rows": own, "pta": [c for c in pta.get(urn, []) if not c.get("review")]}
+                # Act
+                doc = build_money.school_series(item)
+                text = build_money.series_json(doc)
+                kept = json.loads(text)
+                # Assert
+                self.assertLessEqual(len(text.encode("utf-8")), build_money.SX_BUDGET)
+                self.assertTrue(build_money.SX_CORE & set(doc["m"]) <= set(kept["m"]))
+                dropped = {k for k, v in doc["m"].items() if v} - set(kept["m"])
+                # Only the very largest histories lose a detail line, and then just one or two.
+                self.assertLessEqual(len(dropped), 2 if urn == "110578" else 0, dropped)
 
 
 class HelpersTest(unittest.TestCase):

@@ -93,6 +93,16 @@ class HelpersTest(unittest.TestCase):
         self.assertEqual(seo.safe_url("javascript:alert(1)"), "")
         self.assertEqual(seo.safe_url("https://example.org"), "https://example.org")
 
+    def test_money_links_drop_the_legacy_money_prefix(self):
+        # Arrange: clean paths from the standalone build, and the old /money-prefixed status bundle.
+        cases = {"/school/100001-oak/": "/school/100001-oak/", "/money/school/100001-oak/": "/school/100001-oak/",
+                 "/money": "/", "/money/": "/", seo.BASE_MONEY + "/council/hackney/": "/council/hackney/",
+                 seo.BASE_MONEY + "/money/council/hackney/": "/council/hackney/", "/moneyish/": "/moneyish/"}
+        for path, clean in cases.items():
+            with self.subTest(path=path):
+                # Act / Assert
+                self.assertEqual(seo.money_url(path), seo.BASE_MONEY + clean)
+
     def test_nearby_distance_and_missing_coordinates(self):
         school = {"lat": 51, "lon": 0}
         self.assertLess(seo.proximity(school, {"lat": 51.01, "lon": 0}), seo.proximity(school, {"lat": 52, "lon": 0}))
