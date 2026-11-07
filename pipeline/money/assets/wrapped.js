@@ -192,17 +192,25 @@
       var all = obj(first(byYear[years[i]], ["all", "All"]));
       if (num(all.schools) != null && (!wantYear || years[i] <= wantYear || i === 0)) { year = years[i]; S = all; break; }
     }
+    // Charity returns lag the DfE ones, so the PTA figures come from the latest year that has them.
+    var pta = obj(a.pta), ptaYear = null, P = {}, ptaBands = {};
+    for (var k = years.length - 1; k >= 0; k--) {
+      var row = obj(first(byYear[years[k]], ["all", "All"]));
+      var bands = obj(first(row, ["pta_pp_by_band", "pta_band_medians", "fsm_band_pta_pp"]));
+      if (firstNum(row, ["pta_pp_median", "pta_median_pp"]) != null || Object.keys(bands).length) { ptaYear = years[k]; P = row; ptaBands = bands; break; }
+    }
+    if (!Object.keys(ptaBands).length) ptaBands = obj(first(pta, ["bands", "by_band"]));
+    if (!ptaYear && Object.keys(ptaBands).length) ptaYear = pta.year || year;
     var dsgYears = Object.keys(obj(a.dsg)).sort(), dsg = null;
     for (var j = dsgYears.length - 1; j >= 0; j--) {
       var d = obj(a.dsg[dsgYears[j]]);
       if (num(d.balance) != null || num(d.per_pupil) != null) { dsg = { year: dsgYears[j], balance: num(d.balance), pp: num(d.per_pupil) }; break; }
     }
-    var pta = obj(a.pta);
     return {
       id: a.id || null, name: a.name || null, path: a.path || null, year: year,
       schools: num(S.schools), inDeficit: num(S.in_deficit), inDeficitPct: num(S.in_deficit_pct),
-      ptaPP: firstNum(S, ["pta_pp_median", "pta_median_pp"]), ptaSchools: num(S.pta_schools),
-      ptaBands: obj(first(S, ["pta_pp_by_band", "pta_band_medians", "fsm_band_pta_pp"]) || first(pta, ["bands", "by_band"])),
+      ptaYear: ptaYear, ptaPP: firstNum(P, ["pta_pp_median", "pta_median_pp"]), ptaSchools: num(P.pta_schools), ptaSchoolsOf: num(P.schools),
+      ptaBands: ptaBands,
       ptaRanking: arr(first(pta, ["ranking", "schools", "rank"])),
       dsg: dsg
     };
@@ -218,7 +226,8 @@
     return null;
   }
 
-  function ptaView(s, sx, years, latestPupils) {
+  // Per-pupil PTA figures use the published sx value or the same year's pupils; never another year's.
+  function ptaView(s, sx, years) {
     var charities = arr(s.pta).filter(function (c) { return c && !c.review; });
     var main = obj(charities[0]);
     var rows = {}, sxp = obj(sx.pta);
@@ -226,7 +235,8 @@
       var c = obj(sxp[y]), lines = obj(c.lines);
       if (num(c.income) == null) return;
       rows[y] = {
-        y: y, income: num(c.income), spend: num(first(c, ["spend", "expenditure"])), givenPP: num(c.income_pp),
+        y: y, income: num(c.income), spend: num(first(c, ["spend", "expenditure"])),
+        givenPP: num(c.income_pp), givenSpendPP: firstNum(c, ["spend_pp", "expenditure_pp"]),
         number: c.charity_number || null, confidence: c.confidence || null, volunteers: num(c.volunteers),
         incomeLines: obj(first(c, ["income_lines"]) || lines.income), spendLines: obj(first(c, ["expenditure_lines", "spend_lines"]) || lines.spend),
         periodEnd: c.period_end || null
@@ -250,13 +260,12 @@
     var list = Object.keys(rows).sort().map(function (y) {
       var r = rows[y], yr = years.filter(function (x) { return x.y === y; })[0], pupils = yr && yr.pupils;
       r.pupils = pupils || null;
-      r.pp = pupils ? perPupil(r.income, pupils) : (r.givenPP != null ? Math.round(r.givenPP) : perPupil(r.income, latestPupils));
-      r.spendPP = pupils ? perPupil(r.spend, pupils) : perPupil(r.spend, latestPupils);
-      r.ppNote = !pupils && r.givenPP == null && latestPupils ? "per pupil uses the latest pupil count" : null;
+      r.pp = r.givenPP != null ? Math.round(r.givenPP) : perPupil(r.income, pupils);
+      r.spendPP = r.givenSpendPP != null ? Math.round(r.givenSpendPP) : perPupil(r.spend, pupils);
       return r;
     });
     if (!list.length && num(main.latest_income) != null) {
-      list = [{ y: "latest return", income: num(main.latest_income), spend: null, pp: perPupil(num(main.latest_income), latestPupils), incomeLines: {}, spendLines: {} }];
+      list = [{ y: "latest return", income: num(main.latest_income), spend: null, pp: null, incomeLines: {}, spendLines: {} }];
     }
     if (!list.length && !charities.length) return null;
     var withLines = list.filter(function (r) { return Object.keys(r.spendLines || {}).length; });
@@ -296,20 +305,24 @@
     });
     var usable = years.filter(function (r) { return !r.suspect && (r.income != null || r.pupils != null || r.reserve != null); });
     var latest = usable.length ? usable[usable.length - 1] : null;
-    var latestPupils = latest ? latest.pupils : num(s.pupils);
     var st = typeof s.status === "object" && s.status ? s.status.status : s.status;
     var councilInfo = obj(s.council);
     var area = areaView(council, latest && latest.y);
     var path = s.path || ("/school/" + s.urn + "-" + slugify(s.name) + "/");
     var base = String(ctx.base_url || BASE_URL).replace(/\/$/, "");
-    var compare = [];
-    [["spend", ["total_expenditure", "spend", "expenditure"], "Spending"], ["grant", ["grant_funding", "grant", "gov"], "Government funding"],
-      ["income", ["total_income", "income"], "Income"]].forEach(function (p) {
-      var theirs = firstNum(s.similar, p[1]), row = years.filter(function (r) { return r.y === s.year; })[0] || latest;
-      var mineV = row ? row[p[0]] : null, mine = row ? perPupil(mineV, row.pupils) : null;
-      if (mine == null) mine = firstNum(s.pp, p[1]);
-      if (mine != null && theirs != null) compare.push({ key: p[0], metric: p[1][0], label: p[2], mine: mine, v: mineV, theirs: Math.round(theirs), year: row ? row.y : s.year, suspect: !!(row && row.suspect) });
-    });
+    // s.similar (and s.pp) describe s.year, so the school's side is that year's row or nothing.
+    // A marked year has no trustworthy figure to compare, so the comparison is left out.
+    var compare = [], cmpYear = s.year || (latest && latest.y) || null;
+    var cmpRow = years.filter(function (r) { return r.y === cmpYear; })[0] || null;
+    if (cmpYear && !suspect[cmpYear] && !(cmpRow && cmpRow.suspect)) {
+      [["spend", ["total_expenditure", "spend", "expenditure"], "Spending"], ["grant", ["grant_funding", "grant", "gov"], "Government funding"],
+        ["income", ["total_income", "income"], "Income"]].forEach(function (p) {
+        var theirs = firstNum(s.similar, p[1]);
+        var mineV = cmpRow ? cmpRow[p[0]] : null, mine = cmpRow ? perPupil(mineV, cmpRow.pupils) : null;
+        if (mine == null) mine = firstNum(s.pp, p[1]);
+        if (mine != null && theirs != null) compare.push({ key: p[0], metric: p[1][0], label: p[2], mine: mine, v: mineV, theirs: Math.round(theirs), year: cmpYear });
+      });
+    }
     var rankBlock = obj(first(s, ["pta_rank"]) || first(sx, ["pta_rank"]));
     var councilRank = Object.keys(obj(rankBlock.council)).length ? obj(rankBlock.council) : (area ? rankIn(area.ptaRanking, s.urn) : null);
     var bandRank = Object.keys(obj(rankBlock.band)).length ? obj(rankBlock.band) : null;
@@ -322,7 +335,7 @@
       phase: s.phase || tags.phase || null, band: num(s.band), streak: num(s.streak),
       source: source, years: years, latest: latest, suspect: suspect,
       compare: compare, similarYear: s.year || null,
-      pta: ptaView(s, sx, years, latestPupils),
+      pta: ptaView(s, sx, years),
       ptaRank: { council: councilRank && num(councilRank.rank) != null ? { rank: num(councilRank.rank), of: num(councilRank.of) } : null,
         band: bandRank && num(bandRank.rank) != null ? { rank: num(bandRank.rank), of: num(bandRank.of), band: num(bandRank.band) || num(s.band) } : null },
       area: area, england: areaView(england),
@@ -406,14 +419,19 @@
     return c;
   }
 
+  // A card with no usable figure. With no usable year at all, figures that exist but are all marked
+  // aren't "unpublished", so the card says what they are instead.
+  function noHeadline(c, d, keys, unpublished) {
+    var marked = d.latest ? [] : d.years.filter(function (r) { return r.suspect && keys.some(function (k) { return r[k] != null; }); });
+    c.big = { v: null, text: marked.length ? (marked.length > 1 ? "Marked years" : "Marked year") : "Not published", fmt: "text" };
+    c.lines.push(marked.length ? "The published figures look unusual, so they aren't used as a headline. Every figure is on the school's page." : unpublished);
+    return c;
+  }
+
   function pupilsCard(d) {
     var c = newCard("pupils", "stat", "Pupils"), L = d.latest;
     var withPupils = d.years.filter(function (r) { return r.pupils != null; });
-    if (!L || L.pupils == null) {
-      c.big = { v: null, text: "Not published", fmt: "text" };
-      c.lines.push("Pupil numbers for this school aren't published yet.");
-      return c;
-    }
+    if (!L || L.pupils == null) return noHeadline(c, d, ["pupils"], "Pupil numbers for this school aren't published yet.");
     c.big = { v: L.pupils, text: fmtPupils(L.pupils), fmt: "pupils", unit: "pupils" };
     c.lines.push("pupils in " + L.y + ".");
     var firstRow = withPupils[0];
@@ -436,11 +454,7 @@
     var L = d.latest, useGrant = L && L.grant != null;
     var c = newCard("funding", "stat", useGrant ? "Government funding per pupil" : "Income per pupil");
     var v = L ? (useGrant ? L.grant : L.income) : null, pp = L ? perPupil(v, L.pupils) : null;
-    if (v == null || pp == null) {
-      c.big = { v: null, text: "Not published", fmt: "text" };
-      c.lines.push("Figures for this year aren't published yet.");
-      return c;
-    }
+    if (v == null || pp == null) return noHeadline(c, d, ["grant", "income"], "Figures for this year aren't published yet.");
     c.big = { v: pp, text: fmtExact(pp), fmt: "exact", unit: "per pupil" };
     c.lines.push((useGrant ? "Government funding" : "Income") + " per pupil in " + L.y + ".");
     c.lines.push(fmtMoney(v) + " in total for " + fmtPupils(L.pupils) + " pupils.");
@@ -463,8 +477,8 @@
     var c = newCard("staff", "split", "Where each £1 goes"), L = d.latest;
     var staffLine = withRef(obj(obj(d.ctx.staff).line));
     if (!L || L.staff == null || !L.spend) {
+      noHeadline(c, d, ["staff"], "A breakdown of this school's spending isn't published yet.");
       c.big = { v: null, text: "Mostly people", fmt: "text" };
-      c.lines.push("A breakdown of this school's spending isn't published yet.");
       if (staffLine) c.lines.push(staffLine);
       return c;
     }
@@ -485,24 +499,32 @@
   function reserveCard(d) {
     var c = newCard("reserve", "chart", "The reserve story"), L = d.latest;
     var pts = d.years.filter(function (r) { return r.reserve != null; });
-    if (!L || L.reserve == null) {
+    if (!pts.length) {
       c.big = { v: null, text: "Not published", fmt: "text" };
       c.lines.push("Reserve figures for this school aren't published yet.");
       return c;
     }
-    var pp = perPupil(L.reserve, L.pupils);
-    c.big = { v: L.reserve, text: fmtMoney(L.reserve), fmt: "money", unit: "reserve" };
-    c.status = d.status;
-    c.lines.push("Reserve at the end of " + L.y + ": " + fmtExact(L.reserve) + (pp != null ? ", or " + fmtExact(pp) + " per pupil" : "") + ".");
-    c.figures.push(fig("revenue_reserve", "Reserve", L.reserve, pp, L.y, d.source));
-    var clean = pts.filter(function (r) { return !r.suspect && r !== L; });
-    var peak = clean.reduce(function (b, r) { return !b || r.reserve > b.reserve ? r : b; }, null);
-    if (peak && peak.reserve !== L.reserve) {
-      var ppk = perPupil(peak.reserve, peak.pupils);
-      c.lines.push("It was " + fmtExact(peak.reserve) + (ppk != null ? " (" + fmtExact(ppk) + " per pupil)" : "") + " in " + peak.y + ".");
-      c.figures.push(fig("revenue_reserve", "Reserve", peak.reserve, ppk, peak.y, d.source));
+    var pressed = false;
+    if (L && L.reserve != null) {
+      var pp = perPupil(L.reserve, L.pupils);
+      c.big = { v: L.reserve, text: fmtMoney(L.reserve), fmt: "money", unit: "reserve" };
+      c.status = d.status;
+      c.lines.push("Reserve at the end of " + L.y + ": " + fmtExact(L.reserve) + (pp != null ? ", or " + fmtExact(pp) + " per pupil" : "") + ".");
+      c.figures.push(fig("revenue_reserve", "Reserve", L.reserve, pp, L.y, d.source));
+      var clean = pts.filter(function (r) { return !r.suspect && r !== L; });
+      var peak = clean.reduce(function (b, r) { return !b || r.reserve > b.reserve ? r : b; }, null);
+      if (peak && peak.reserve !== L.reserve) {
+        var ppk = perPupil(peak.reserve, peak.pupils);
+        c.lines.push("It was " + fmtExact(peak.reserve) + (ppk != null ? " (" + fmtExact(ppk) + " per pupil)" : "") + " in " + peak.y + ".");
+        c.figures.push(fig("revenue_reserve", "Reserve", peak.reserve, ppk, peak.y, d.source));
+      }
+      pressed = L.reserve < 0 || (d.status && (d.status.key === "in_deficit" || d.status.key === "heading_for_deficit"));
+    } else {
+      // Published reserves with no year usable as a headline: the chart still shows them, marked.
+      var span = pts[0].y === pts[pts.length - 1].y ? pts[0].y : pts[0].y + " to " + pts[pts.length - 1].y;
+      c.big = { v: null, text: span, fmt: "text", unit: "reserve figures" };
+      c.lines.push(L ? "The reserve for " + L.y + " isn't published yet, so the chart shows the years that are." : "The chart shows the reserve at the end of each year.");
     }
-    var pressed = L.reserve < 0 || (d.status && (d.status.key === "in_deficit" || d.status.key === "heading_for_deficit"));
     if (pressed) {
       c.lines = c.lines.concat(whyLines(d));
       c.lines.push(helpOf(d).text || d.ctx.help_fallback || FALLBACK_CTX.help_fallback);
@@ -532,7 +554,6 @@
     c.lines.push("Spending more can mean extra support or higher costs; spending less can mean leaner running. Both are worth asking about.");
     var nat = schoolLine(d, d.phase === "secondary" ? "per_pupil_secondary" : (d.phase === "primary" ? "per_pupil_primary" : ""));
     if (nat) c.lines.push(nat);
-    if (main.suspect) c.lines.push(suspectCaption(d));
     return c;
   }
 
@@ -593,7 +614,6 @@
     if (d.ptaRank.council && d.ptaRank.council.of) {
       c.lines.push("Number " + d.ptaRank.council.rank + " of " + d.ptaRank.council.of + " registered parents' associations in " + (d.council.name || "the council") + " for money raised per pupil.");
     }
-    if (L.ppNote) c.lines.push("The " + L.ppNote + ".");
     c.lines.push(ctxp.overlap_note || FALLBACK_CTX.pta.overlap_note);
     c.figures.push(fig("pta_income", "Raised", L.income, L.pp, L.y, src));
     if (L.spend != null) c.figures.push(fig("pta_spend", "Spent", L.spend, L.spendPP, L.y, src));
@@ -653,17 +673,17 @@
     if (b1 != null && b5 != null) {
       c.big = { v: null, text: fmtExact(b1) + " vs " + fmtExact(b5), fmt: "text", unit: "per pupil" };
       c.lines.push("Parents' associations at schools with the most affluent intakes raised a middle value of " + fmtExact(b1) +
-        " per pupil in " + E.year + "; at schools with the least affluent intakes, " + fmtExact(b5) + ".");
-      c.figures.push(fig("pta_band1", "Most affluent intakes", null, b1, E.year, "Charity Commission register"));
-      c.figures.push(fig("pta_band5", "Least affluent intakes", null, b5, E.year, "Charity Commission register"));
+        " per pupil in " + E.ptaYear + "; at schools with the least affluent intakes, " + fmtExact(b5) + ".");
+      c.figures.push(fig("pta_band1", "Most affluent intakes", null, b1, E.ptaYear, "Charity Commission register"));
+      c.figures.push(fig("pta_band5", "Least affluent intakes", null, b5, E.ptaYear, "Charity Commission register"));
     } else {
       c.big = { v: E.ptaPP, text: fmtExact(E.ptaPP), fmt: "exact", unit: "per pupil" };
     }
     if (E.ptaPP != null) {
-      c.lines.push("The middle registered parents' association in England raised " + fmtExact(E.ptaPP) + " per pupil in " + E.year + ".");
-      c.figures.push(fig("pta_pp_median", "England middle value", null, E.ptaPP, E.year, "Charity Commission register"));
+      c.lines.push("The middle registered parents' association in England raised " + fmtExact(E.ptaPP) + " per pupil in " + E.ptaYear + ".");
+      c.figures.push(fig("pta_pp_median", "England middle value", null, E.ptaPP, E.ptaYear, "Charity Commission register"));
     }
-    if (E.ptaSchools != null && E.schools) c.lines.push(E.ptaSchools + " of " + E.schools + " schools have a registered parents' association we could match.");
+    if (E.ptaSchools != null && E.ptaSchoolsOf) c.lines.push(E.ptaSchools + " of " + E.ptaSchoolsOf + " schools have a registered parents' association we could match.");
     c.lines.push("Parent fundraising is not in the IFS report on school spending, so these figures come from the charity register alone.");
     return c;
   }
@@ -784,6 +804,23 @@
       if (g.measureText(next).width <= maxWidth) { cur = next; return; }
       if (cur) lines.push(cur);
       cur = push(w);
+    });
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // A URL has no spaces: break after "/", "-" or "." (or mid-piece when one piece is too wide),
+  // never adding or dropping a character, so the lines read back as the whole address.
+  function wrapUrl(g, text, maxWidth) {
+    var pieces = String(text == null ? "" : text).match(/[^\/.\-]+[\/.\-]*|[\/.\-]+/g) || [], lines = [], cur = "";
+    pieces.forEach(function (p) {
+      if (g.measureText(cur + p).width <= maxWidth) { cur += p; return; }
+      if (cur) lines.push(cur);
+      cur = "";
+      for (var i = 0; i < p.length; i++) {
+        if (cur && g.measureText(cur + p[i]).width > maxWidth) { lines.push(cur); cur = ""; }
+        cur += p[i];
+      }
     });
     if (cur) lines.push(cur);
     return lines;
@@ -927,7 +964,17 @@
     if (card.big) {
       var text = bigText(card, k), isUrl = card.big.fmt === "url";
       if (isUrl) {
-        y = paragraph(g, text, M, y, inner, 48 * s, col(pal, "accent", "#000"), "700", 3, 1.2) + 20 * s;
+        // The address is the way in when the QR can't load, so it shrinks to fit and is never cut.
+        var urlSize, urlLines, urlSizes = [48, 44, 40, 36];
+        for (var ui = 0; ui < urlSizes.length; ui++) {
+          urlSize = urlSizes[ui] * s;
+          g.font = "700 " + Math.round(urlSize) + "px " + FONT;
+          urlLines = wrapUrl(g, text, inner);
+          if (urlLines.length <= 3) break;
+        }
+        g.fillStyle = col(pal, "accent", "#000"); g.textAlign = "left"; g.textBaseline = "top";
+        urlLines.forEach(function (line, i) { g.fillText(line, M, y + i * urlSize * 1.2); });
+        y += urlLines.length * urlSize * 1.2 + 20 * s;
       } else {
         var size = fitFont(g, card.big.text, inner, 150 * s, "800");
         g.font = "800 " + Math.round(size) + "px " + FONT;
@@ -1098,6 +1145,7 @@
     PALETTE_KEYS.forEach(function (k) { pal[k] = cs.getPropertyValue("--" + k).trim(); });
     return pal;
   }
+  // Never rejects: a failed request or a body cut off while reading both come back as {ok: false}.
   function getJSON(url) {
     if (typeof fetch !== "function") return Promise.resolve({ ok: false, why: "offline" });
     return fetch(url, { credentials: "same-origin" }).then(function (r) {
@@ -1105,7 +1153,7 @@
       return r.text().then(function (t) {
         try { return { ok: true, data: JSON.parse(t) }; } catch (e) { return { ok: false, why: "not-json" }; }
       });
-    }, function () { return { ok: false, why: "offline" }; });
+    }).catch(function () { return { ok: false, why: "offline" }; });
   }
   var loading = {};
   function loadScript(key, src, integrity) {
@@ -1148,6 +1196,7 @@
     status.textContent = "Loading the story…";
     rootEl.appendChild(status);
     var ctxUrl = rootEl.getAttribute("data-context") || "/data/wrapped/context.json";
+    var unavailable = "We couldn't load this school's figures just now. Please try again later.";
     getJSON("/data/s/" + urn + ".json").then(function (s) {
       var code = s.ok ? obj(obj(s.data).council).code : null;
       return Promise.all([
@@ -1158,14 +1207,20 @@
     }).then(function (r) {
       var data;
       if (!r[0].ok || !Object.keys(obj(r[0].data)).length) {
-        data = { error: r[0].why === "missing" ? "Figures for this school aren't published yet." : "We couldn't load this school's figures just now. Please try again later.",
+        data = { error: r[0].why === "missing" ? "Figures for this school aren't published yet." : unavailable,
           name: rootEl.getAttribute("data-name") || null, path: schoolPath };
       } else {
         data = adapt(r[0].data, r[1].ok ? r[1].data : null, r[2].ok ? r[2].data : null, r[3].ok ? r[3].data : null, r[4].ok ? r[4].data : null);
         if (!data.realLabel) data.realLabel = rootEl.getAttribute("data-real-label") || null;
       }
+      return { data: data, model: buildCards(data, mode) };
+    }).catch(function () {
+      // Anything unexpected while loading still ends as a card in words, not a stuck loading line.
+      var data = { error: unavailable, name: rootEl.getAttribute("data-name") || null, path: schoolPath };
+      return { data: data, model: buildCards(data, mode) };
+    }).then(function (story) {
       status.textContent = "";
-      player(rootEl, buildCards(data, mode), data, mode, status);
+      player(rootEl, story.model, story.data, mode, status);
     });
   }
 

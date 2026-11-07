@@ -270,6 +270,54 @@ test("suspect years in all three flag shapes are marked, never the headline", ()
   }
 });
 
+test("a marked comparison year leaves out the similar-schools card rather than headlining it", () => {
+  // Act
+  const { m } = model({ flags: [LATEST] });
+  // Assert
+  assert.equal(card(m, "similar"), undefined);
+  assert.ok(m.cards.length >= 8 && m.cards.length <= 10, String(m.cards.length));
+});
+
+test("with every year marked, the reserves stay in the chart and no card calls them unpublished", () => {
+  // Act
+  const { data, m } = model({ flags: YEARS });
+  const reserve = card(m, "reserve");
+  // Assert
+  assert.equal(data.latest, null);
+  assert.deepEqual(reserve.chart.points.map((p) => [p.y, p.v, p.suspect]), YEARS.map((y) => [y, pf(y).revenue_reserve, true]));
+  assert.equal(reserve.big.v, null);
+  assert.ok(reserve.lines.some((l) => /^Marked years: /.test(l)));
+  for (const id of ["pupils", "funding", "staff", "reserve"]) assert.doesNotMatch(card(m, id).lines.join(" "), /published yet/, id);
+});
+
+test("PTA per pupil is the published value or same-year pupils, never another year's", () => {
+  for (const published of [true, false]) {
+    // Arrange
+    const f = fixture();
+    const y = PTA_YEARS[PTA_YEARS.length - 1], row = f.sx.pta[y];
+    const want = published ? [Math.round(row.income_pp), Math.round(row.spend_pp)] : [null, null];
+    if (!published) { delete row.income_pp; delete row.spend_pp; }
+    delete f.sx.pupils[y];
+    delete f.s.years.find((r) => r.y === y).pupils;
+    // Act
+    const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "ptfa"), "pta-money");
+    // Assert
+    assert.deepEqual(["pta_income", "pta_spend"].map((k) => c.figures.find((x) => x.key === k).pp), want, "published=" + published);
+  }
+});
+
+test("the England PTA gap uses the latest year with PTA figures, not the latest year overall", () => {
+  // Arrange
+  const f = fixture();
+  f.england.by_year[LATEST] = { all: { schools: 20100, pta_schools: 0, pta_pp_median: null } };
+  // Act
+  const gap = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "ptfa"), "pta-gap");
+  // Assert
+  assert.ok(gap);
+  assert.ok(gap.figures.every((x) => x.year === "2024-25"));
+  assert.match(gap.lines.join(" "), /9100 of 20100 schools/);
+});
+
 test("real terms appear only with sx r/rpp and the deflator caption", () => {
   // Act
   const withReal = card(model({ real: true }).m, "funding").lines.join(" ");
@@ -469,6 +517,24 @@ test("drawCard counts up with t, keeps text inside the safe margins and draws th
         assert.ok(x.y >= 0 && x.y < 1920, `${c.id} y`);
       }
     }
+  }
+});
+
+test("the outro draws the whole school URL, wrapped and uncut, with or without the QR", () => {
+  // Arrange
+  const f = fixture();
+  f.s.path = "/school/130932-st-mary-and-st-johns-church-of-england-voluntary-aided-primary-school-and-nursery/";
+  const outro = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "outro");
+  const url = outro.qr.url.replace(/^https?:\/\//, "");
+  for (const qr of [null, { size: 21, dark: () => true }]) {
+    // Act
+    const c = fakeCanvas();
+    MW.drawCard(c.g, outro, 1, PALETTE, { qr });
+    // Assert
+    const texts = c.calls.filter((x) => x.op === "fillText");
+    assert.ok(texts.map((x) => x.t).join("").includes(url), "whole URL drawn");
+    assert.ok(!texts.some((x) => x.t.endsWith("…")), "nothing cut");
+    for (const x of texts.filter((y) => y.align === "left")) assert.ok(x.x + x.width <= 1080 - 90 + 1, `"${x.t}" overflows`);
   }
 });
 
