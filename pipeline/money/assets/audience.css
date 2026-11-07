@@ -53,10 +53,13 @@ html[data-reader] #for-you:empty::before { content: ""; display: block; height: 
   .fy ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 @media (max-width: 600px) {
-  /* The wording on its own line (app.css hides it here; it is the point) with Clear at its end, then the chips. */
-  header.top fieldset.audience { flex-wrap: wrap; row-gap: 6px; }
-  header.top fieldset.audience legend { flex: 1 1 auto; font-size: .85rem; line-height: 30px; }
-  header.top fieldset.audience button.aud-clear { order: 1; min-height: 30px; padding: 0 10px; font-size: .8rem; }
+  /* The wording on its own line (app.css hides it here; it is the point) with Clear at its end, then the chips: kept
+     compact (36px chips, tight rows) so a phone's first screen reaches the page's own content. */
+  .aud-bar { padding-bottom: 6px; }
+  header.top fieldset.audience { flex-wrap: wrap; row-gap: 4px; }
+  header.top fieldset.audience legend { flex: 1 1 auto; font-size: .85rem; line-height: 26px; }
+  header.top fieldset.audience button { min-height: 36px; padding: 0 12px; }
+  header.top fieldset.audience button.aud-clear { order: 1; min-height: 26px; padding: 0 10px; font-size: .8rem; }
   .aud-chips { order: 2; flex: 1 1 100%; }
   .fy ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fy li:nth-child(n+5) { display: none; }  /* the best four: two rows, so the page's own heading stays near the top */

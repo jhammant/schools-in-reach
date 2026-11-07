@@ -4,9 +4,14 @@
 
    Reads: /assets/glossary.json, /data/search.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's
           SERIES, for data-drill="/data/sx/<urn>.json#m:<metric>"), /data/a/<id>.json,
-          /data/postcodes/<district>.json (optional, 404 = no suggestions).
-   Tables: table[data-sortable] sorts by column; a preceding .table-filters[data-filters] filters rows by
-          their [data-tags] (group:value slugs); rows of pinned schools move to the top on load.
+          /data/postcodes/<district>.json (a 404 = no suggestions; deploy/money/check_site.py requires them).
+          A full postcode goes to api.postcodes.io only when Search is pressed (/search/), never while typing.
+   Search: forgiving (searchMatches): typos, apostrophes, St/Saint, & / and, a URN or council code, "schools in
+          Hackney"; a failed index request is retried on the next search.
+   Tables: table[data-sortable] sorts by column (header buttons, plus a Sort by select for phones); a preceding
+          .table-filters[data-filters] filters rows by their [data-tags] (group:value slugs); rows of pinned
+          schools move to the top on load.
+   Menu: button.menu-toggle (site.MENU_BUTTON) opens and closes the nav on a phone.
    Stores: localStorage moneyAudience ("parent"|... or null once cleared), moneyPinned ([{type,id,name,p}]).
    Imports: Schools in Reach's localStorage "shortlist" and "plan" (arrays of URNs). */
 (function (root) {
@@ -63,34 +68,168 @@
   function norm(s) {
     return String(s == null ? "" : s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   }
-  // Ranking: name prefix > every query word is a word prefix in the name > substring (name or sub);
-  // ties broken by type (school, council, constituency, trust), then shorter name, then index order.
-  function rankSearch(rows, q, limit) {
+  // Search text, forgiving: case, accents, apostrophes and punctuation are ignored, "&" reads as "and", "C of E" as
+  // "CofE", and "St" / "St." and "Saint" match each other. Each row is folded once (cached per row object), so a
+  // keystroke over the 27,000-entry index compares prepared strings only.
+  var ALIASES = { st: "saint", saint: "st" };
+  function fold(s) {
+    return norm(s).replace(/['’‘`]/g, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim().replace(/\bc of e\b/g, "cofe");
+  }
+  function withAliases(list) {
+    var out = list.slice();
+    list.forEach(function (t) { if (ALIASES[t]) out.push(ALIASES[t]); });
+    return out;
+  }
+  function canonical(list) { return list.map(function (t) { return t === "st" ? "saint" : t; }).join(" "); }
+  var folded = typeof WeakMap === "function" ? new WeakMap() : null;
+  function prepRow(r) {
+    var p = folded && folded.get(r);
+    if (p) return p;
+    var name = fold(r.name), sub = fold(r.sub), nt = name ? name.split(" ") : [], st = sub ? sub.split(" ") : [];
+    p = { name: name, canon: canonical(nt), full: sub ? name + " " + sub : name, nt: withAliases(nt), st: withAliases(st) };
+    if (folded) folded.set(r, p);
+    return p;
+  }
+  // Optimal string alignment distance (insertions, deletions, substitutions and swapped neighbours), or max + 1 as soon
+  // as it must be more than max.
+  function editDistance(a, b, max) {
+    if (a === b) return 0;
+    var n = a.length, m = b.length, i, j;
+    if (Math.abs(n - m) > max) return max + 1;
+    var before = null, prev = [], cur;
+    for (j = 0; j <= m; j++) prev[j] = j;
+    for (i = 1; i <= n; i++) {
+      cur = [i];
+      var low = i;
+      for (j = 1; j <= m; j++) {
+        var v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1));
+        if (before && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) v = Math.min(v, before[j - 2] + 1);
+        cur[j] = v;
+        if (v < low) low = v;
+      }
+      if (low > max) return max + 1;
+      before = prev;
+      prev = cur;
+    }
+    return prev[m] > max ? max + 1 : prev[m];
+  }
+  // Typos allowed in a word: none in three letters or fewer, one in four to six, two from seven.
+  function typos(w) { return w.length >= 7 ? 2 : w.length >= 4 ? 1 : 0; }
+  // Words that say "an area" rather than name one: "schools in Hackney", "Hackney council", "London Borough of Hackney".
+  var AREA_WORDS = { schools: 1, school: 1, in: 1, near: 1, around: 1, council: 1, borough: 1, county: 1, of: 1, the: 1, area: 1,
+                     local: 1, authority: 1, london: 1, constituency: 1, primary: 1, secondary: 1 };
+  var tokenLists = typeof WeakMap === "function" ? new WeakMap() : null;
+  // Every distinct name and place word in pool (the rows of the given types), kept per rows array and types.
+  function tokenList(rows, key, pool) {
+    var byKey = tokenLists && tokenLists.get(rows);
+    if (byKey && byKey[key]) return byKey[key];
+    var seen = Object.create(null), list = [];
+    pool.forEach(function (r) {
+      var p = prepRow(r);
+      p.nt.concat(p.st).forEach(function (t) { if (t && !seen[t]) { seen[t] = 1; list.push(t); } });
+    });
+    if (tokenLists) { byKey = byKey || {}; byKey[key] = list; tokenLists.set(rows, byKey); }
+    return list;
+  }
+  // {token: typos} for the index words within a query word's allowance; the last word may still be being typed, so
+  // it also matches the start of a longer word. At most 60 per word, closest first.
+  function closeWords(w, list, last) {
+    var k = typos(w), found = [];
+    if (!k) return null;
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i], d = editDistance(w, t, k);
+      if (last && t.length > w.length && d > 0) d = Math.min(d, editDistance(w, t.slice(0, w.length), k));
+      if (d <= k) found.push([t, d]);
+    }
+    found.sort(function (a, b) { return a[1] - b[1]; });
+    var out = Object.create(null);
+    found.slice(0, 60).forEach(function (f) { out[f[0]] = f[1]; });
+    return out;
+  }
+  function typeRank(r) { return TYPE_ORDER[r.t] == null ? 9 : TYPE_ORDER[r.t]; }
+  // Does some word in toks start with w?
+  function starts(w, toks) {
+    for (var i = 0; i < toks.length; i++) if (toks[i].indexOf(w) === 0) return true;
+    return false;
+  }
+  function allStart(ws, toks) {
+    for (var i = 0; i < ws.length; i++) if (!starts(ws[i], toks)) return false;
+    return true;
+  }
+  // Search rows (the /data/search.json shape) for q: {rows, fuzzy, urn}. Best first:
+  //   a URN or council code typed as digits (urn: true); the name exactly; the name's start; every word starting a word
+  //   of the name; an area typed with "schools in" / "council" around it; every word starting a word of the name or
+  //   its place, at least one in the name; the text anywhere in name or place.
+  // Only when nothing matches like that: names within a typo or two of every word (fuzzy: true, closest first).
+  // Ties: school, council, constituency, trust; then the shorter name; then index order. opts.types keeps those types.
+  function searchMatches(rows, q, limit, opts) {
     limit = limit || 8;
-    var needle = norm(q).trim().replace(/\s+/g, " ");
-    if (!needle || !Array.isArray(rows)) return [];
-    var words = needle.split(" ");
-    var hits = [];
+    var types = opts && Array.isArray(opts.types) ? opts.types : null;
+    var needle = fold(q), out = { rows: [], fuzzy: false, urn: false };
+    if (!needle || !Array.isArray(rows)) return out;
+    var words = needle.split(" "), canon = canonical(words), digits = /^\d{3,8}$/.test(needle) ? needle : null;
+    var core = words.filter(function (w) { return !AREA_WORDS[w]; }), areaWords = core.length && core.length < words.length ? core : null;
+    var areaCanon = areaWords ? canonical(areaWords) : null;
+    var hits = [], pool = [];
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
-      if (!r || !r.name) continue;
-      var name = norm(r.name), sub = norm(r.sub), score = 0;
-      if (name.indexOf(needle) === 0) score = 3;
-      else {
-        var tokens = name.split(/[^a-z0-9]+/);
-        if (words.every(function (w) { return tokens.some(function (t) { return t.indexOf(w) === 0; }); })) score = 2;
-        else if (name.indexOf(needle) !== -1 || (name + " " + sub).indexOf(needle) !== -1) score = 1;
-      }
-      if (score) hits.push({ row: r, score: score, i: i, name: name });
+      if (!r || !r.name || (types && types.indexOf(r.t) === -1)) continue;
+      pool.push(r);
+      var p = prepRow(r), score = 0;
+      if (digits && String(r.id) === digits && (r.t === "school" || r.t === "council")) score = 9;
+      else if (p.name === needle || p.canon === canon) score = 6;
+      else if (p.name.indexOf(needle) === 0 || p.canon.indexOf(canon) === 0) score = 5;
+      else if (allStart(words, p.nt)) score = 4;
+      else if (areaWords && (r.t === "council" || r.t === "constituency") && allStart(areaWords, p.nt)) score = areaCanon === p.canon ? 5.5 : 3.5;
+      else if (placed(words, p)) score = 2;
+      else if (p.full.indexOf(needle) !== -1) score = 1;
+      if (score) hits.push({ row: r, score: score, i: i, len: p.name.length });
     }
-    hits.sort(function (a, b) {
-      return b.score - a.score
-        || (TYPE_ORDER[a.row.t] == null ? 9 : TYPE_ORDER[a.row.t]) - (TYPE_ORDER[b.row.t] == null ? 9 : TYPE_ORDER[b.row.t])
-        || a.name.length - b.name.length
-        || a.i - b.i;
-    });
-    return hits.slice(0, limit).map(function (h) { return h.row; });
+    if (hits.some(function (h) { return h.score === 9; })) out.urn = true;
+    if (!hits.length && !digits) {
+      // Fuzzy: each word to the index words within its typo allowance, then rows where every word lands on the name or
+      // place and at least one on the name. The cost is the typos used; an exact word costs nothing. As above, a council
+      // or constituency needs only the words that aren't area words ("Hakney council" is Hackney's).
+      var list = tokenList(rows, types ? types.join() : "", pool), near = words.map(function (w, n) { return closeWords(w, list, n === words.length - 1); });
+      var all = words.map(function (w, n) { return n; }), coreAt = areaWords ? all.filter(function (n) { return !AREA_WORDS[words[n]]; }) : all;
+      var cost = function (w, n, toks) {
+        var best = Infinity;
+        for (var j = 0; j < toks.length; j++) {
+          var t = toks[j];
+          if (t.indexOf(w) === 0) return 0;
+          if (near[n] && near[n][t] != null && near[n][t] < best) best = near[n][t];
+        }
+        return best;
+      };
+      if (near.some(Boolean)) {
+        pool.forEach(function (r, k) {
+          var p = prepRow(r), total = 0, inName = false, at = r.t === "council" || r.t === "constituency" ? coreAt : all;
+          for (var x = 0; x < at.length; x++) {
+            var n = at[x], c = cost(words[n], n, p.nt);
+            if (c !== Infinity) inName = true; else c = cost(words[n], n, p.st);
+            if (c === Infinity) return;
+            total += c;
+          }
+          if (inName && total > 0) hits.push({ row: r, score: -total, i: k, len: p.name.length });
+        });
+        out.fuzzy = hits.length > 0;
+      }
+    }
+    hits.sort(function (a, b) { return b.score - a.score || typeRank(a.row) - typeRank(b.row) || a.len - b.len || a.i - b.i; });
+    out.rows = hits.slice(0, limit).map(function (h) { return h.row; });
+    return out;
   }
+  // Every word starts a word of the name or the place, and at least one starts a word of the name.
+  function placed(words, p) {
+    var inName = false;
+    for (var i = 0; i < words.length; i++) {
+      if (starts(words[i], p.nt)) inName = true;
+      else if (!starts(words[i], p.st)) return false;
+    }
+    return inName;
+  }
+  // The best matches as a list (searchMatches without the flags); map.js uses it too.
+  function rankSearch(rows, q, limit, opts) { return searchMatches(rows, q, limit, opts).rows; }
   var pinLimits = { school: 6, area: 4 };
   function samePin(a, b) { return a && b && a.type === b.type && String(a.id) === String(b.id); }
   function cleanPin(item) {
@@ -156,8 +295,9 @@
     }).catch(function () { return null; });
   }
   // Schools near a parsed postcode: {rows, exact} (exact = sorted from the full postcode, not the district centre).
-  function schoolsNear(pc, limit) {
-    return Promise.all([postcodeLookup(pc.district), postcodePoint(pc.full)]).then(function (r) {
+  // districtOnly (the suggestions while typing) never sends the postcode off the site; pressing Search does.
+  function schoolsNear(pc, limit, districtOnly) {
+    return Promise.all([postcodeLookup(pc.district), districtOnly ? null : postcodePoint(pc.full)]).then(function (r) {
       return { rows: nearestRows(r[0], r[1], limit), exact: !!r[1] };
     });
   }
@@ -317,6 +457,7 @@
   var API = {
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     milesBetween: milesBetween, nearestRows: nearestRows, schoolsNear: schoolsNear,
+    searchMatches: searchMatches, fold: fold, editDistance: editDistance,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
     slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
     rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF,
@@ -328,8 +469,9 @@
   // ======================================================================
   // DOM wiring
   // ======================================================================
-  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves" };
-  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲" };
+  var LABELS = { in_deficit: "In deficit", heading_for_deficit: "Heading for deficit", tight: "Tight", healthy: "Healthy", large_reserves: "Large reserves",
+                 reserve_held_by_trust: "Reserve held by the trust" };
+  var ICONS = { in_deficit: "▼", heading_for_deficit: "↘", tight: "●", healthy: "✓", large_reserves: "▲", reserve_held_by_trust: "◇" };
   var KEY_AUD = "moneyAudience", KEY_PIN = "moneyPinned";
 
   function el(tag, cls, text) {
@@ -380,6 +522,22 @@
     return $$('a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])', container)
       .filter(function (e) { return e.offsetParent !== null || e === document.activeElement; });
   }
+
+  // ---------------------------------------------------------------- phone menu (site.MENU_BUTTON)
+  // At 600px and below app.css hides the nav until the Menu button opens it (without JavaScript the button is hidden and
+  // the nav shows). Escape closes it and, when focus was in the menu, puts focus back on the button.
+  (function menu() {
+    var button = $("button.menu-toggle"), nav = button && document.getElementById(button.getAttribute("aria-controls") || "");
+    if (!button || !nav) return;
+    function open() { return button.getAttribute("aria-expanded") === "true"; }
+    button.addEventListener("click", function () { button.setAttribute("aria-expanded", open() ? "false" : "true"); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape" || !open()) return;
+      var inside = document.activeElement === button || nav.contains(document.activeElement);
+      button.setAttribute("aria-expanded", "false");
+      if (inside) button.focus();
+    });
+  })();
 
   // ---------------------------------------------------------------- audience
   // The chosen reader sets html[data-reader] (the panel's space, the pressed chip and the section tags in
@@ -542,6 +700,7 @@
   });
   document.addEventListener("focusout", hideTip);
   document.addEventListener("scroll", hideTip, true);
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && tipFor) hideTip(); });
 
   // ---------------------------------------------------------------- money figures: enhance + drill-down
   function enhanceFigures(ctx) {
@@ -782,11 +941,23 @@
   });
 
   // ---------------------------------------------------------------- search index
+  // Resolves to the index rows, or null when it could not be loaded; a failure is forgotten, so the next search
+  // tries again rather than search staying off for the rest of the visit. fetchJSON keeps any parsed answer, so an
+  // unusable one (an empty list, an error object) is dropped from its cache as well.
   var indexPromise = null;
   function loadIndex() {
-    if (!indexPromise) indexPromise = fetchJSON("/data/search.json").then(function (d) { return Array.isArray(d) ? d : []; });
+    if (!indexPromise) indexPromise = fetchJSON("/data/search.json").then(function (d) {
+      if (Array.isArray(d) && d.length) return d;
+      indexPromise = null;
+      delete jsonCache["/data/search.json"];
+      return null;
+    });
     return indexPromise;
   }
+  var UNAVAILABLE = "Search is unavailable just now. Try again in a moment, or browse:";
+  var BROWSE = [{ t: "browse", name: "Councils and regions", p: "/areas/" }, { t: "browse", name: "Schools on the map", p: "/map/" },
+                { t: "browse", name: "Academy trusts", p: "/trust/" }];
+  function didYouMean(row) { return "No exact matches. Did you mean " + row.name + "?"; }
   function schoolLookup(rows) {
     var map = {};
     rows.forEach(function (r) { if (r && r.t === "school") map[String(r.id)] = { name: r.name, p: r.p }; });
@@ -879,6 +1050,8 @@
       btn.type = "button";
       btn.addEventListener("click", function () {
         loadIndex().then(function (rows) {
+          // Without the index there are no names to pin by; say so and leave the offer up to try again.
+          if (!rows) { pinMsg = "The list of schools didn't load, so nothing was added. Try again in a moment."; refreshPins(); return; }
           var r = importShortlist(pins, pair[1], schoolLookup(rows));
           pins = r.list;
           pinMsg = r.added ? "Added " + r.added + " from your " + pair[0] + "." : "Nothing new to add from your " + pair[0] + ".";
@@ -922,8 +1095,15 @@
       input.parentNode.appendChild(list);
     }
     input.setAttribute("aria-controls", list.id);
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-autocomplete", "list");
+    if (!input.hasAttribute("aria-expanded")) input.setAttribute("aria-expanded", "false");
+    // The count, a "Did you mean" or the unavailable note, said once by screen readers (the note in the list is visual).
+    var status = el("span", "visually-hidden");
+    status.setAttribute("role", "status");
+    input.parentNode.appendChild(status);
     var go = input.getAttribute("data-go") || "";
-    var options = [], active = -1, timer = null, lastQuery = "";
+    var options = [], active = -1, timer = null, lastQuery = "", urnHit = null;
     function hide() { list.hidden = true; list.textContent = ""; options = []; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
     function setActive(i) {
       active = i;
@@ -931,12 +1111,19 @@
       if (i >= 0) { input.setAttribute("aria-activedescendant", options[i].id); options[i].scrollIntoView({ block: "nearest" }); }
       else input.removeAttribute("aria-activedescendant");
     }
-    function render(rows, note) {
+    // rows as options; note shows when there are none; lead goes above them (a "Did you mean" or the unavailable note).
+    function render(rows, note, lead) {
       list.textContent = "";
       options = [];
+      status.textContent = lead || (rows.length ? rows.length + (rows.length === 1 ? " suggestion" : " suggestions") : note || "");
       if (!rows.length) {
         if (note) list.appendChild(el("li", "empty", note));
         else { hide(); return; }
+      }
+      if (lead && rows.length) {
+        var head = el("li", "note", lead);
+        head.setAttribute("aria-hidden", "true");
+        list.appendChild(head);
       }
       rows.forEach(function (r, i) {
         var li = el("li");
@@ -960,10 +1147,11 @@
     function run() {
       var q = input.value.trim();
       lastQuery = q;
+      urnHit = null;
       if (q.length < 2) { hide(); return; }
       var pc = parsePostcode(q);
       if (pc && /\d/.test(q)) {
-        schoolsNear(pc, 8).then(function (near) {
+        schoolsNear(pc, 8, true).then(function (near) {
           if (lastQuery !== q) return;
           render(near.rows, "No schools found near " + (pc.full || pc.district));
         });
@@ -971,7 +1159,10 @@
       }
       loadIndex().then(function (rows) {
         if (lastQuery !== q) return;
-        render(rankSearch(rows, q, 8), "No matches");
+        if (!rows) { render(BROWSE, null, UNAVAILABLE); return; }
+        var m = searchMatches(rows, q, 8);
+        urnHit = m.urn ? m.rows[0] : null;
+        render(m.rows, "No matches", m.fuzzy && m.rows.length ? didYouMean(m.rows[0]) : null);
       });
     }
     input.addEventListener("focus", function () { loadIndex(); });
@@ -982,6 +1173,8 @@
       if (e.key === "ArrowDown") { e.preventDefault(); setActive(options.length ? (active + 1) % options.length : -1); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setActive(!options.length ? -1 : active <= 0 ? options.length - 1 : active - 1); }
       else if (e.key === "Enter" && active >= 0) { e.preventDefault(); options[active].click(); }
+      // A URN typed in full goes straight to its school.
+      else if (e.key === "Enter" && urnHit && urnHit.p && lastQuery === input.value.trim()) { e.preventDefault(); location.href = urnHit.p + (go && urnHit.t === "school" ? go : ""); }
       else if (e.key === "Escape") { hide(); }
     });
     input.addEventListener("blur", function () { setTimeout(hide, 120); });
@@ -1005,7 +1198,10 @@
     function show(rows, emptyNote, heading, jump) {
       box.textContent = "";
       box.appendChild(el("h2", null, rows.length ? (heading || "Results for “" + q + "”") : emptyNote));
-      if (!rows.length) return;
+      if (!rows.length) {
+        box.appendChild(el("p", "muted", "Try part of the school's name, its town or council, its URN, or a postcode."));
+        return;
+      }
       var ul = el("ul", "results");
       rows.forEach(function (r) {
         var li = el("li"), a = el("a", null, r.name || "");
@@ -1029,7 +1225,34 @@
       });
       return;
     }
-    loadIndex().then(function (rows) { show(rankSearch(rows, q, 50), "No matches for “" + q + "”", null, true); });
+    function unavailable() {
+      box.textContent = "";
+      box.appendChild(el("h2", null, "Search is unavailable just now"));
+      box.appendChild(el("p", null, "The list of schools didn't load. Try again in a moment, or browse:"));
+      var ul = el("ul", "browse");
+      BROWSE.forEach(function (b) { var li = el("li"), a = el("a", null, b.name); a.href = b.p; li.appendChild(a); ul.appendChild(li); });
+      box.appendChild(ul);
+      var again = el("button", "button", "Try again");
+      again.type = "button";
+      again.addEventListener("click", function () { box.textContent = ""; box.appendChild(el("p", "muted", "Searching…")); find(); });
+      box.appendChild(again);
+    }
+    function find() {
+      loadIndex().then(function (rows) {
+        if (!rows) { unavailable(); return; }
+        var m = searchMatches(rows, q, 50);
+        if (m.urn) { show(m.rows.slice(0, 1), "", null, true); return; }  // a URN goes straight to its school
+        if (!m.fuzzy) { show(m.rows, "No matches for “" + q + "”", null, true); return; }
+        // Close matches only: say so, offer the best as "Did you mean", and never jump to it.
+        show(m.rows, "", "Close matches for “" + q + "”");
+        var dym = el("p", "dym", "No exact matches. Did you mean "), a = el("a", null, m.rows[0].name);
+        a.href = m.rows[0].p || "#";
+        dym.appendChild(a);
+        dym.appendChild(document.createTextNode("?"));
+        box.insertBefore(dym, box.children[1] || null);
+      });
+    }
+    find();
   })();
 
   // ---------------------------------------------------------------- preview cards ([data-preview])
@@ -1148,21 +1371,76 @@
     var c = String(x).localeCompare(String(y));
     return asc ? c : -c;
   }
+  // Each header's text goes into a native button (sorting toggles ascending / descending; aria-sort stays on the th),
+  // with a plain .th-label copy beside it. Above the table, .sort-controls offers the same as a labelled "Sort by"
+  // select and a direction button: app.css shows them, and swaps the header buttons for the plain labels, where a
+  // responsive table's header row is clipped on a phone, so no invisible control is left in the tab order. A page
+  // script that rewrites a header (the map's measure column) gets its button back from the observer.
+  var sortSeq = 0;
   $$("table[data-sortable]").forEach(function (t) {
-    $$("thead th", t).forEach(function (th, col) {
-      th.tabIndex = 0;
-      function sort() {
-        var asc = th.getAttribute("aria-sort") !== "ascending";
-        $$("thead th", t).forEach(function (o) { o.removeAttribute("aria-sort"); });
-        th.setAttribute("aria-sort", asc ? "ascending" : "descending");
-        var body = t.tBodies[0];
-        var rows = Array.prototype.slice.call(body.rows);
-        rows.sort(function (a, b) { return compareCells(cellValue(a.cells[col]), cellValue(b.cells[col]), asc); });
-        rows.forEach(function (r) { body.appendChild(r); });
+    var head = t.tHead || $("thead", t), heads = $$("thead th", t), body = t.tBodies && t.tBodies[0];
+    if (!heads.length || !body || !t.parentNode) return;
+    var original = null, state = { col: -1, asc: true }, n = ++sortSeq, names = [], opts = [];
+    var controls = el("div", "sort-controls" + (t.classList.contains("responsive") ? " for-responsive" : ""));
+    var label = el("label", null, "Sort by"), select = el("select"), dir = el("button", "sort-dir", "Ascending"), said = el("span", "visually-hidden");
+    select.id = "sort-" + n;
+    label.setAttribute("for", select.id);
+    dir.type = "button";
+    said.setAttribute("role", "status");
+    var none = el("option", null, "Table order");
+    none.value = "";
+    select.appendChild(none);
+    function sortTo(col, asc) {
+      if (!original) original = Array.prototype.slice.call(body.rows);
+      state = { col: col, asc: asc };
+      heads.forEach(function (o, k) { if (k === col) o.setAttribute("aria-sort", asc ? "ascending" : "descending"); else o.removeAttribute("aria-sort"); });
+      var rows = col < 0 ? original.filter(function (r) { return r.parentNode === body; }) : Array.prototype.slice.call(body.rows).sort(function (a, b) {
+        return compareCells(cellValue(a.cells[col]), cellValue(b.cells[col]), asc);
+      });
+      rows.forEach(function (r) { body.appendChild(r); });
+      select.value = col < 0 ? "" : String(col);
+      dir.textContent = asc ? "Ascending" : "Descending";
+      said.textContent = col < 0 ? "In table order" : "Sorted by " + names[col] + ", " + (asc ? "ascending" : "descending");
+    }
+    // Puts th's own content in a button (once); returns false for an empty header.
+    function wrap(th, col) {
+      if ($("button.sort", th)) return true;
+      var text = th.textContent.trim().replace(/\s+/g, " ");
+      if (!text) return false;
+      names[col] = text;
+      var button = el("button", "sort");
+      button.type = "button";
+      while (th.childNodes.length) button.appendChild(th.childNodes[0]);
+      th.appendChild(button);
+      th.appendChild(el("span", "th-label", text));
+      if (!opts[col]) {
+        opts[col] = el("option");
+        opts[col].value = String(col);
+        select.appendChild(opts[col]);
       }
-      th.addEventListener("click", sort);
-      th.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); sort(); } });
+      opts[col].textContent = text;
+      return true;
+    }
+    heads.forEach(function (th, col) {
+      wrap(th, col);
+      // On the th (the button's click bubbles here), so the whole cell sorts and a header a page script has rewritten
+      // still sorts before the observer gives it its button back.
+      th.addEventListener("click", function () { if (names[col]) sortTo(col, !(state.col === col && state.asc)); });
     });
+    if (head && typeof MutationObserver === "function") {
+      new MutationObserver(function () { heads.forEach(wrap); }).observe(head, { childList: true, subtree: true, characterData: true });
+    }
+    select.addEventListener("change", function () { sortTo(select.value === "" ? -1 : +select.value, state.asc); });
+    dir.addEventListener("click", function () {
+      if (state.col >= 0) { sortTo(state.col, !state.asc); return; }
+      state.asc = !state.asc;
+      dir.textContent = state.asc ? "Ascending" : "Descending";
+    });
+    controls.appendChild(label);
+    controls.appendChild(select);
+    controls.appendChild(dir);
+    controls.appendChild(said);
+    t.parentNode.insertBefore(controls, t);
   });
 
   // ---------------------------------------------------------------- table filters and pinned rows
@@ -1240,7 +1518,24 @@
     var SERIES = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--serious)", "var(--good)"];
     var input = document.getElementById("cmp-find"), results = document.getElementById("cmp-results");
     var chosenList = document.getElementById("cmp-chosen"), out = document.getElementById("cmp-out") || app;
-    var chosen = [], areas = [];
+    var chosen = [], areas = [], searchSeq = 0;
+    // Results are a plain list of "Compare <school>" buttons with the count in a polite status region (older markup
+    // gave the list role="listbox", which buttons can't sit in; build_money now leaves it off and adds #cmp-status).
+    var cmpStatus = document.getElementById("cmp-status");
+    if (results) {
+      if (results.getAttribute("role") === "listbox") results.removeAttribute("role");
+      if (!results.hasAttribute("aria-label")) results.setAttribute("aria-label", "Matching schools");
+      if (!cmpStatus) {
+        cmpStatus = el("p", "visually-hidden");
+        cmpStatus.id = "cmp-status";
+        cmpStatus.setAttribute("role", "status");
+        cmpStatus.setAttribute("aria-live", "polite");
+        results.parentNode.insertBefore(cmpStatus, results.nextSibling);
+      }
+    }
+    // Enter in the finder searches (it never submits the page away from the chosen schools).
+    var form = input && input.closest ? input.closest("form") : null;
+    if (form) form.addEventListener("submit", function (e) { e.preventDefault(); search(input.value); });
 
     function loadSchool(urn) {
       return fetchJSON("/data/s/" + encodeURIComponent(urn) + ".json").then(function (d) {
@@ -1262,14 +1557,20 @@
       url.searchParams.delete("q");
       history.replaceState(null, "", url);
     }
+    function say(text) { if (cmpStatus) cmpStatus.textContent = text; }
     function search(q) {
       if (!results) return;
+      var seq = ++searchSeq;
       results.textContent = "";
-      if (!q.trim()) return;
+      if (!q.trim()) { say(""); return; }
       loadIndex().then(function (rows) {
-        var hits = rankSearch(rows.filter(function (r) { return r.t === "school"; }), q, 12);
+        if (seq !== searchSeq) return;
         results.textContent = "";
-        if (!hits.length) { results.appendChild(el("li", "muted", "No schools match.")); return; }
+        if (!rows) { results.appendChild(el("li", "muted", "Search is unavailable just now. Try again in a moment.")); say("Search is unavailable just now."); return; }
+        var m = searchMatches(rows, q, 12, { types: ["school"] }), hits = m.rows;
+        if (!hits.length) { results.appendChild(el("li", "muted", "No schools match.")); say("No schools match."); return; }
+        say((m.fuzzy ? "No exact matches. " + hits.length + " close " : hits.length + " ") + (hits.length === 1 ? "school matches" : "schools match")
+          + (chosen.length >= MAX ? ". Up to " + MAX + " schools can be compared: remove one to add another." : "."));
         hits.forEach(function (h) {
           var li = el("li");
           var left = el("div");
@@ -1277,9 +1578,11 @@
           left.appendChild(el("div", "where", h.sub || ""));
           var right = el("div");
           if (h.status && LABELS[h.status]) right.appendChild(badge(h.status));
-          var add = el("button", null, chosen.indexOf(String(h.id)) === -1 ? "Compare" : "Added");
+          // The button's name is "Compare <school>" (the school's name is visually hidden: it is already beside it).
+          var added = chosen.indexOf(String(h.id)) !== -1, add = el("button", null, added ? "Added" : "Compare");
+          add.appendChild(el("span", "visually-hidden", " " + h.name));
           add.type = "button";
-          add.disabled = chosen.indexOf(String(h.id)) !== -1 || chosen.length >= MAX;
+          add.disabled = added || chosen.length >= MAX;
           add.addEventListener("click", function () { addSchool(String(h.id)); });
           right.appendChild(document.createTextNode(" "));
           right.appendChild(add);
@@ -1341,6 +1644,10 @@
         if (schools.length) {
           out.appendChild(el("h2", null, "Schools side by side"));
           out.appendChild(schoolTable(schools));
+          // Whose similar schools these are, and how they are chosen (each method once).
+          var methods = [];
+          schools.forEach(function (s) { var m = s.similar_meta && s.similar_meta.method; if (m && methods.indexOf(String(m)) === -1) methods.push(String(m)); });
+          if (methods.length) out.appendChild(el("p", "muted small", "Similar schools are School Money's own comparison groups, not the DfE's. " + methods.join(" ")));
           if (schools.some(function (s) { return s.years.length > 1; })) {
             out.appendChild(el("h2", null, "Reserve as a share of income, by year"));
             out.appendChild(chart(schools));
@@ -1382,7 +1689,18 @@
       t.row("Council", function (i) { var c = at(i).council; return c ? (typeof c === "string" ? c : c.name || "—") : "—"; });
       t.row("Latest year", function (i) { var s = at(i); return (s.year || "—") + (s.academy ? " (academy)" : ""); });
       t.row("Pupils", function (i) { var p = at(i).pupils; return p == null ? "—" : Math.round(p).toLocaleString("en-GB"); });
-      t.row("Reserve", function (i) { var s = at(i); return figureSpan("revenue_reserve", s.reserve, s.reserve_pp, s.year, null, s.check); });
+      // The reserve on the basis the school's status uses: for an academy in a trust that pools reserves, its share of
+      // the trust's reserve is included and the row says so (reserve_basis; without it, today's wording).
+      t.row("Reserve", function (i) {
+        var s = at(i), trust = s.reserve_basis === "incl_trust_share";
+        var span = figureSpan(trust ? "revenue_reserve_incl_trust_share" : "revenue_reserve", s.reserve, s.reserve_pp, s.year,
+          trust ? "Reserve, including its share of the trust's reserve" : null, s.check);
+        if (!trust) return span;
+        var box = el("span");
+        box.appendChild(span);
+        box.appendChild(el("small", "basis", " including its share of the trust's reserve"));
+        return box;
+      });
       t.row("Reserve as % of income", function (i) { var s = at(i); return s.share == null ? "—" : (s.share * 100).toFixed(1) + "%"; });
       t.row("Last year's balance", function (i) { var s = at(i); return figureSpan("in_year_balance", s.balance, s.balance_pp, s.year, null, s.check, { signed: true }); });
       t.row("Years spending more than income", function (i) { var s = at(i); return s.streak ? String(s.streak) : "—"; });
@@ -1390,18 +1708,30 @@
       // Per-pupil categories are money figures too (tooltip, drill-down). The shared school JSON carries
       // totals only for income and spending; other categories keep data-v empty rather than guess.
       var TOTALS = { total_income: "income", total_expenditure: "spend" };
+      // School Money's own similar schools (similar_meta: the year and how many schools had a return that year); the
+      // medians below are for that year, which is each school's own latest year.
+      if (schools.some(function (s) { return s.similar_meta; })) {
+        t.row("Compared with", function (i) { return similarWords(at(i)); });
+      }
       CATS.forEach(function (c) {
         t.row(c[1], function (i) {
           var s = at(i), pp = s.pp[c[0]];
           if (typeof pp !== "number") return "—";
           var total = TOTALS[c[0]] ? s[TOTALS[c[0]]] : null, m = s.similar[c[0]];
           var span = figureSpan(c[0], total, pp, s.year, null, s.check, { ppFirst: true, similar: typeof m === "number" ? m : null });
-          if (typeof m === "number") { span.appendChild(document.createTextNode(" ")); span.appendChild(el("small", null, "similar schools " + fmtExact(m))); }
+          if (typeof m === "number") { span.appendChild(document.createTextNode(" ")); span.appendChild(el("small", null, similarWords(s) + " " + fmtExact(m))); }
           return span;
         });
       });
       t.row("Check at source", function (i) { var s = at(i); if (!s.check) return "—"; var a = el("a", null, "DfE benchmarking"); a.href = s.check; a.rel = "noopener"; return a; });
       return t.wrap;
+    }
+    // "similar schools (17 schools, 2025-26)" from similar_meta, else "similar schools".
+    function similarWords(s) {
+      var meta = s && s.similar_meta;
+      if (!meta || typeof meta !== "object" || !meta.year) return "similar schools";
+      var n = typeof meta.peers === "number" && isFinite(meta.peers) ? Math.round(meta.peers) : null;
+      return "similar schools (" + (n == null ? "" : n.toLocaleString("en-GB") + (n === 1 ? " school, " : " schools, ")) + meta.year + ")";
     }
     function areaTable(list) {
       var years = {};
@@ -1419,9 +1749,16 @@
           return Math.round(v).toLocaleString("en-GB");
         });
       });
-      t.row("Council schools budget (DSG) balance", function (i) {
-        var d = list[i].dsg && list[i].dsg[year];
-        return d && d.balance != null ? fmtMoney(d.balance, true) : "—";
+      // The council's Dedicated Schools Grant balance (all four blocks), with its own year (the latest it has, which can
+      // differ from the schools' year) and "provisional" where the source says so.
+      t.row("Dedicated Schools Grant balance (all four blocks)", function (i) {
+        var dsg = list[i].dsg || {}, y = dsg[year] && dsg[year].balance != null ? year : null;
+        if (!y) Object.keys(dsg).sort().forEach(function (k) { if (dsg[k] && dsg[k].balance != null) y = k; });
+        if (!y) return "—";
+        var d = dsg[y], pp = isNum(d.per_pupil) ? d.per_pupil : isNum(d.balance_pp) ? d.balance_pp : null, box = el("span", null, fmtMoney(d.balance, true));
+        var note = y + (d.provisional ? ", provisional" : "") + (pp != null ? "; " + fmtExact(pp, true) + " per pupil at the council's schools on this site" : "");
+        box.appendChild(el("small", null, " (" + note + ")"));
+        return box;
       });
       return t.wrap;
     }

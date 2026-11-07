@@ -84,10 +84,10 @@ const ROWS = [
   { t: "school", id: "100004", name: "Thomas Fairchild Community School", sub: "Hoxton, Hackney", status: "healthy", p: "/school/100004-thomas-fairchild/" },
 ];
 
-test("rankSearch: prefix > word match > substring, type order school, council, constituency, trust", () => {
+test("rankSearch: exact name > prefix > word match > substring, type order school, council, constituency, trust", () => {
   const names = M.rankSearch(ROWS, "hackney").map((r) => r.id);
-  // Prefix hits first (school before council before constituency before trust), then word/substring hits.
-  assert.deepEqual(names.slice(0, 4), ["100002", "204", "hackney-north", "hackney-learning-trust"]);
+  // The council named exactly that first, then prefix hits (school before constituency before trust), then word/substring hits.
+  assert.deepEqual(names.slice(0, 4), ["204", "100002", "hackney-north", "hackney-learning-trust"]);
   assert.ok(names.indexOf("100001") > 3, "Stoke Newington School matches only via its sub text");
   assert.ok(names.indexOf("100003") > 3);
   assert.equal(M.rankSearch(ROWS, "patten")[0].id, "100003", "word prefix beats substring");
@@ -305,9 +305,25 @@ class Node {
     return child;
   }
   removeChild(child) { this.childNodes.splice(this.childNodes.indexOf(child), 1); child.parentNode = null; return child; }
+  insertBefore(child, before) {
+    if (!before) return this.appendChild(child);
+    if (child.parentNode) child.parentNode.removeChild(child);
+    child.parentNode = this;
+    this.childNodes.splice(this.childNodes.indexOf(before), 0, child);
+    return child;
+  }
+  get nextSibling() { const s = this.parentNode && this.parentNode.childNodes; return s ? s[s.indexOf(this) + 1] || null : null; }
+  get firstChild() { return this.childNodes[0] || null; }
   get children() { return this.childNodes.filter((c) => c.tagName); }
   get textContent() { return this._text + this.childNodes.map((c) => c.textContent).join(""); }
-  set textContent(v) { for (const c of this.childNodes) c.parentNode = null; this.childNodes = []; this._text = String(v ?? ""); }
+  set textContent(v) {
+    // Like a browser: an element's text becomes one text child (so moving its children moves the text too).
+    for (const c of this.childNodes) c.parentNode = null;
+    this.childNodes = [];
+    if (!this.tagName) { this._text = String(v ?? ""); return; }
+    this._text = "";
+    if (String(v ?? "")) this.appendChild(new Node(null, this.ownerDocument, String(v)));
+  }
   matches(sel) { return matches(this, sel); }
   closest(sel) { return this.matches(sel) ? this : (this.parentNode && this.parentNode.closest ? this.parentNode.closest(sel) : null); }
   querySelectorAll(sel) {
@@ -330,6 +346,7 @@ class Node {
   click() { return this.dispatchEvent({ type: "click", bubbles: true }); }
   focus() { this.ownerDocument.activeElement = this; }
   createTBody() { return this.appendChild(this.ownerDocument.createElement("tbody")); }
+  createTHead() { return this.insertBefore(this.ownerDocument.createElement("thead"), this.firstChild); }
   insertRow() { return this.appendChild(this.ownerDocument.createElement("tr")); }
   insertCell() { return this.appendChild(this.ownerDocument.createElement("td")); }
   get tBodies() { return this.children.filter((c) => c.tagName === "TBODY"); }
@@ -359,18 +376,20 @@ const appSource = readFileSync(join(here, "assets", "app.js"), "utf8");
 const glossary = JSON.parse(readFileSync(join(here, "assets", "glossary.json"), "utf8"));
 async function settle() { for (let n = 0; n < 40; n++) await Promise.resolve(); }
 
-function boot({ storage = {}, data = {}, setup = () => {}, path = "/" } = {}) {
-  // Arrange (shared): a fake page at path, storage and fetch, then app.js runs against them.
+function boot({ storage = {}, data = {}, setup = () => {}, path = "/", globals = {} } = {}) {
+  // Arrange (shared): a fake page at path, storage and fetch, then app.js runs against them. Timers wait for
+  // flushTimers(); fixtures can be changed after boot (a failed request, then a good one).
   const document = new Doc();
   const memory = new Map(Object.entries(storage).map(([k, v]) => [k, JSON.stringify(v)]));
-  const calls = [];
+  const calls = [], timers = [], replaced = [];
   const fixtures = { "/assets/glossary.json": glossary, ...data };
   const url = new URL(path, "https://money.schoolsinreach.com/");
+  const location = { href: url.href, search: url.search, pathname: url.pathname, replace: (u) => replaced.push(u) };
   const ctx = vm.createContext({
-    document, console, URL, URLSearchParams, location: { href: url.href, search: "", pathname: url.pathname },
+    document, console, URL, URLSearchParams, location, Node, ...globals,
     history: { replaceState() {} },
     localStorage: { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => memory.set(k, String(v)) },
-    setTimeout: () => 0, clearTimeout() {},
+    setTimeout: (fn) => timers.push(fn), clearTimeout() {},
     fetch(u) {
       calls.push(String(u));
       const value = fixtures[u];
@@ -382,7 +401,7 @@ function boot({ storage = {}, data = {}, setup = () => {}, path = "/" } = {}) {
   ctx.innerHeight = 800;
   setup(document);
   vm.runInContext(appSource, ctx, { filename: "pipeline/money/assets/app.js" });
-  return { document, calls, memory };
+  return { document, calls, memory, fixtures, location, replaced, flushTimers() { timers.splice(0).forEach((fn) => fn()); } };
 }
 
 test("a /data/sx/ drill fetches the SERIES file and shows its trend, breakdown and source", async () => {
@@ -675,4 +694,440 @@ test("on a council page the schools table gets an id and the panel links the are
   assert.equal(h.document.querySelector(".fy-sub").textContent, "Quick links for Hackney");
   assert.deepEqual(h.document.querySelectorAll("#for-you a").map((a) => a.getAttribute("href")),
     ["/deck/?area=council-204", "#schools", "/map/", "/guides/governors/", "/tools/budget-check/"]);
+});
+
+// ---------------------------------------------------------------- forgiving search
+const INDEX = [
+  ...ROWS,
+  { t: "school", id: "100005", name: "St Mary's CofE Primary School", sub: "Islington", status: "healthy", p: "/school/100005-st-mary-s/" },
+  { t: "school", id: "100006", name: "Saint Joseph's Catholic Primary", sub: "Camden", status: null, p: "/school/100006-saint-joseph-s/" },
+  { t: "council", id: "301", name: "Barking and Dagenham", sub: "London", status: null, p: "/council/barking-and-dagenham/" },
+  { t: "school", id: "140001", name: "Mossbourne Community Academy", sub: "London, Hackney", status: "reserve_held_by_trust", p: "/school/140001-mossbourne/" },
+];
+const ids = (m) => m.rows.map((r) => r.id);
+
+test("fold ignores case, accents, apostrophes and punctuation, and reads & as and", () => {
+  assert.equal(M.fold("St. Mary's  C of E"), "st marys cofe");
+  assert.equal(M.fold("Barking & Dagenham"), "barking and dagenham");
+  assert.equal(M.fold("Stoke-on-Trent"), "stoke on trent");
+  assert.equal(M.fold("Ecole Française"), "ecole francaise");
+  assert.equal(M.fold(null), "");
+});
+
+test("editDistance counts one or two typos, swapped letters as one, and stops past its limit", () => {
+  assert.equal(M.editDistance("willam", "william", 1), 1);
+  assert.equal(M.editDistance("paten", "patten", 1), 1);
+  assert.equal(M.editDistance("patetn", "patten", 1), 1, "a swapped pair is one edit");
+  assert.equal(M.editDistance("pattern", "patten", 2), 1);
+  assert.equal(M.editDistance("hackney", "hackney", 0), 0);
+  assert.equal(M.editDistance("zzzzzz", "patten", 2), 3, "max + 1 once it must be more than max");
+});
+
+test("a typo or two still finds the school, flagged fuzzy for a 'Did you mean' line", () => {
+  for (const q of ["Willam Paten", "wiliam paten", "william pattern", "WILLIAM  PATEN"]) {
+    // Act
+    const m = M.searchMatches(INDEX, q, 8);
+    // Assert
+    assert.equal(m.fuzzy, true, q);
+    assert.equal(m.rows[0].id, "100003", q);
+  }
+  const exact = M.searchMatches(INDEX, "william patten", 8);
+  assert.equal(exact.fuzzy, false);
+  assert.deepEqual(ids(exact), ["100003"]);
+  assert.deepEqual(M.searchMatches(INDEX, "zzz", 8), { rows: [], fuzzy: false, urn: false }, "three letters allow no typo");
+  assert.deepEqual(M.searchMatches(INDEX, "qqqqqqqq", 8).rows, []);
+});
+
+test("a name with its place, Saint for St, missing apostrophes and & all match", () => {
+  assert.deepEqual(ids(M.searchMatches(INDEX, "william patten hackney", 8)), ["100003"]);
+  assert.equal(M.searchMatches(INDEX, "saint marys", 8).rows[0].id, "100005");
+  assert.equal(M.searchMatches(INDEX, "st. mary's c of e", 8).rows[0].id, "100005");
+  assert.equal(M.searchMatches(INDEX, "st josephs", 8).rows[0].id, "100006");
+  assert.equal(M.searchMatches(INDEX, "barking & dagenham", 8).rows[0].id, "301");
+});
+
+test("digits that are a URN or a council code go straight to it", () => {
+  const m = M.searchMatches(INDEX, " 100003 ", 8);
+  assert.equal(m.urn, true);
+  assert.equal(m.rows[0].id, "100003");
+  assert.equal(M.searchMatches(INDEX, "204", 8).rows[0].id, "204");
+  assert.deepEqual(M.searchMatches(INDEX, "999999", 8).rows, [], "an unknown URN is not fuzzed into another school");
+});
+
+test("area words find the council: 'schools in Hackney', 'Hackney council', 'London Borough of Hackney'", () => {
+  for (const q of ["schools in Hackney", "Hackney council", "London Borough of Hackney", "primary schools in hackney"]) {
+    const m = M.searchMatches(INDEX, q, 8);
+    assert.equal(m.rows[0].id, "204", q);
+    assert.ok(ids(m).includes("hackney-north"), q);
+    assert.equal(m.fuzzy, false, q);
+  }
+});
+
+test("area words with a typo in the place still find the council, flagged fuzzy", () => {
+  for (const q of ["Hakney council", "schools in Hacnkey"]) {
+    // Act
+    const m = M.searchMatches(INDEX, q, 8);
+    // Assert
+    assert.equal(m.rows[0].id, "204", q);
+    assert.equal(m.fuzzy, true, q);
+  }
+});
+
+test("opts.types keeps one kind of row, and limit is respected", () => {
+  assert.deepEqual(M.searchMatches(INDEX, "hackney", 8, { types: ["school"] }).rows.map((r) => r.t).filter((t) => t !== "school"), []);
+  assert.equal(M.rankSearch(INDEX, "school", 2).length, 2);
+});
+
+test("a 27,000-entry index answers exact and fuzzy queries quickly, normalising each row once", () => {
+  // Arrange
+  const words = ["Oak", "Ash", "Elm", "Park", "Hill", "Green", "Brook", "Field", "Saint", "Mary's", "Church", "Valley"];
+  const big = [];
+  for (let i = 0; i < 27000; i++) {
+    big.push({ t: i % 50 ? "school" : "council", id: String(100000 + i), name: `${words[i % 12]} ${words[(i * 7) % 12]} ${words[(i * 5) % 11]} Primary School ${i}`,
+               sub: `Town ${i % 300}, County ${i % 40}`, p: `/school/${100000 + i}-x/` });
+  }
+  big.push({ t: "school", id: "130932", name: "William Patten Primary School", sub: "London, Hackney", p: "/school/130932-william-patten-primary-school/" });
+  M.searchMatches(big, "warm up", 8);
+  // Act
+  const t0 = performance.now();
+  const exact = M.searchMatches(big, "william patten", 8);
+  const fuzzy = M.searchMatches(big, "willam paten", 8);
+  const elapsed = performance.now() - t0;
+  // Assert
+  assert.equal(exact.rows[0].id, "130932");
+  assert.equal(fuzzy.rows[0].id, "130932");
+  assert.ok(elapsed < 1500, `two searches took ${elapsed.toFixed(0)}ms`);
+});
+
+function searchBox(doc) {
+  const form = add(doc.body, "form", { class: "search", role: "search", action: "/search/" });
+  add(form, "input", { id: "q", type: "search" });
+}
+function typeInto(h, value) {
+  const q = h.document.getElementById("q");
+  q.value = value;
+  q.dispatchEvent({ type: "input" });
+  h.flushTimers();
+  return q;
+}
+const options = (doc) => doc.querySelectorAll('[role="option"]').map((o) => o.querySelector(".name").textContent);
+
+test("the search box is a combobox; a typo shows 'Did you mean' and the status says it once", async () => {
+  // Arrange
+  const h = boot({ data: { "/data/search.json": INDEX }, setup: searchBox });
+  // Act
+  const q = typeInto(h, "Willam Paten");
+  await settle();
+  // Assert
+  assert.equal(q.getAttribute("role"), "combobox");
+  assert.equal(q.getAttribute("aria-expanded"), "true");
+  assert.deepEqual(options(h.document), ["William Patten Primary School"]);
+  const note = h.document.querySelector("#q-list .note");
+  assert.match(note.textContent, /Did you mean William Patten Primary School\?/);
+  assert.equal(note.getAttribute("aria-hidden"), "true");
+  assert.match(h.document.querySelector('form [role="status"]').textContent, /Did you mean William Patten Primary School\?/);
+});
+
+test("a held-by-the-trust school shows its own badge, icon and words", async () => {
+  // Arrange
+  const h = boot({ data: { "/data/search.json": INDEX }, setup: searchBox });
+  // Act
+  typeInto(h, "mossbourne");
+  await settle();
+  // Assert
+  const badge = h.document.querySelector("#q-list .badge");
+  assert.ok(badge.classList.contains("s-reserve_held_by_trust"));
+  assert.equal(badge.textContent, "◇ Reserve held by the trust");
+});
+
+test("a failed index request says search is unavailable, offers browsing, and the next search tries again", async () => {
+  // Arrange: the index 404s on the first request
+  const h = boot({ setup: searchBox });
+  // Act
+  typeInto(h, "patten");
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector("#q-list .note").textContent, /Search is unavailable just now/);
+  assert.deepEqual(h.document.querySelectorAll('[role="option"]').map((o) => o.querySelector(".name").textContent),
+    ["Councils and regions", "Schools on the map", "Academy trusts"]);
+  // Act again: the index is back
+  h.fixtures["/data/search.json"] = INDEX;
+  typeInto(h, "patten ");
+  await settle();
+  // Assert
+  assert.equal(h.calls.filter((u) => u === "/data/search.json").length, 2);
+  assert.deepEqual(options(h.document), ["William Patten Primary School"]);
+});
+
+test("Enter on a full URN goes straight to that school", async () => {
+  // Arrange
+  const h = boot({ data: { "/data/search.json": INDEX }, setup: searchBox });
+  const q = typeInto(h, "100003");
+  await settle();
+  // Act
+  q.dispatchEvent({ type: "keydown", key: "Enter" });
+  // Assert
+  assert.equal(h.location.href, "/school/100003-william-patten-primary-school/");
+  // Act again: a postcode typed after it never inherits the URN's shortcut
+  h.location.href = "/";
+  typeInto(h, "N16");
+  await settle();
+  q.dispatchEvent({ type: "keydown", key: "Enter" });
+  assert.equal(h.location.href, "/");
+});
+
+test("typing a full postcode reads only the district file; nothing goes to postcodes.io", async () => {
+  // Arrange
+  const n16 = { district: "N16", lat: 51.56, lon: -0.075, schools: [{ id: "100003", name: "William Patten Primary School", lat: 51.5618, lon: -0.075, p: "/school/100003-x/" }] };
+  const h = boot({ data: { "/data/postcodes/N16.json": n16 }, setup: searchBox, globals: {} });
+  // Act
+  typeInto(h, "N16 0NX");
+  await settle();
+  // Assert
+  assert.deepEqual(h.calls.filter((u) => !u.startsWith("/assets/")), ["/data/postcodes/N16.json"]);
+  assert.deepEqual(options(h.document), ["William Patten Primary School"]);
+});
+
+test("/search/ with a typo lists close matches under 'Did you mean' and does not jump; a URN does", async () => {
+  // Arrange / Act
+  const setup = (doc) => { const main = add(doc.body, "main", { id: "main" }); add(main, "h1", {}, "Search"); };
+  const typo = boot({ path: "/search/?q=Willam+Paten", data: { "/data/search.json": INDEX }, setup });
+  const urn = boot({ path: "/search/?q=100003", data: { "/data/search.json": INDEX }, setup });
+  await settle();
+  // Assert
+  const box = typo.document.querySelector(".search-results");
+  assert.match(box.querySelector("h2").textContent, /Close matches for “Willam Paten”/);
+  assert.equal(box.querySelector(".dym a").getAttribute("href"), "/school/100003-william-patten-primary-school/");
+  assert.match(box.querySelector(".dym").textContent, /^No exact matches\. Did you mean William Patten Primary School\?$/);
+  assert.deepEqual(typo.replaced, []);
+  assert.deepEqual(urn.replaced, ["/school/100003-william-patten-primary-school/"]);
+});
+
+test("/search/ when the index fails: an unavailable state with browse links and a working Try again", async () => {
+  // Arrange
+  const h = boot({ path: "/search/?q=patten", setup: (doc) => { add(add(doc.body, "main", { id: "main" }), "h1", {}, "Search"); } });
+  await settle();
+  const box = h.document.querySelector(".search-results");
+  // Assert
+  assert.equal(box.querySelector("h2").textContent, "Search is unavailable just now");
+  assert.deepEqual(box.querySelectorAll(".browse a").map((a) => a.getAttribute("href")), ["/areas/", "/map/", "/trust/"]);
+  // Act
+  h.fixtures["/data/search.json"] = INDEX;
+  box.querySelector("button").click();
+  await settle();
+  // Assert
+  assert.match(box.querySelector("h2").textContent, /Results for “patten”/);
+});
+
+test("an unusable index answer (an empty list) is unavailable too, and Try again fetches it afresh", async () => {
+  // Arrange: the server answers 200 with an empty list, then recovers
+  const h = boot({ path: "/search/?q=patten", data: { "/data/search.json": [] },
+    setup: (doc) => { add(add(doc.body, "main", { id: "main" }), "h1", {}, "Search"); } });
+  await settle();
+  const box = h.document.querySelector(".search-results");
+  assert.equal(box.querySelector("h2").textContent, "Search is unavailable just now");
+  h.fixtures["/data/search.json"] = INDEX;
+  // Act
+  box.querySelector("button").click();
+  await settle();
+  // Assert
+  assert.equal(h.calls.filter((u) => u === "/data/search.json").length, 2);
+  assert.match(box.querySelector("h2").textContent, /Results for “patten”/);
+});
+
+test("importing a saved list while the index fails says so, keeps the offer, and a second try pins", async () => {
+  // Arrange: a saved shortlist; the index 404s on the first request
+  const h = boot({ storage: { shortlist: ["100003"] }, setup: (doc) => add(doc.body, "main", { id: "main" }) });
+  const importButton = () => h.document.querySelector(".pin-import button");
+  // Act
+  importButton().click();
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector(".pinbar .msg").textContent, /didn't load, so nothing was added/);
+  assert.equal(h.document.querySelector(".pin-import").hidden, false);
+  assert.deepEqual(JSON.parse(h.memory.get("moneyPinned")), []);
+  // Act again: the index is back
+  h.fixtures["/data/search.json"] = INDEX;
+  importButton().click();
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector(".pinbar .msg").textContent, /Added 1 from your shortlist/);
+});
+
+// ---------------------------------------------------------------- phone menu
+test("the Menu button opens and closes the nav; Escape closes it and puts focus back on the button", () => {
+  // Arrange
+  const h = boot({ setup(doc) {
+    const wrap = add(add(doc.body, "header", { class: "top" }), "div", { class: "wrap" });
+    add(wrap, "button", { type: "button", class: "menu-toggle", "aria-expanded": "false", "aria-controls": "main-nav" }, "Menu");
+    add(add(wrap, "nav", { class: "main-nav", id: "main-nav" }), "a", { href: "/map/" }, "Map");
+  } });
+  const button = h.document.querySelector(".menu-toggle"), link = h.document.querySelector("#main-nav a");
+  // Act / Assert
+  button.click();
+  assert.equal(button.getAttribute("aria-expanded"), "true");
+  link.focus();
+  h.document.dispatchEvent({ type: "keydown", key: "Escape" });
+  assert.equal(button.getAttribute("aria-expanded"), "false");
+  assert.equal(h.document.activeElement, button);
+  button.click();
+  button.click();
+  assert.equal(button.getAttribute("aria-expanded"), "false");
+});
+
+// ---------------------------------------------------------------- sortable tables
+function sortable(doc, cls = "responsive sortable") {
+  const table = add(doc.body, "table", { "data-sortable": "", class: cls });
+  const head = add(add(table, "thead"), "tr");
+  for (const text of ["School", "Reserve"]) add(head, "th", { scope: "col" }, text);
+  const body = add(table, "tbody");
+  for (const [name, v] of [["Beta", 300], ["Alpha", -50], ["Gamma", 120]]) {
+    const tr = add(body, "tr");
+    add(tr, "td", {}, name);
+    add(tr, "td", { "data-sort": String(v) }, String(v));
+  }
+  return table;
+}
+const order = (t) => t.tBodies[0].rows.map((r) => r.cells[0].textContent);
+
+test("sortable headers become native buttons with a plain label copy, and no th is a tab stop", () => {
+  // Arrange / Act
+  const h = boot({ setup: (doc) => sortable(doc) });
+  const ths = h.document.querySelectorAll("thead th");
+  // Assert
+  for (const th of ths) {
+    assert.equal(th.getAttribute("tabindex"), null);
+    assert.equal(th.querySelector("button.sort").type, "button");
+    assert.equal(th.querySelector(".th-label").textContent, th.querySelector("button.sort").textContent);
+  }
+  // Act: the header button sorts ascending, then descending, and tells the phone controls
+  ths[1].querySelector("button.sort").click();
+  const t = h.document.querySelector("table");
+  assert.deepEqual(order(t), ["Alpha", "Gamma", "Beta"]);
+  assert.equal(ths[1].getAttribute("aria-sort"), "ascending");
+  ths[1].querySelector("button.sort").click();
+  assert.deepEqual(order(t), ["Beta", "Gamma", "Alpha"]);
+  const controls = h.document.querySelector(".sort-controls");
+  assert.equal(controls.querySelector("select").value, "1");
+  assert.equal(controls.querySelector(".sort-dir").textContent, "Descending");
+  assert.match(controls.querySelector('[role="status"]').textContent, /Sorted by Reserve, descending/);
+});
+
+test("the phone controls: a labelled Sort by select and a direction button, before a responsive table", () => {
+  // Arrange
+  const h = boot({ setup: (doc) => { sortable(doc); sortable(doc, "mini"); } });
+  const [controls, plain] = h.document.querySelectorAll(".sort-controls");
+  const select = controls.querySelector("select"), label = controls.querySelector("label");
+  // Assert
+  assert.ok(controls.classList.contains("for-responsive"));
+  assert.ok(!plain.classList.contains("for-responsive"), "only a table whose header row is clipped on a phone needs them");
+  assert.equal(label.getAttribute("for"), select.id);
+  assert.equal(label.textContent, "Sort by");
+  assert.deepEqual(select.querySelectorAll("option").map((o) => o.textContent), ["Table order", "School", "Reserve"]);
+  assert.equal(controls.nextSibling.tagName, "TABLE");
+  // Act
+  select.value = "0";
+  select.dispatchEvent({ type: "change" });
+  const t = h.document.querySelectorAll("table")[0];
+  assert.deepEqual(order(t), ["Alpha", "Beta", "Gamma"]);
+  controls.querySelector(".sort-dir").click();
+  assert.deepEqual(order(t), ["Gamma", "Beta", "Alpha"]);
+  select.value = "";
+  select.dispatchEvent({ type: "change" });
+  assert.deepEqual(order(t), ["Beta", "Alpha", "Gamma"], "Table order puts the rows back");
+});
+
+test("a header a page script rewrites gets its button back", () => {
+  // Arrange: a MutationObserver stub the test can fire
+  const observers = [];
+  class MutationObserver { constructor(fn) { this.fn = fn; observers.push(this); } observe() {} }
+  const h = boot({ setup: (doc) => sortable(doc), globals: { MutationObserver } });
+  const th = h.document.querySelectorAll("thead th")[1];
+  // Act: the map rewrites its measure column's header
+  th.textContent = "Reserve per pupil, 2024-25";
+  observers.forEach((o) => o.fn([]));
+  // Assert
+  assert.equal(th.querySelector("button.sort").textContent, "Reserve per pupil, 2024-25");
+  assert.equal(h.document.querySelector(".sort-controls select").querySelectorAll("option")[2].textContent, "Reserve per pupil, 2024-25");
+});
+
+// ---------------------------------------------------------------- compare
+const CMP_SCHOOL = {
+  urn: "100003", name: "William Patten Primary School", path: "/school/100003-william-patten-primary-school/", status: "in_deficit", year: "2025-26",
+  pupils: 432.5, income: 3927968, income_pp: 9082, spend: 4097753, spend_pp: 9475, reserve: -210901, reserve_pp: -488, share: -0.054,
+  balance: -169784, balance_pp: -393, years: [{ y: "2025-26", income: 3927968, reserve: -210901 }], pp: { total_income: 9082, total_expenditure: 9475 },
+  similar: { total_income: 7553, total_expenditure: 7672 }, similar_meta: { year: "2025-26", peers: 17, method: "Same phase, nearest in size and FSM." },
+};
+const CMP_ACADEMY = { ...CMP_SCHOOL, urn: "140001", name: "Mossbourne Community Academy", path: "/school/140001-mossbourne/", academy: true,
+  reserve_basis: "incl_trust_share", similar_meta: undefined, status: "reserve_held_by_trust" };
+function comparePage(doc, { listbox = false, status = false } = {}) {
+  const app = add(doc.body, "section", { id: "compare-app" });
+  const form = add(app, "form", { class: "finder", role: "search" });
+  add(form, "input", { id: "cmp-find", type: "search" });
+  add(app, "ul", listbox ? { id: "cmp-results", class: "results", role: "listbox" } : { id: "cmp-results", class: "results" });
+  if (status) add(app, "p", { id: "cmp-status", class: "visually-hidden", role: "status", "aria-live": "polite" });
+  add(app, "ul", { id: "cmp-chosen" });
+  add(app, "div", { id: "cmp-out" });
+}
+
+test("compare results are 'Compare <school>' buttons with the count in a polite status, old or new markup", async () => {
+  for (const markup of [{ listbox: true }, { status: true }]) {
+    // Arrange
+    const h = boot({ path: "/compare/", data: { "/data/search.json": INDEX }, setup: (doc) => comparePage(doc, markup) });
+    const input = h.document.getElementById("cmp-find");
+    // Act
+    input.value = "william patten";
+    input.dispatchEvent({ type: "input" });
+    await settle();
+    // Assert
+    const results = h.document.getElementById("cmp-results");
+    assert.equal(results.getAttribute("role"), null, JSON.stringify(markup));
+    assert.equal(results.getAttribute("aria-label"), "Matching schools");
+    assert.deepEqual(results.querySelectorAll("li button").map((b) => b.textContent), ["Compare William Patten Primary School"]);
+    const status = h.document.querySelectorAll("#cmp-status");
+    assert.equal(status.length, 1);
+    assert.equal(status[0].getAttribute("aria-live"), "polite");
+    assert.equal(status[0].textContent, "1 school matches.");
+  }
+});
+
+test("Enter in the compare finder searches instead of submitting the page", () => {
+  // Arrange
+  const h = boot({ path: "/compare/", data: { "/data/search.json": INDEX }, setup: (doc) => comparePage(doc) });
+  const form = h.document.querySelector("form.finder");
+  // Act
+  const allowed = form.dispatchEvent({ type: "submit" });
+  // Assert
+  assert.equal(allowed, false);
+});
+
+test("compare names School Money's similar schools with their count and year, and labels a trust-share reserve", async () => {
+  // Arrange / Act
+  const h = boot({ path: "/compare/?urns=100003,140001", data: { "/data/s/100003.json": CMP_SCHOOL, "/data/s/140001.json": CMP_ACADEMY },
+                   setup: (doc) => comparePage(doc) });
+  h.location.search = "?urns=100003,140001";
+  await settle();
+  // Assert
+  const out = h.document.getElementById("cmp-out").textContent;
+  assert.match(out, /similar schools \(17 schools, 2025-26\) £7,553/);
+  assert.match(out, /Compared with/);
+  assert.doesNotMatch(out, /DfE similar/);
+  assert.match(out, /Similar schools are School Money's own comparison groups, not the DfE's\. Same phase, nearest in size and FSM\./);
+  assert.match(out, /including its share of the trust's reserve/);
+  assert.match(out, /Reserve held by the trust/);
+});
+
+test("the compare area table names the DSG measure in full with its year and denominator", async () => {
+  // Arrange
+  const council = { id: "council-204", name: "Hackney", path: "/council/hackney/",
+    by_year: { "2025-26": { all: { schools: 60, in_deficit: 15 } } },
+    dsg: { "2024-25": { balance: -16493653, per_pupil: -518 }, "2025-26": { balance: -16249115, per_pupil: -513, provisional: true } } };
+  // Act
+  const h = boot({ path: "/compare/?areas=council-204", data: { "/data/a/council-204.json": council }, setup: (doc) => comparePage(doc) });
+  await settle();
+  // Assert
+  const out = h.document.getElementById("cmp-out").textContent;
+  assert.match(out, /Dedicated Schools Grant balance \(all four blocks\)/);
+  assert.match(out, /-£16\.2m \(2025-26, provisional; -£513 per pupil at the council's schools on this site\)/);
+  assert.doesNotMatch(out, /high-needs|schools budget/i);
 });

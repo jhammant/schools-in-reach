@@ -70,6 +70,11 @@ SOURCES = [
     ("HM Treasury GDP deflators", "https://www.gov.uk/government/collections/gdp-deflators-at-market-prices-and-money-gdp"),
 ]
 OGL = "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+# The address that takes corrections and privacy questions. None until a monitored mailbox exists: the about page then
+# says how to get a figure corrected at source and that a direct address is coming. Never a person's own address.
+CONTACT_EMAIL = None
+# Beside every status badge and in the footer (contract C6); used verbatim.
+REPORT_LINK = '<a class="report-link" href="/about/#corrections">Report an error or add context</a>'
 IFS_CITE = "IFS, Annual report on education spending in England: 2025–26 (January 2026)"
 IFS_URL = "https://ifs.org.uk/publications/annual-report-education-spending-england-2025-26"
 
@@ -136,6 +141,60 @@ def _audience():
             '<button type="button" class="aud-clear">Clear</button></fieldset></div>')
 
 
+MENU_BUTTON = '<button type="button" class="menu-toggle" aria-expanded="false" aria-controls="main-nav">Menu</button>'
+
+
+def corrections_html() -> str:
+    """The about page's corrections section: where each kind of figure is corrected at source, and how to reach School
+    Money (CONTACT_EMAIL, or a note that a direct address is coming while it is None)."""
+    if CONTACT_EMAIL:
+        mail = esc(CONTACT_EMAIL)
+        reach = (f'<p>If our figure differs from the source, the mistake is ours: email <a href="mailto:{mail}">{mail}</a> with the '
+                 "school's name or URN, the figure and year, and where you saw the right one. We check it against the source and reply.</p>")
+    else:
+        reach = ("<p>If our figure differs from the source, the mistake is ours. A direct corrections address is coming; when it opens it "
+                 "will be given here. Until then, the school or council can check the return with the DfE, and a corrected return "
+                 "reaches this site when it is next rebuilt.</p>")
+    return ('<h2 id="corrections">Corrections</h2>'
+            "<p>Every figure here comes from a published source and is shown as it was filed. If one looks wrong, compare it first "
+            "with the source page linked beside it.</p><ul>"
+            "<li><strong>A school's income, spending, reserve or pupil numbers</strong> come from its return to the Department for "
+            "Education (DfE): the Consistent Financial Reporting return, made through the council, for a council-run school; the "
+            "Academy Accounts Return, made by the trust, for an academy. The school, its council or its trust can ask for a return to "
+            "be corrected, and the corrected figures appear here once the DfE republishes them.</li>"
+            "<li><strong>A parents' association's income and spending</strong> come from the charity's annual return to the Charity "
+            "Commission, which its trustees correct with the Commission. A charity matched to the wrong school, or a missing one, "
+            "is ours to fix.</li>"
+            "<li><strong>A council's Dedicated Schools Grant balance (all four blocks)</strong> comes from the DfE's published outturn, "
+            "which the council corrects with the DfE.</li></ul>"
+            f"{reach}"
+            "<p>A school, trust or council can also send context to sit beside its figures, such as a deficit already covered by an "
+            "agreed recovery plan.</p>")
+
+
+def privacy_html() -> str:
+    """The about page's privacy section: what is stored on the reader's device, which requests leave this site, and
+    hosting logs. No personal name, address or legal entity."""
+    ask = (f'<p>Questions about privacy: email <a href="mailto:{esc(CONTACT_EMAIL)}">{esc(CONTACT_EMAIL)}</a>.</p>' if CONTACT_EMAIL else "")
+    return ('<h2 id="privacy">Privacy</h2>'
+            "<p>School Money has no accounts, sign-ups, adverts, analytics or tracking cookies.</p><ul>"
+            "<li><strong>On your device only.</strong> The reader you choose, the schools and areas you pin and whether you have "
+            "answered the Schools in Reach import offer are kept in your browser's local storage (localStorage) on this device. "
+            "They are never sent to us. The Clear buttons, or your browser's site data settings, remove them.</li>"
+            "<li><strong>Postcode search.</strong> Typing a postcode, or a district such as N16, reads a file from this site. When "
+            "you press Search with a full postcode, your browser also asks postcodes.io (api.postcodes.io), a free public postcode lookup, "
+            "where that postcode is, so the nearest schools come first; postcodes.io receives the postcode and, like any website, "
+            "your IP address. Searching by name sends nothing outside this site.</li>"
+            "<li><strong>Maps, presentations and videos</strong> load their code from the public code hosts cdnjs and jsDelivr, "
+            "and the map its background tiles from tiles.schoolsinreach.com. Those hosts see the request.</li>"
+            "<li><strong>Hosting logs.</strong> Like any website, the servers that host School Money keep standard request logs "
+            "(the page, the time, the browser and the IP address) to keep the site running and secure. They are not used to "
+            "follow or profile visitors.</li>"
+            "<li><strong>No personal details.</strong> The figures are about schools, trusts, councils and charities, from public "
+            "registers. The site publishes no one's name or contact details.</li></ul>"
+            f"{ask}")
+
+
 def _footer():
     cite, url = _ifs_citation()
     items = "".join(f'<li><a href="{esc(href)}" rel="noopener">{esc(name)}</a>, <a href="{OGL}" rel="license noopener">OGL v3</a></li>'
@@ -143,7 +202,8 @@ def _footer():
     return (f'<footer><div class="wrap"><section class="sources"><h2 id="sources">Sources</h2><ul>{items}'
             f'<li>Context: <a href="{esc(url)}" rel="noopener">{esc(cite)}</a></li></ul></section>'
             f'<p class="foot-links"><a href="/about/#sources">Sources</a> · <a href="/about/#licences">Licences</a> · '
-            f'<a href="/about/">How the figures are worked out</a> · <a href="{BASE_SIR}">Schools in Reach</a></p>'
+            f'<a href="/about/">How the figures are worked out</a> · {REPORT_LINK} · <a href="/about/#privacy">Privacy</a> · '
+            f'<a href="{BASE_SIR}">Schools in Reach</a></p>'
             f'<p class="muted small">{esc(SITE_NAME)} shows published open data as it was filed. Figures are a starting point for a '
             f'conversation with your school, not a verdict on it.</p></div></footer>')
 
@@ -181,11 +241,13 @@ def page(title, description, path, body, crumbs, *, og_image=None, indexable=Tru
         head.append(extra_head)
     search = ('<form class="search" role="search" action="/search/"><label for="q" class="visually-hidden">Search schools, councils, '
               'constituencies and trusts</label><input id="q" name="q" type="search" placeholder="School, council, trust or postcode" '
-              'autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="q-list"><button type="submit">Search</button>'
+              'autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="q-list"><button type="submit">Search</button>'
               '<ul id="q-list" class="listbox" role="listbox" aria-label="Suggestions" hidden></ul></form>')
-    header = (f'<header class="top"><div class="wrap"><a class="brand" href="/">{MARK}<span class="name">{SITE_NAME}</span></a>'
-              f'<a class="tagline" href="{BASE_SIR}">by Schools in Reach</a>{search}'
-              f'<nav class="main-nav" aria-label="Main">{_nav(path)}</nav></div>{_audience()}</header>')
+    # On a phone the nav sits behind MENU_BUTTON (app.js opens and closes it); without JavaScript the button is hidden and
+    # the nav shows. The home page has its own finder, so app.css drops the header search there on a phone.
+    header = (f'<header class="top{" home" if path == "/" else ""}"><div class="wrap"><a class="brand" href="/">{MARK}'
+              f'<span class="name">{SITE_NAME}</span></a><a class="tagline" href="{BASE_SIR}">by Schools in Reach</a>{search}'
+              f'{MENU_BUTTON}<nav class="main-nav" id="main-nav" aria-label="Main">{_nav(path)}</nav></div>{_audience()}</header>')
     return (f'<!doctype html>\n<html lang="en-GB" data-audience="parent"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n{chr(10).join(head)}\n</head>'
             f'<body><a class="skip" href="#main">Skip to content</a>{header}<div id="for-you"></div>'

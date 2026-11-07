@@ -32,7 +32,9 @@
      --warning    #ad8402 / #e6c04a   tight (darkened from #c99a06 so bars and map fills reach 3:1)
      --good       #2e8b57 / #5fc48a   healthy
      --plenty     #2f6cbd / #6ea8f5   large reserves (blue: calm, not alarming, and no longer the teal accent)
-     Each has --x-soft (badge fill) and --x-text (badge word and icon, >= 4.5:1 on --x-soft, card and paper).
+     --held       #6b7280 / #9aa1ad   reserve held by the trust (neutral grey: no judgement either way)
+     Each has --x-soft (badge fill) and --x-text (badge word and icon, >= 4.5:1 on --x-soft, card and paper; --held-text
+     6.7 / 8.9 on --held-soft). --held reaches 4.3:1 / 6.8:1 on paper, so its status bars and map fills pass 3:1.
      The base --x colours stay for status bars, borders and map fills.
    Charts
      --c1 --c2 --c3 --c4             series colours (teal, berry, indigo, leaf: no status hue among them)
@@ -59,6 +61,7 @@
   --critical: #c0392b; --serious: #d9742a; --warning: #ad8402; --good: #2e8b57; --plenty: #2f6cbd;
   --critical-soft: #fbe3df; --serious-soft: #fdeadb; --warning-soft: #fbf0cc; --good-soft: #dcf2e3; --plenty-soft: #dfe9f8;
   --critical-text: #a52e22; --serious-text: #974610; --warning-text: #775a02; --good-text: #216e40; --plenty-text: #24579c;
+  --held: #6b7280; --held-soft: #e9ebef; --held-text: #4a5160;
   --c1: #0f6e6a; --c2: #b02a66; --c3: #5b47c2; --c4: #457212; --band: #e2dccf; --grid: #e8e2d6;
   --radius: 10px; --radius-s: 6px; --shadow: 0 8px 28px rgba(40, 30, 10, .16);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -79,6 +82,7 @@
     --critical: #ef6a5a; --serious: #f0955a; --warning: #e6c04a; --good: #5fc48a; --plenty: #6ea8f5;
     --critical-soft: #4a2320; --serious-soft: #48301c; --warning-soft: #3f3517; --good-soft: #1b3b29; --plenty-soft: #1c2f4d;
     --critical-text: #ffa498; --serious-text: #ffb684; --warning-text: #f0d06a; --good-text: #85dba8; --plenty-text: #a3c7fb;
+    --held: #9aa1ad; --held-soft: #2b2f36; --held-text: #cdd2da;
     --c1: #4fb8b1; --c2: #f290bd; --c3: #aaa0f4; --c4: #a8d46c; --band: #3b4149; --grid: #2b3036;
     --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   }
@@ -141,6 +145,9 @@ form.search button { flex: none; white-space: nowrap; min-height: var(--tap); pa
 .listbox .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); flex: none; width: 5.6em; }
 .listbox .sub { color: var(--ink-2); font-size: .85rem; margin-left: auto; text-align: right; }
 .listbox .empty { color: var(--ink-2); cursor: default; }
+.listbox .note { display: block; min-height: 0; padding: 4px 10px; color: var(--ink-2); font-size: .875rem; cursor: default; }
+.listbox .note:hover { background: none; }
+.listbox .note strong { color: var(--ink); }
 nav.main-nav { grid-area: nav; display: flex; flex-wrap: wrap; gap: 2px 4px; justify-content: flex-end; }
 nav.main-nav a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 500; font-size: .95rem; }
 nav.main-nav a:hover { background: var(--accent-soft); color: var(--accent); }
@@ -148,6 +155,12 @@ nav.main-nav a[aria-current="page"] { background: var(--accent); color: var(--ac
 nav.main-nav .count { display: inline-block; min-width: 1.4em; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--indigo); color: var(--indigo-ink);
   font-size: .72rem; font-weight: 700; text-align: center; line-height: 1.5; }
 nav.main-nav .count:empty, nav.main-nav .count[data-zero] { display: none; }
+/* The phone menu button (site.MENU_BUTTON): shown at 600px and below once JavaScript runs; elsewhere the nav is always open. */
+.menu-toggle { display: none; grid-area: menu; align-self: center; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 16px;
+  border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); color: var(--ink); font-weight: 700; }
+.menu-toggle::before { content: "☰"; content: "☰" / ""; font-size: 1.1em; line-height: 1; }
+.menu-toggle[aria-expanded="true"]::before { content: "✕"; content: "✕" / ""; }
+.menu-toggle:hover { background: var(--card-2); }
 fieldset.audience { grid-area: aud; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; justify-content: flex-end; }
 fieldset.audience legend { float: left; font-size: .8rem; color: var(--ink-2); margin-right: 4px; padding: 0; }
 /* Each audience keeps one colour everywhere: these chips, the home page's "Start here" cards and the guide index. */
@@ -176,6 +189,15 @@ footer .muted { color: var(--foot-ink-2); }
 footer :focus-visible { outline-color: var(--foot-ink); }
 footer ul { padding-left: 20px; } footer li { margin: 4px 0; }
 footer .foot-links { font-weight: 600; margin-top: 16px; }
+/* "Report an error or add context" (site.REPORT_LINK): beside status badges, under area status lists and in the footer. */
+.report-link { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; font-size: .875rem; font-weight: 600; }
+.report-link::before { content: "✎"; content: "✎" / ""; }
+footer .report-link { font-size: inherit; }
+
+/* /search/ results: "Did you mean" and the search-unavailable state */
+.search-results .dym { font-size: 1.05rem; }
+.search-results .browse { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 0; list-style: none; }
+.search-results .browse a { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 600; }
 
 /* ---------- money figures ---------- */
 .mf { display: inline-block; font-weight: 600; white-space: nowrap; border-bottom: 1.5px dotted var(--line-strong); padding-bottom: 1px; cursor: help; }
@@ -255,14 +277,18 @@ body.has-pinbar main { padding-bottom: 120px; }
 .badge.s-tight { border-color: var(--warning); background: var(--warning-soft); color: var(--warning-text); }
 .badge.s-healthy { border-color: var(--good); background: var(--good-soft); color: var(--good-text); }
 .badge.s-large_reserves { border-color: var(--plenty); background: var(--plenty-soft); color: var(--plenty-text); }
+/* An academy whose trust pools its reserves and holds them centrally: not a judgement, so neutral grey (◇). */
+.s-reserve_held_by_trust > span[aria-hidden] { color: var(--held-text); }
+.badge.s-reserve_held_by_trust { border-color: var(--held); background: var(--held-soft); color: var(--held-text); }
 .badge.large { border-width: 2px; }
 .status-line { margin: 8px 0 4px; }
 .note { border-left: 3px solid var(--line-strong); padding: 4px 12px; color: var(--ink-2); }
 .statusbar { display: flex; gap: 2px; height: 16px; margin: 16px 0 8px; border-radius: 4px; overflow: hidden; }
 .statusbar .seg { display: block; min-width: 2px; }
-.statusbar .seg:hover, .statusbar .seg:focus { filter: brightness(1.12); outline: none; }
+.statusbar .seg:hover, .statusbar .seg:focus { filter: brightness(1.12); }
+.statusbar .seg:focus-visible { outline: 3px solid var(--ink); outline-offset: -3px; }
 .seg.s-in_deficit { background: var(--critical); } .seg.s-heading_for_deficit { background: var(--serious); } .seg.s-tight { background: var(--warning); }
-.seg.s-healthy { background: var(--good); } .seg.s-large_reserves { background: var(--plenty); }
+.seg.s-healthy { background: var(--good); } .seg.s-large_reserves { background: var(--plenty); } .seg.s-reserve_held_by_trust { background: var(--held); }
 .statuslegend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; padding: 0; margin: 0 0 12px; }
 
 /* ---------- tiles, cards ---------- */
@@ -289,6 +315,18 @@ tbody tr:hover { background: var(--card-2); }
 .tableview { margin: 8px 0 16px; } .tableview summary { cursor: pointer; color: var(--accent); min-height: var(--tap); display: flex; align-items: center; }
 table[data-sortable] th { cursor: pointer; user-select: none; }
 table[data-sortable] th[aria-sort="ascending"]::after { content: " ▲"; } table[data-sortable] th[aria-sort="descending"]::after { content: " ▼"; }
+/* app.js puts each sortable header's text in a native button (with a plain .th-label copy for when the header row is
+   clipped), and adds .sort-controls, a labelled "Sort by" select and a direction button, for phones. */
+table[data-sortable] th button.sort { display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit; color: inherit;
+  text-align: inherit; cursor: pointer; }
+table[data-sortable] th button.sort:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.th-label { display: none; }
+.sort-controls { display: none; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; font-size: .95rem; }
+.sort-controls label { font-weight: 600; }
+.sort-controls select { flex: 1 1 10rem; min-width: 0; min-height: var(--tap); padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-s);
+  background: var(--card); color: var(--ink); }
+.sort-controls .sort-dir { min-height: var(--tap); padding: 0 14px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--card);
+  color: var(--ink); font-weight: 600; }
 .cmp-table { overflow-x: auto; } .cmp-table table { min-width: 520px; } .cmp-table th[scope="row"] { text-align: left; font-weight: 600; background: transparent; }
 .pager { margin: 12px 0; color: var(--ink-2); } .pager a { font-weight: 600; }
 ul.defs { list-style: none; padding: 0; } ul.defs li { margin: 10px 0; }
@@ -301,7 +339,8 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 .chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; } .chart .line.s1 { stroke: var(--c1); } .chart .line.s2 { stroke: var(--c2); }
 .chart .dot { fill: var(--c1); } .chart .dot.s1 { fill: var(--c1); } .chart .dot.s2 { fill: var(--c2); } .chart .ring { stroke: var(--paper); stroke-width: 2; }
 .chart .track { stroke: var(--grid); } .chart .band { fill: var(--band); } .chart .median { stroke: var(--ink-2); stroke-width: 2; }
-.chart .hit { fill: transparent; } .chart .mark { outline: none; }
+/* A chart mark shows focus on its hit circle (below) rather than as a box around the whole group. */
+.chart .hit { fill: transparent; } .chart .mark:focus:not(:focus-visible) { outline: none; }
 .chart .mark:hover .bar, .chart .mark:focus .bar { filter: brightness(1.15); }
 .chart .mark:hover .hit, .chart .mark:focus .hit { fill: var(--ink); fill-opacity: .06; }
 .chart .mark:focus-visible .hit { stroke: var(--accent); stroke-width: 2; }
@@ -337,6 +376,19 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 }
 @media (max-width: 600px) {
   body { font-size: 16px; }
+  /* A compact header: the brand and the Menu button share a row, the nav opens below them, and the home page drops the
+     header search because its own finder is the first thing on the page. */
+  header.top .wrap { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "brand menu" "tag tag" "search search" "nav nav";
+    row-gap: 4px; padding-top: 6px; padding-bottom: 8px; }
+  .tagline { margin-top: -6px; font-size: .8rem; }
+  html.js .menu-toggle { display: inline-flex; }
+  html.js .menu-toggle[aria-expanded="false"] + nav.main-nav { display: none; }
+  html.js nav.main-nav { padding: 4px 0; }
+  html.js nav.main-nav a { min-height: var(--tap); }
+  header.top.home form.search { display: none; }
+  .sort-controls.for-responsive { display: flex; }
+  table.responsive thead button.sort { display: none; }
+  table.responsive thead .th-label { display: inline; }
   .tvalue { font-size: 1.25rem; } svg.chart { font-size: 11px; }
   fieldset.audience legend { display: none; }
   .drill { width: 100vw; }
@@ -352,7 +404,8 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
   .listbox li, nav.main-nav a, button.pin, fieldset.audience button { transition: background-color .12s; }
 }
 @media print {
-  header.top form.search, fieldset.audience, .pinbar, .pin-import, .drill, .drill-backdrop, .tooltip, .preview, button.pin { display: none !important; }
+  header.top form.search, fieldset.audience, .menu-toggle, .sort-controls, .pinbar, .pin-import, .drill, .drill-backdrop, .tooltip, .preview, button.pin,
+  .report-link { display: none !important; }
   body { background: #fff; color: #000; }
   header.top, footer { background: none; color: #000; } footer h2, footer a, footer .muted { color: #000; }
 }
