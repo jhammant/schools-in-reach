@@ -38,6 +38,10 @@
 .sp-years caption, .sp-rows caption, .sp-pta caption { caption-side: top; text-align: left; color: var(--ink-2); font-size: .9rem; padding: 0 0 6px; }
 .sp-years th[scope="row"], .sp-rows th[scope="row"], .sp-pta th[scope="row"] { text-align: left; font-weight: 600; background: transparent; }
 .sp-years th[scope="row"], .sp-pta th[scope="row"] { white-space: nowrap; }
+/* Money cells never wrap, so on mid-width screens (a Surface Duo, a tablet) the table squeezed the Pupils column to one
+   character a line. Keep short columns whole, and below laptop width put "per pupil" under each total. */
+.sp-years thead th, .sp-years td:nth-child(2), .sp-pta thead th { white-space: nowrap; }
+@media (max-width: 1100px) { .sp-years .mf small, .sp-pta .mf small { display: block; } }
 .sp-rows tr.tot th, .sp-rows tr.tot td { border-top: 2px solid var(--line-strong); }
 .sp-rows td small, .sp-years td small, .sp-pta td small { color: var(--ink-2); }
 .sp-rows .spark { display: block; overflow: visible; }
