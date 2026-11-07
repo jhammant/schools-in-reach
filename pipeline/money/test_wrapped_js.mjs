@@ -634,3 +634,261 @@ test("every card is drawn on its own bold background", () => {
   assert.ok(new Set(firsts).size >= 5, firsts.join(","));
   assert.ok(firsts.every((f) => /^#[0-9A-F]{6}$/i.test(f)), firsts.join(","));
 });
+
+// ---------------------------------------------------------------- nearby (the SHARED 'nearby' contract in /data/s)
+// A synthetic contract in exactly the SHARED shape: this school's row from the gold file's 2024-25 return, then 8
+// fictional neighbours nearest first (one without a 2024-25 return, two academies, PTA years 2024-25 and 2023-24).
+// rank and medians are worked out from the rows, as the build does.
+const NEARBY_YEAR = "2024-25";
+function nearbyContract() {
+  const g = pf(NEARBY_YEAR), pp = (v) => Math.round(v / g.pupils);
+  const self = { urn: String(gold.urn), name: gold.name, p: "/school/130932-william-patten-primary-school/", mi: 0, status: "in_deficit",
+    pupils: g.pupils, spend_pp: pp(g.total_expenditure), income_pp: pp(g.total_income), gov_pp: pp(g.grant_funding), reserve_pp: pp(g.revenue_reserve),
+    fsm_pct: g.fsm_pct, pta_pp: pp(gold.ptfa.years[NEARBY_YEAR].income), pta_year: NEARBY_YEAR };
+  const row = (urn, name, mi, extra) => ({ urn: String(urn), name, p: `/school/${urn}-x/`, mi, ...extra });
+  const schools = [
+    row(900001, "Elm Lane Primary School", 0.2, { status: "healthy", pupils: 410, spend_pp: 9120, fsm_pct: 22.4, pta_pp: 64, pta_year: "2024-25" }),
+    row(900002, "Oak Hill Primary School", 0.3, { status: "tight", pupils: 380.5, spend_pp: 8410, fsm_pct: 31, pta_pp: 12, pta_year: "2023-24" }),
+    row(900003, "Birch Road Primary School", 0.4, { fsm_pct: 18.2, pta_pp: 40, pta_year: "2024-25" }),
+    row(900004, "St Anne's Church of England Primary School", 0.5, { status: "healthy", pupils: 205, spend_pp: 8990, fsm_pct: 15, pta_pp: 85, pta_year: "2024-25" }),
+    row(900005, "Rowan Academy", 0.6, { academy: true, status: "large_reserves", pupils: 630, spend_pp: 8200, fsm_pct: 40.1 }),
+    row(900006, "Maple Grove Primary School", 0.7, { status: "healthy", pupils: 300, spend_pp: 9500, pta_pp: 20, pta_year: "2024-25" }),
+    row(900007, "Willow Park Primary Academy", 0.8, { academy: true, pupils: 415, spend_pp: 8700 }),
+    row(900008, "Hazel Street Primary School", 0.9, { status: "healthy", pupils: 240, spend_pp: 8050 }),
+  ];
+  const values = [self, ...schools].map((r) => r.spend_pp).filter((v) => v != null).sort((a, b) => a - b);
+  const mid = values.length % 2 ? values[(values.length - 1) / 2] : (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
+  return { year: NEARBY_YEAR, phase: "Primary", radius_mi: 0.9, self, schools,
+    medians: { spend_pp: Math.round(mid) },
+    rank: { spend_pp: { rank: values.filter((v) => v > self.spend_pp).length + 1, of: values.length } } };
+}
+function nearbyModel(nearby, mode = "school", edit = () => {}) {
+  const f = fixture();
+  if (nearby !== undefined) f.s.nearby = nearby;
+  edit(f);
+  return MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), mode);
+}
+const textOf = (c) => strings(c).join(" | ");
+
+test("the nearby card follows the similar card and shows the contract's spending rank", () => {
+  // Arrange
+  const contract = nearbyContract();
+  // Act
+  const m = nearbyModel(contract);
+  const c = card(m, "nearby");
+  // Assert
+  assert.deepEqual(m.cards.map((x) => x.id), ["intro", "pupils", "funding", "staff", "reserve", "similar", "nearby", "council", "pta", "helps", "outro"]);
+  const { rank, of } = contract.rank.spend_pp;
+  assert.equal(c.big.text, `${rank}th of ${of}`);
+  assert.equal(c.big.text, "4th of 8");
+  assert.equal(c.big.unit, "for spending per pupil among nearby primary schools");
+  assert.ok(c.lines[0].includes("the 4th highest of 8 nearby primary schools"), c.lines[0]);
+  assert.ok(c.lines[0].includes(MW.fmtExact(contract.medians.spend_pp)), c.lines[0]);
+});
+
+test("nearby bars are the contract's spend_pp for this school and its 4 nearest neighbours with figures", () => {
+  // Arrange
+  const contract = nearbyContract();
+  const nearest = contract.schools.filter((r) => r.spend_pp != null).slice(0, 4);
+  // Act
+  const c = card(nearbyModel(contract), "nearby");
+  // Assert
+  assert.deepEqual(c.bars.map((b) => b.v), [contract.self.spend_pp, ...nearest.map((r) => r.spend_pp)]);
+  assert.equal(c.bars[0].v, Math.round(pf(NEARBY_YEAR).total_expenditure / pf(NEARBY_YEAR).pupils), "this school's bar is its gold 2024-25 figure");
+  assert.deepEqual(c.bars.map((b) => b.label), ["This school", "Elm Lane", "Oak Hill", "St Anne's", "Rowan"]);
+  assert.deepEqual(c.bars.map((b) => !!b.mine), [true, false, false, false, false]);
+  assert.deepEqual(c.bars.map((b) => b.text), c.bars.map((b) => MW.fmtExact(b.v)));
+  assert.ok(c.barsNote.startsWith("Spending per pupil, 2024-25"), c.barsNote);
+  assert.ok(c.figures.length >= 5 && c.figures.every((f) => f.year === NEARBY_YEAR && f.source), JSON.stringify(c.figures));
+  assert.match(c.source, /2024-25, DfE CFR return/);
+  assert.match(c.source, /2024-25, DfE AAR return/);
+});
+
+test("the nearby card names its year, the different intakes and the mixed council-run and academy years", () => {
+  // Arrange
+  const contract = nearbyContract();
+  // Act
+  const all = card(nearbyModel(contract), "nearby").lines.join(" ");
+  const councilOnly = nearbyModel(nearbyContract(), "school", (f) => f.s.nearby.schools.forEach((r) => delete r.academy));
+  // Assert
+  assert.match(all, /In 2024-25 this school spent/);
+  assert.match(all, /different intakes: 13\.4% of pupils here are eligible for free school meals, against 15% to 40\.1%/);
+  assert.match(all, /Council-run years run April-March and academy years September-August/);
+  assert.match(all, /These are 2024-25 figures.*this school's latest is 2025-26/, "two years shown together are each labelled");
+  assert.match(all, /this one included, all within 0\.9 miles/);
+  assert.doesNotMatch(card(councilOnly, "nearby").lines.join(" "), /April-March/);
+});
+
+test("without the nearby contract the school story is unchanged", () => {
+  for (const nearby of [undefined, null, {}, { year: "2024-25", schools: [] }]) {
+    // Act
+    const m = nearbyModel(nearby);
+    // Assert
+    assert.deepEqual(m.cards.map((c) => c.id), ["intro", "pupils", "funding", "staff", "reserve", "similar", "council", "pta", "helps", "outro"], JSON.stringify(nearby));
+  }
+});
+
+test("a malformed nearby contract never throws and never prints 0, NaN or a missing value", () => {
+  // Arrange
+  const broken = [
+    "nearby", 7, [], { schools: "x" }, { year: 2024, schools: nearbyContract().schools },
+    { year: "2024-25", schools: [null, 5, "x", { name: 7 }, { urn: "1" }] },
+    { ...nearbyContract(), self: "x", rank: { spend_pp: { rank: "first", of: 2 } }, medians: { spend_pp: "abc" } },
+    { ...nearbyContract(), rank: { spend_pp: { rank: 9, of: 8 } }, radius_mi: -1, phase: 12 },
+    { ...nearbyContract(), schools: nearbyContract().schools.map((r) => ({ ...r, spend_pp: "lots", fsm_pct: 140, pta_pp: -5, mi: null, academy: "yes" })) },
+    { ...nearbyContract(), self: { spend_pp: null }, rank: {} },
+    { ...nearbyContract(), rank: {}, schools: nearbyContract().schools.map((r) => ({ ...r, spend_pp: 0 })) },
+  ];
+  for (const nearby of broken) {
+    for (const mode of ["school", "ptfa"]) {
+      // Act
+      const m = nearbyModel(nearby, mode);
+      const c = card(m, mode === "ptfa" ? "pta-gap" : "nearby");
+      // Assert
+      if (!c) continue;
+      const text = textOf(c);
+      assert.doesNotMatch(text, /NaN|undefined|null|£0\b|—/, JSON.stringify(nearby).slice(0, 80) + " -> " + text);
+      for (const b of c.bars || []) assert.ok(typeof b.v === "number" && isFinite(b.v) && b.v > 0, JSON.stringify(b));
+    }
+  }
+  const out = card(nearbyModel(broken[7]), "nearby");
+  assert.equal(out.big, null, "an impossible rank is dropped, the bars stay");
+  assert.equal(out.bars.length, 5);
+  const rankOnly = card(nearbyModel(broken[8]), "nearby");
+  assert.equal(rankOnly.big.text, "4th of 8", "the build's rank stands when neighbour rows are unreadable");
+  assert.equal(rankOnly.bars, undefined);
+  assert.equal(card(nearbyModel(broken[10]), "nearby"), undefined, "no neighbour figures and no rank: no card");
+  assert.equal(card(nearbyModel(broken[9]), "nearby"), undefined, "no figure for this school and no rank: no card");
+});
+
+test("with no rank the nearby card shows only the bars; with one neighbour it still compares", () => {
+  // Arrange
+  const noRank = { ...nearbyContract(), rank: {} };
+  const one = { ...nearbyContract(), rank: {}, schools: nearbyContract().schools.slice(0, 1) };
+  // Act
+  const a = card(nearbyModel(noRank), "nearby"), b = card(nearbyModel(one), "nearby");
+  // Assert
+  assert.equal(a.big, null);
+  assert.equal(a.bars.length, 5);
+  assert.doesNotMatch(a.lines.join(" "), /highest|lowest/);
+  assert.deepEqual(b.bars.map((x) => x.label), ["This school", "Elm Lane"]);
+  assert.match(b.barsNote, /this school and the nearest with figures/);
+});
+
+test("PTFA mode shows at most 3 nearby PTA bars, nearest first, and only from the card's year", () => {
+  // Arrange
+  const contract = nearbyContract();
+  const want = contract.schools.filter((r) => r.pta_year === "2024-25").slice(0, 3);
+  // Act
+  const c = card(nearbyModel(contract, "ptfa"), "pta-gap");
+  const near = c.bars.filter((b) => / PTA$/.test(b.label) && !/middle/.test(b.label));
+  // Assert
+  assert.deepEqual(near.map((b) => b.label), ["Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
+  assert.deepEqual(near.map((b) => b.v), want.map((r) => r.pta_pp));
+  assert.ok(!near.some((b) => b.label.startsWith("Oak Hill")), "a 2023-24 PTA is not set beside 2024-25 figures");
+  assert.ok(c.bars[0].mine && c.bars[0].label === "This PTFA");
+  assert.equal(c.bars[0].v, Math.round(gold.ptfa.years["2024-25"].income / pupilsOf("2024-25")));
+  assert.equal(c.bars[c.bars.length - 1].label, "England's middle PTA");
+  assert.match(c.barsNote, /2024-25/);
+  assert.match(c.lines.join(" "), /different intakes/);
+  assert.match(c.lines.join(" "), /not in the IFS report/);
+  assert.ok(c.figures.filter((f) => f.key === "nearby_pta_pp").every((f) => f.year === "2024-25" && f.source === "Charity Commission register"));
+  assert.ok(!c.figures.some((f) => /donation/i.test(f.key)), "PTA income is never added to school donations");
+});
+
+test("PTFA mode without England figures sets nearby PTAs beside this PTFA's own latest year", () => {
+  // Arrange
+  const contract = nearbyContract();
+  contract.schools[0].pta_confidence = "medium";
+  // Act
+  const c = card(nearbyModel(contract, "ptfa", (f) => { f.england = null; }), "pta-gap");
+  const without = card(nearbyModel(undefined, "ptfa", (f) => { f.england = null; }), "pta-gap");
+  // Assert
+  assert.equal(without, undefined, "no England figures and no contract: no card, as before");
+  assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
+  assert.equal(c.big.text, MW.fmtExact(c.bars[0].v));
+  assert.match(c.big.unit, /2024-25/);
+  assert.match(c.lines.join(" "), /Elm Lane PTA was matched with lower confidence/);
+});
+
+test("PTFA mode treats undated England PTA figures as missing and uses this PTFA's own latest year", () => {
+  // Arrange
+  const contract = nearbyContract();
+  const undated = { id: "england", type: "england", name: "England", pta: { bands: { 1: 96, 5: 6 } } };
+  // Act
+  const c = card(nearbyModel(contract, "ptfa", (f) => { f.england = undated; }), "pta-gap");
+  const without = card(nearbyModel(undefined, "ptfa", (f) => { f.england = undated; }), "pta-gap");
+  // Assert
+  assert.equal(without, undefined, "undated England figures and no contract: no card, never 'in null'");
+  assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
+  assert.match(c.barsNote, /2024-25/);
+  assert.match(c.big.unit, /2024-25/);
+  assert.ok(!c.figures.some((f) => /^pta_band|^pta_pp_median$/.test(f.key)), "undated England figures are left out");
+  assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN/);
+});
+
+test("PTFA mode keeps to 3 nearby PTAs when more share the year", () => {
+  // Arrange
+  const contract = nearbyContract();
+  contract.schools.forEach((r, i) => { r.pta_pp = 10 + i; r.pta_year = "2024-25"; });
+  // Act
+  const c = card(nearbyModel(contract, "ptfa"), "pta-gap");
+  // Assert
+  assert.deepEqual(c.bars.filter((b) => !b.mine && !/middle/.test(b.label)).map((b) => b.v), [10, 11, 12]);
+});
+
+test("every card theme, the new nearby one included, keeps ink, sub and big at 4.5:1 or more on its background", () => {
+  // Arrange: WCAG 2 relative luminance and contrast ratio
+  const lum = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const nearbyTheme = MW.CARD_THEME.nearby;
+  // Act / Assert
+  assert.ok(MW.THEMES[nearbyTheme], "nearby has a theme");
+  const others = Object.entries(MW.CARD_THEME).filter(([id]) => id !== "nearby").map(([, t]) => t);
+  assert.ok(!others.includes(nearbyTheme), "the nearby theme is new, not shared with another card");
+  for (const [name, th] of Object.entries(MW.THEMES)) {
+    for (const k of ["ink", "sub", "big"]) assert.ok(ratio(th[k], th.bg) >= 4.5, `${name}.${k} ${ratio(th[k], th.bg).toFixed(2)}:1`);
+  }
+  assert.ok(["#FFFFFF", "#1D1A10"].includes(MW.THEMES[nearbyTheme].ink));
+});
+
+test("the nearby cards draw inside the margins without cutting a line", () => {
+  // Arrange
+  const school = nearbyModel(nearbyContract()), ptfa = nearbyModel(nearbyContract(), "ptfa");
+  for (const [m, id] of [[school, "nearby"], [ptfa, "pta-gap"]]) {
+    const c = card(m, id), f = fakeCanvas();
+    // Act
+    MW.drawCard(f.g, c, 1, PALETTE, { index: m.cards.indexOf(c), count: m.cards.length });
+    // Assert
+    const texts = f.calls.filter((x) => x.op === "fillText");
+    assert.ok(!texts.some((x) => x.t.endsWith("…")), `${id}: ${texts.filter((x) => x.t.endsWith("…")).map((x) => x.t).join(" | ")}`);
+    for (const x of texts.filter((y) => y.align === "left")) assert.ok(x.x >= 90 && x.x + x.width <= 1080 - 90 + 1, `${id} "${x.t}" overflows`);
+    assert.ok(texts.some((x) => x.t === "This school" || x.t === "This PTFA"), id);
+  }
+});
+
+test("no banned words in the nearby cards in either mode", () => {
+  // Arrange
+  const variants = [nearbyContract(), { ...nearbyContract(), rank: { spend_pp: { rank: 1, of: 8 } } }, { ...nearbyContract(), rank: { spend_pp: { rank: 8, of: 8 } } }];
+  // Act
+  const all = variants.flatMap((v) => [nearbyModel(v), nearbyModel(v, "ptfa")]).flatMap((m) => strings(m));
+  // Assert
+  for (const text of all) for (const word of BANNED) assert.ok(!text.toLowerCase().includes(word.toLowerCase()), `"${word}" in: ${text.slice(0, 120)}`);
+  assert.ok(all.some((t) => t.includes("the highest of 8")) && all.some((t) => t.includes("the lowest of 8")));
+});
+
+test("short school names drop the phase and type words but never empty a name", () => {
+  // Arrange
+  const names = { "ST JOHN AND ST JAMES C OF E PRIMARY SCHOOL": "St John and St James", "Hackney Free and Parochial Church of England School (Secondary)": "Hackney Free and Parochial",
+    "The Academy": "The Academy", "Clapton Girls' Academy": "Clapton Girls'", "Mossbourne Community Academy": "Mossbourne" };
+  for (const [name, want] of Object.entries(names)) {
+    // Act
+    const contract = { ...nearbyContract(), schools: [{ urn: "1", name, mi: 0.1, spend_pp: 9000 }] };
+    const c = card(nearbyModel(contract), "nearby");
+    // Assert
+    assert.equal(c.bars[1].label, want);
+  }
+});
