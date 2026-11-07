@@ -14,6 +14,10 @@ server {
   error_page 404 /404.html;
   location = /health { default_type text/plain; return 200 "ok\n"; }
 
+  # The 30-second videos were first called "Wrapped": keep old shared links working.
+  location ~ ^/wrapped/?$ { return 301 /video/$is_args$args; }
+  location ~ ^/school/([^/]+)/wrapped/?$ { return 301 /school/$1/video/$is_args$args; }
+
   # Asset URLs are not versioned (/assets/app.js), so a long immutable cache would pin old JS/CSS
   # against new HTML after a deploy. Revalidate after five minutes; serve stale while doing so.
   # Data files can be an hour stale; HTML never.

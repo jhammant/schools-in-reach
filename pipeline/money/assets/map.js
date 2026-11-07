@@ -425,7 +425,7 @@
     if (S.status === "in_deficit" || S.status === "heading_for_deficit" || mentionsDeficit(lines)) lines = lines.concat(explainLines(c, []));
     var links = [];
     if (S.urn) {
-      links.push({ href: "/wrapped/?urn=" + encodeURIComponent(S.urn), text: "School Wrapped" });
+      links.push({ href: "/video/?urn=" + encodeURIComponent(S.urn), text: "▶ In 30 seconds" });
       links.push({ href: FBIT + S.urn, text: "DfE benchmarking tool (FBIT)" });
     }
     return {

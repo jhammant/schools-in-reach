@@ -763,6 +763,7 @@
       input.parentNode.appendChild(list);
     }
     input.setAttribute("aria-controls", list.id);
+    var go = input.getAttribute("data-go") || "";
     var options = [], active = -1, timer = null, lastQuery = "";
     function hide() { list.hidden = true; list.textContent = ""; options = []; active = -1; input.setAttribute("aria-expanded", "false"); input.removeAttribute("aria-activedescendant"); }
     function setActive(i) {
@@ -797,7 +798,8 @@
         if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
         if (r.sub) li.appendChild(el("span", "sub", r.sub));
         li.addEventListener("mousedown", function (e) { e.preventDefault(); });
-        li.addEventListener("click", function () { if (r.p) location.href = r.p; });
+        // data-go="video/" (the Videos page) sends a school pick to that page under the school's path.
+        li.addEventListener("click", function () { if (r.p) location.href = r.p + (go && (r.t || "school") === "school" ? go : ""); });
         list.appendChild(li);
         options.push(li);
       });

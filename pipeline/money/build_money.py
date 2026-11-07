@@ -1817,6 +1817,8 @@ def render_home(schools, metadata, england):
             'Figures are a starting point for a conversation with a school, not a verdict on it.</p>'
             '<form class="finder" action="/search/" role="search"><label for="find">Find a school</label>'
             '<input id="find" name="q" type="search" placeholder="School name, town or postcode" autocomplete="off"><button type="submit">Find</button></form>'
+            '<p class="home-video"><a class="watch" href="/video/"><span aria-hidden="true">▶</span> Your school in 30 seconds</a> '
+            'A short video of any school\'s money, and its PTFA\'s, to watch and share.</p>'
             '<h2>Start here</h2><ul class="audiences">'
             + "".join(f'<li><a href="{esc(p)}"><strong>{esc(who)}</strong></a> {esc(why)}</li>' for who, p, why in AUDIENCE_LINKS) + "</ul>"
             '<h2>England at a glance</h2>' + (area_pages.headline(england) if england else "")

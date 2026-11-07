@@ -2,9 +2,9 @@
 that ends as a vertical video, made in the browser by assets/wrapped.js.
 
 Writes, through write_pages(env):
-  /wrapped/                         the story shell (env['page'], noindex); ?urn=<urn>[&mode=ptfa] picks the school
+  /video/                           the story shell and 'Videos' hub (env['page']); ?urn=<urn>[&mode=ptfa] picks the school
   /data/wrapped/context.json        the IFS lines the cards quote (each with its page numbers), real_label, base_url
-  <school path>wrapped/             a hand-built stub (at most 3,072 bytes, noindex) for every school with a status
+  <school path>video/               a hand-built stub (at most 3,072 bytes, noindex) for every school with a status
 
 Reads: pipeline/money/data/ifs_context.json, deflator.real_label(), and each school item through school_view().
 The browser then reads /data/s/<urn>.json, /data/sx/<urn>.json, /data/a/council-<code>.json and /data/a/england.json.
@@ -23,7 +23,9 @@ HERE = Path(__file__).resolve().parent
 REAL_ROOT = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea")
 IFS_FILE = "pipeline/money/data/ifs_context.json"
 STUB_LIMIT = 3072
-SHELL_PATH = "/wrapped/"
+SHELL_PATH = "/video/"
+VIDEO = "video/"           # a school's 30-second story: <school path>video/ (old /wrapped/ links 301 here in nginx)
+FEATURE = "in 30 seconds"  # what the feature is called on the site: plain words, so people know what they get
 CONTEXT_PATH = "/data/wrapped/context.json"
 REGISTER_NOTE = ("Charities with an income of £5,000 or less don't have to register with the Charity Commission, "
                  "so a small parents' association may still exist.")
@@ -140,20 +142,28 @@ def _headline(view: dict) -> str:
 
 
 def stub_path(item: dict) -> str:
-    """Where a school's Wrapped stub lives: its school page path + 'wrapped/'."""
-    return school_view(item)["path"] + "wrapped/"
+    """Where a school's 30-second story lives: its school page path + 'video/'."""
+    return school_view(item)["path"] + VIDEO
 
 
 def wrapped_links(item: dict) -> str:
-    """An escaped snippet linking both Wrapped modes, for Wave B to place on the school page."""
+    """An escaped snippet linking both 30-second stories (school and PTFA), for the school page's share row."""
     view = school_view(item)
-    href = view["path"] + "wrapped/"
-    return (f'<p class="wrapped-links"><a href="{site.esc(href)}">School Wrapped: {site.esc(view["name"])}\'s year in money</a>'
-            f' · <a href="{site.esc(href)}?mode=ptfa">PTFA Wrapped</a></p>')
+    href = site.esc(view["path"] + VIDEO)
+    return (f'<p class="wrapped-links"><a class="watch" href="{href}">▶ {site.esc(view["name"])} {FEATURE}</a>'
+            f' <a class="watch" href="{href}?mode=ptfa">▶ PTFA {FEATURE}</a></p>')
+
+
+def watch_button(item: dict, mode: str = "school") -> str:
+    """A play button for the top of the school page (mode 'school') or its PTFA section (mode 'ptfa')."""
+    href = school_view(item)["path"] + VIDEO + ("?mode=ptfa" if mode == "ptfa" else "")
+    label = f"PTFA {FEATURE}" if mode == "ptfa" else f"Watch {FEATURE}"
+    return (f'<a class="watch" href="{site.esc(href)}" title="A short video of these figures to watch and share">'
+            f'<span aria-hidden="true">▶</span> {label}</a>')
 
 
 def stub_html(item: dict, og_image: str | None = None) -> str:
-    """The minimal, shareable document at <school path>wrapped/. It is under STUB_LIMIT bytes for any real name."""
+    """The minimal, shareable document at <school path>video/. It is under STUB_LIMIT bytes for any real name."""
     return _stub_html(school_view(item), og_image)
 
 
@@ -168,8 +178,8 @@ def _stub_html(view: dict, og_image: str | None) -> str:
 def _stub(view: dict, line: str, og_image: str | None) -> str:
     e = site.esc
     name, path = view["name"], view["path"]
-    title = f"{name}: School Wrapped"
-    url = site.BASE_MONEY + path + "wrapped/"
+    title = f"{name} {FEATURE}"
+    url = site.BASE_MONEY + path + VIDEO
     head = [
         '<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">',
         f"<title>{e(title)}</title>",
@@ -256,13 +266,16 @@ def context_doc(today: str | None = None) -> dict:
 def _shell_body(real_label: str) -> str:
     e = site.esc
     return (
-        '<section class="wrapped-intro"><h1>School Wrapped</h1>'
-        '<p class="lead">A short story of one school\'s year in money, from published figures, that you can turn into a video and share.</p>'
+        f'<section class="wrapped-intro"><h1>Your school {FEATURE}</h1>'
+        '<p class="lead">A 30-second story of one school\'s money, made from published figures. Watch it, then make it into '
+        'a video to share with other parents, governors or your PTFA. There is one for every state school, and one for its PTFA.</p>'
+        '<form class="finder" action="/search/" role="search"><label for="find">Find your school</label>'
+        '<input id="find" name="q" type="search" placeholder="School name, town or postcode" autocomplete="off" data-go="video/">'
+        '<button type="submit">Find</button></form>'
         '</section>'
         f'<div id="wrapped-app" class="wrapped" data-urn="" data-mode="school" data-real-label="{e(real_label)}" '
         f'data-context="{CONTEXT_PATH}">'
-        '<p class="wr-pick">Pick a school to see its year in money: <a href="/search/">search for a school</a>, '
-        'then choose School Wrapped on its page.</p>'
+        '<p class="wr-pick">Type your school\'s name above and pick it from the list, or press ▶ on any school\'s page.</p>'
         '<noscript><p class="wr-noscript">The story needs JavaScript. Every figure is also on each '
         '<a href="/search/">school\'s own page</a>.</p></noscript></div>'
     )
@@ -276,22 +289,23 @@ def _write_context(out: Path, today: str | None) -> None:
 
 
 def write_pages(env: dict, **_overrides) -> list[tuple[str, bool]]:
-    """Write the /wrapped/ shell, context.json and every school's stub; return [(path, indexable), ...] in write order."""
+    """Write the /video/ shell, context.json and every school's stub; return [(path, indexable), ...] in write order."""
     write, page = env["write"], env["page"]
-    crumbs = [("Home", "/"), ("School Wrapped", SHELL_PATH)]
-    html = page("School Wrapped: a school's year in money",
-                "A short, shareable story of one school's year in money, made from published DfE and Charity Commission figures.",
-                SHELL_PATH, _shell_body(deflator.real_label()), crumbs, indexable=False,
+    crumbs = [("Home", "/"), ("Videos", SHELL_PATH)]
+    html = page(f"Your school {FEATURE}: a video of its money to share",
+                "A 30-second, shareable video of any English state school's money (and its PTFA's), made from published DfE and "
+                "Charity Commission figures.",
+                SHELL_PATH, _shell_body(deflator.real_label()), crumbs, indexable=True,
                 extra_head='<link rel="stylesheet" href="/assets/wrapped.css"><script src="/assets/wrapped.js" defer></script>')
     write(SHELL_PATH, html)
-    written = [(SHELL_PATH, False)]
+    written = [(SHELL_PATH, True)]
     _write_context(env["out"], env.get("today"))
     og_image = env.get("og_image")
     for item in env.get("items") or []:
         view = school_view(item)
         if view["status"] is None:
             continue
-        path = view["path"] + "wrapped/"
+        path = view["path"] + VIDEO
         write(path, _stub_html(view, og_image))
         written.append((path, False))
     return written

@@ -774,14 +774,26 @@ class PtaWordingTest(unittest.TestCase):
 
 
 class ShareLinksTest(unittest.TestCase):
-    def test_present_and_share_row_links_decks_and_wrapped(self):
+    def test_present_and_share_row_links_decks_and_the_30_second_video(self):
         # Act
         body = school_page.render(*cfr_school())["body"]
 
         # Assert
         self.assertIn("Present and share", body)
         self.assertIn("view=school", body)
-        self.assertIn("wrapped/", body)
+        self.assertIn("video/", body)
+
+    def test_the_video_is_one_tap_from_the_top_of_the_page_and_the_ptfa_section(self):
+        # Act
+        page = school_page.render(*cfr_school())["body"]
+        start = page.index('<p class="status-line">')
+        status_line = page[start:page.index("</p>", start)]
+        ptfa = page[page.index('id="ptfa"'):]
+
+        # Assert
+        self.assertIn("Watch in 30 seconds", status_line)
+        self.assertIn('class="watch"', status_line)
+        self.assertIn("PTFA in 30 seconds", ptfa)
 
 
 def gold_series():

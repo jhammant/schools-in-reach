@@ -1199,7 +1199,7 @@ class WaveBTest(unittest.TestCase):
         money, summary = self.build([("204", "Hackney")], {"204": schools}, rows)
         # Assert
         self.assertEqual(summary["skipped_extensions"], [])
-        for path in ("map", "deck", "wrapped", "guides", "tools", "school/100000-peer-0/wrapped"):
+        for path in ("map", "deck", "video", "guides", "tools", "school/100000-peer-0/video"):
             self.assertTrue((money / path / "index.html").is_file(), path)
         self.assertNotIn("A map of every school's financial status is coming", self.read(money, "map"))
         sitemap = self.sitemap(money)
@@ -1324,6 +1324,9 @@ class DeployFilesTest(unittest.TestCase):
         # Asset URLs are unversioned, so a year-long immutable cache would pin stale JS/CSS after a deploy.
         self.assertIn("location /assets/ { add_header Cache-Control \"public, max-age=300, stale-while-revalidate=86400\"", text)
         self.assertNotIn("max-age=31536000", text)
+        # Old shared "Wrapped" links land on the renamed 30-second videos.
+        self.assertIn("location ~ ^/wrapped/?$ { return 301 /video/$is_args$args; }", text)
+        self.assertIn("location ~ ^/school/([^/]+)/wrapped/?$ { return 301 /school/$1/video/$is_args$args; }", text)
         self.assertIn("location /data/ { add_header Cache-Control \"public, max-age=3600\"", text)
         self.assertIn("try_files $uri $uri/ =404;", text)
         self.assertIn("location = /health", text)

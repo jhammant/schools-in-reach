@@ -1,4 +1,4 @@
-"""Offline tests for School Wrapped (pipeline/money/wrapped.py): the /wrapped/ shell, the per-school stubs,
+"""Offline tests for the 30-second videos (pipeline/money/wrapped.py): the /video/ shell, the per-school stubs,
 context.json, headline() and wrapped_links(). Fixtures are built here; the reference school comes from the
 committed gold file pipeline/money/data/gold/130932.json."""
 import json
@@ -126,28 +126,30 @@ class WritePagesTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_returns_every_page_in_write_order_all_noindex(self):
+    def test_returns_every_page_in_write_order_hub_indexable_stubs_noindex(self):
         # Act
         result = wrapped.write_pages(self.fake.env)
-        # Assert
-        self.assertEqual(result[0], ("/wrapped/", False))
+        # Assert: the Videos hub is a page people should find; each school's stub is a share target only
+        self.assertEqual(result[0], ("/video/", True))
         self.assertEqual([p for p, _ in result], list(self.fake.pages))
-        self.assertTrue(all(flag is False for _, flag in result))
+        self.assertTrue(all(flag is False for _, flag in result[1:]))
         self.assertEqual(len(result), 4)
 
-    def test_shell_is_noindex_with_the_app_and_a_search_link(self):
+    def test_videos_hub_has_the_app_and_a_search_that_goes_to_the_video(self):
         # Act
         wrapped.write_pages(self.fake.env)
-        html = self.fake.pages["/wrapped/"]
+        html = self.fake.pages["/video/"]
         head = parse(html)
         # Assert
-        self.assertEqual(head.meta["robots"], "noindex,follow")
+        self.assertNotEqual(head.meta.get("robots"), "noindex,follow")
         self.assertIn('id="wrapped-app"', html)
         self.assertIn('data-mode="school"', html)
         self.assertIn(f'data-real-label="{site.esc(deflator.real_label())}"', html)
-        self.assertIn("Pick a school to see its year in money", html)
-        self.assertIn('href="/search/"', html)
-        self.assertIn('<span aria-current="page">School Wrapped</span>', html)
+        self.assertIn("Your school in 30 seconds", html)
+        self.assertIn('action="/search/"', html)
+        self.assertIn('data-go="video/"', html)  # app.js sends a school pick straight to its video
+        self.assertIn('<span aria-current="page">Videos</span>', html)
+        self.assertNotIn("Wrapped", html)
         self.assertIn('<a href="/">Home</a>', html)
         self.assertTrue(any(s["src"] == "/assets/wrapped.js" for s in head.scripts))
         self.assertIn("<noscript>", html)
@@ -156,28 +158,28 @@ class WritePagesTest(unittest.TestCase):
         # Act
         result = dict(wrapped.write_pages(self.fake.env))
         # Assert
-        self.assertIn("/school/130932-william-patten-primary-school/wrapped/", result)
-        self.assertIn(site.page_path("school", "100003", "Plain Key School") + "wrapped/", result)
+        self.assertIn("/school/130932-william-patten-primary-school/video/", result)
+        self.assertIn(site.page_path("school", "100003", "Plain Key School") + "video/", result)
         self.assertFalse(any("100001" in p for p in result))
-        self.assertTrue((self.fake.out / "school/130932-william-patten-primary-school/wrapped/index.html").exists())
+        self.assertTrue((self.fake.out / "school/130932-william-patten-primary-school/video/index.html").exists())
 
     def test_every_stub_is_small_noindex_canonical_and_shareable(self):
         # Act
         result = wrapped.write_pages(self.fake.env)
         # Assert
-        stubs = [p for p, _ in result if p != "/wrapped/"]
+        stubs = [p for p, _ in result if p != "/video/"]
         self.assertEqual(len(stubs), 3)
         for item in (i for i in self.items if wrapped.school_view(i)["status"]):
             view = wrapped.school_view(item)
-            path = view["path"] + "wrapped/"
+            path = view["path"] + "video/"
             html = self.fake.pages[path]
             head = parse(html)
             self.assertLessEqual(len(html.encode("utf-8")), wrapped.STUB_LIMIT, path)
             self.assertNotIn('class="top"', html, "the stub is hand-built, not env['page']")
-            self.assertEqual(head.title, f"{item['name']}: School Wrapped")
+            self.assertEqual(head.title, f"{item['name']} in 30 seconds")
             self.assertEqual(head.meta["robots"], "noindex,follow")
             self.assertEqual(head.meta["description"], wrapped.headline(item))
-            self.assertEqual(head.meta["og:title"], f"{item['name']}: School Wrapped")
+            self.assertEqual(head.meta["og:title"], f"{item['name']} in 30 seconds")
             self.assertEqual(head.meta["og:description"], wrapped.headline(item))
             self.assertIn(item["name"], head.meta["og:description"])
             self.assertEqual(head.meta["og:url"], site.BASE_MONEY + path)
@@ -209,7 +211,7 @@ class WritePagesTest(unittest.TestCase):
         self.assertIn("&amp;", html)
         self.assertIn("&quot;", html)
         self.assertNotIn('"Federated"', html)
-        self.assertEqual(parse(html).meta["og:title"], f"{LONG_NAME}: School Wrapped")
+        self.assertEqual(parse(html).meta["og:title"], f"{LONG_NAME} in 30 seconds")
 
     def test_og_image_only_when_the_env_has_one(self):
         # Arrange
@@ -217,7 +219,7 @@ class WritePagesTest(unittest.TestCase):
         # Act
         wrapped.write_pages(fake.env)
         # Assert
-        head = parse(fake.pages["/school/130932-william-patten-primary-school/wrapped/"])
+        head = parse(fake.pages["/school/130932-william-patten-primary-school/video/"])
         self.assertEqual(head.meta["og:image"], "https://money.schoolsinreach.com/assets/og.png")
 
     def test_context_json_parses_with_ifs_page_numbers(self):
@@ -311,11 +313,25 @@ class LinksTest(unittest.TestCase):
         # Act
         html = wrapped.wrapped_links(item)
         # Assert
-        stub = site.page_path("school", "100004", item["name"]) + "wrapped/"
+        stub = site.page_path("school", "100004", item["name"]) + "video/"
         self.assertIn(f'href="{stub}"', html)
         self.assertIn(f'href="{stub}?mode=ptfa"', html)
+        self.assertIn("in 30 seconds", html)
+        self.assertNotIn("Wrapped", html)
         self.assertIn("Tom &amp; Jerry&#x27;s &quot;Best&quot; &lt;School&gt;", html)
         self.assertNotIn("<School>", html)
+
+    def test_watch_button_names_what_you_get(self):
+        # Arrange
+        item = plain_item("100004", "Plain Key School")
+        stub = site.page_path("school", "100004", item["name"]) + "video/"
+        # Act
+        school, ptfa = wrapped.watch_button(item), wrapped.watch_button(item, "ptfa")
+        # Assert
+        self.assertIn(f'href="{stub}"', school)
+        self.assertIn("Watch in 30 seconds", school)
+        self.assertIn(f'href="{stub}?mode=ptfa"', ptfa)
+        self.assertIn("PTFA in 30 seconds", ptfa)
 
 
 class CopyTest(unittest.TestCase):
@@ -353,7 +369,7 @@ class SpeedTest(unittest.TestCase):
         # Assert
         self.assertEqual(len(result), 2001)
         self.assertEqual(len(fake.pages), 2001)
-        self.assertTrue(all(len(h.encode("utf-8")) <= wrapped.STUB_LIMIT for p, h in fake.pages.items() if p != "/wrapped/"))
+        self.assertTrue(all(len(h.encode("utf-8")) <= wrapped.STUB_LIMIT for p, h in fake.pages.items() if p != "/video/"))
         self.assertLess(took, 10.0)
 
 

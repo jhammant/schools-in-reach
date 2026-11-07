@@ -1,4 +1,4 @@
-/* School Money — wrapped.js (unit C3): School Wrapped and PTFA Wrapped.
+/* School Money — wrapped.js (unit C3): a school, or its PTFA, "in 30 seconds" (the Wrapped-style story and video).
    A tap-through story of one school's year in money, drawn on a 1080x1920 canvas, that can be saved as a
    vertical MP4 (WebCodecs + mp4-muxer), a WebM (MediaRecorder) or one PNG per card, and shared.
 
@@ -335,7 +335,7 @@
     var bandRank = Object.keys(obj(rankBlock.band)).length ? obj(rankBlock.band) : null;
     return {
       urn: String(s.urn || ""), name: s.name || "This school", path: path,
-      url: base + path, wrappedUrl: base + path + "wrapped/",
+      url: base + path, wrappedUrl: base + path + "video/",
       council: { code: councilInfo.code != null ? String(councilInfo.code) : null, name: councilInfo.name || (area && area.name) || null, path: councilInfo.path || (area && area.path) || null },
       status: STATUS[st] ? { key: st, label: s.label || STATUS[st].label, icon: STATUS[st].icon, colour: STATUS[st].colour, reason: s.reason || null, year: s.year || null } : null,
       academy: academy, trust: s.trust || null, governance: tags.governance || (academy ? "academy" : "council-run"),
@@ -410,7 +410,7 @@
   }
 
   function introCard(d, mode) {
-    var c = newCard("intro", "intro", mode === "ptfa" ? d.name + ": PTFA Wrapped" : d.name + ": your year in money");
+    var c = newCard("intro", "intro", mode === "ptfa" ? d.name + ": the PTFA in 30 seconds" : d.name + ": your year in money");
     var kind = d.governance === "council-run" ? "Council-run" : titleCase(d.governance.charAt(0).toUpperCase() + d.governance.slice(1));
     var where = d.council.name ? " in " + d.council.name : "";
     var phase = d.phase ? " " + String(d.phase).replace(/_/g, " ") : "";
@@ -737,20 +737,20 @@
   }
 
   function errorModel(d, mode) {
-    var c = newCard("notice", "notice", d && d.name ? d.name : "School Wrapped");
+    var c = newCard("notice", "notice", d && d.name ? d.name : "School money in 30 seconds");
     c.big = { v: null, text: "Not ready yet", fmt: "text" };
     c.lines.push((d && d.error) || "Figures for this school aren't published yet.");
     c.lines.push("Every published figure is on the school's own page.");
     var path = (d && d.path) || "/search/";
     c.link = path;
-    return { mode: mode, title: "School Wrapped", cards: [finish(c, mode === "ptfa" ? "PTFA Wrapped" : "School Wrapped")],
-      share: { title: "School Wrapped", text: "A school's year in money, from published figures.", url: BASE_URL + path } };
+    return { mode: mode, title: "School money in 30 seconds", cards: [finish(c, mode === "ptfa" ? "PTFA in 30 seconds" : "In 30 seconds")],
+      share: { title: "School money in 30 seconds", text: "A school's year in money, from published figures.", url: BASE_URL + path } };
   }
 
   function buildCards(data, mode) {
     mode = mode === "ptfa" ? "ptfa" : "school";
     if (!data || data.error) return errorModel(data, mode);
-    var d = data, kicker = mode === "ptfa" ? "PTFA Wrapped" : "School Wrapped", cards;
+    var d = data, kicker = mode === "ptfa" ? "PTFA in 30 seconds" : "In 30 seconds", cards;
     if (mode === "ptfa") {
       if (d.pta && d.pta.latest) {
         cards = [introCard(d, mode), ptaRaisedCard(d, "pta-money", "Raised over the years"), ptaRankCard(d), ptaGapCard(d), ptaLinesCard(d), thanksCard(d), outroCard(d, mode)];
@@ -948,7 +948,7 @@
     g.fillStyle = col(pal, "accent", "#000"); g.fillRect(0, 0, w, 18 * s);
     g.font = "700 " + Math.round(34 * s) + "px " + FONT;
     g.fillStyle = col(pal, "accent", "#000"); g.textAlign = "left"; g.textBaseline = "top";
-    g.fillText(card.kicker || "School Wrapped", M, 110 * s);
+    g.fillText(card.kicker || "In 30 seconds", M, 110 * s);
     if (opts.count) {
       g.textAlign = "right"; g.fillStyle = col(pal, "ink-2", "#444");
       g.fillText((opts.index || 0) + 1 + " / " + opts.count, w - M, 110 * s);
@@ -1100,7 +1100,7 @@
       whatsapp: "https://wa.me/?text=" + encodeURIComponent((text ? text + " " : "") + (url || "")),
       x: "https://twitter.com/intent/tweet?text=" + tx + "&url=" + u,
       facebook: "https://www.facebook.com/sharer/sharer.php?u=" + u,
-      email: "mailto:?subject=" + encodeURIComponent("School Wrapped") + "&body=" + encodeURIComponent((text ? text + "\n\n" : "") + (url || ""))
+      email: "mailto:?subject=" + encodeURIComponent("School money in 30 seconds") + "&body=" + encodeURIComponent((text ? text + "\n\n" : "") + (url || ""))
     };
   }
 
@@ -1251,11 +1251,11 @@
     }
     if (mode === "school" && data && data.pta && data.pta.latest) {
       top.appendChild(document.createTextNode(" · "));
-      var pl = el("a", null, "PTFA Wrapped"); pl.href = "?mode=ptfa" + (rootEl.getAttribute("data-urn") ? "" : "&urn=" + encodeURIComponent(data.urn));
+      var pl = el("a", null, "PTFA in 30 seconds"); pl.href = "?mode=ptfa" + (rootEl.getAttribute("data-urn") ? "" : "&urn=" + encodeURIComponent(data.urn));
       top.appendChild(pl);
     } else if (mode === "ptfa" && data && !data.error) {
       top.appendChild(document.createTextNode(" · "));
-      var sl = el("a", null, "School Wrapped"); sl.href = rootEl.getAttribute("data-urn") ? "?" : "?urn=" + encodeURIComponent(data.urn);
+      var sl = el("a", null, "School in 30 seconds"); sl.href = rootEl.getAttribute("data-urn") ? "?" : "?urn=" + encodeURIComponent(data.urn);
       top.appendChild(sl);
     }
     wrap.appendChild(top);

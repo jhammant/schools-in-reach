@@ -237,7 +237,7 @@ test("PTFA mode: money over the years, England gap, Part B lines, thanks and out
   assert.equal(spend.figures[0].v, Math.max(...Object.values(lines)));
   assert.match(card(m, "pta-gap").lines.join(" "), /not in the IFS report/);
   assert.match(card(m, "thanks").lines.join(" "), new RegExp("About " + gold.ptfa.years["2024-25"].volunteers + " volunteers helped in 2024-25"));
-  assert.match(m.share.url, /\/school\/130932-william-patten-primary-school\/wrapped\/\?mode=ptfa$/);
+  assert.match(m.share.url, /\/school\/130932-william-patten-primary-school\/video\/\?mode=ptfa$/);
 });
 
 test("PTFA rank appears only when the data carries it", () => {
@@ -460,20 +460,20 @@ test("chooseEncoder picks webcodecs, then MediaRecorder, then PNG", () => {
 
 test("shareLinks encodes the text and URL for every network", () => {
   // Arrange
-  const url = "https://money.schoolsinreach.com/school/1-a/wrapped/?mode=ptfa", text = "A & B's year: £8,297 per pupil";
+  const url = "https://money.schoolsinreach.com/school/1-a/video/?mode=ptfa", text = "A & B's year: £8,297 per pupil";
   // Act
   const L = MW.shareLinks(url, text);
   // Assert
   assert.equal(L.whatsapp, "https://wa.me/?text=" + encodeURIComponent(text + " " + url));
   assert.equal(L.x, "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url));
   assert.equal(L.facebook, "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(url));
-  assert.match(L.email, /^mailto:\?subject=School%20Wrapped&body=/);
+  assert.match(L.email, /^mailto:\?subject=School%20money%20in%2030%20seconds&body=/);
   for (const v of Object.values(L)) assert.doesNotMatch(v.split("?").slice(1).join("?"), /[ &]B|£/);
 });
 
 test("shareVideo uses native file sharing when canShare, else the fallback", async () => {
   // Arrange
-  const file = { name: "x.mp4", type: "video/mp4" }, share = { title: "T", text: "Plain words", url: "https://money.schoolsinreach.com/school/1-a/wrapped/" };
+  const file = { name: "x.mp4", type: "video/mp4" }, share = { title: "T", text: "Plain words", url: "https://money.schoolsinreach.com/school/1-a/video/" };
   const calls = [];
   const yes = { canShare: (d) => d.files[0] === file, share: (d) => { calls.push(d); return Promise.resolve(); } };
   const no = { canShare: () => false, share: () => { throw new Error("must not share"); } };

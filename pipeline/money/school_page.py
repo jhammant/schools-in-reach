@@ -460,6 +460,15 @@ def _timeline_reason(status, phase) -> str:
             "large_reserves": f"reserve {large} or more of a year's income"}.get(status, "")
 
 
+def _watch(item, mode="school") -> str:
+    """wrapped.watch_button: the ▶ 30-second video, at the top of the page and in the PTFA section ("" without the module)."""
+    try:
+        from pipeline.money import wrapped
+        return " " + wrapped.watch_button(item, mode)
+    except Exception:  # another unit's helper must never break a school page
+        return ""
+
+
 def _share_links(item) -> str:
     parts = []
     for mod, fn, arg in (("deck", "deck_links", item["urn"]), ("wrapped", "wrapped_links", item)):
@@ -476,7 +485,8 @@ def _share_links(item) -> str:
 def status_section(item, view) -> str:
     st = item["status"]
     framings = view.ifs.get("framings") or {}
-    html = f'<p class="status-line">{badge(st["status"], "large")} {site.pin_button("school", item["urn"], item["name"], item.get("path"))}</p>'
+    html = (f'<p class="status-line">{badge(st["status"], "large")} {site.pin_button("school", item["urn"], item["name"], item.get("path"))}'
+            f'{_watch(item)}</p>')
     html += f'<p class="lead">{reason_html(item, view)}</p>'
     if st["status"] in ("in_deficit", "heading_for_deficit"):
         why = framings.get("why_schools_go_into_deficit") or {}
@@ -950,6 +960,9 @@ def pta_section(item, view) -> str:
              'and per-pupil figures use that year\'s pupils. A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
              f'{esc(OVERLAP)}</p>')
     html += _pta_national(view)
+    watch = _watch(item, "ptfa")
+    if watch:
+        html += f'<p class="sp-watch">{watch.strip()} — a short video of these figures for your committee or newsletter.</p>'
     return _section("ptfa", "Money raised by parents", html)
 
 

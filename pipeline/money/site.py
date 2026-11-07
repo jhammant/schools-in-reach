@@ -44,6 +44,7 @@ ASSETS = Path(__file__).with_name("assets")
 
 NAV = [
     ("Find a school", "/"),
+    ("Videos", "/video/"),
     ("Map", "/map/"),
     ("Areas", "/areas/"),
     ("Trusts", "/trust/"),
