@@ -585,3 +585,52 @@ test("no banned words in any card string, either mode, or in the unit's front-en
   // Assert
   for (const text of all) for (const word of BANNED) assert.ok(!text.toLowerCase().includes(word.toLowerCase()), `"${word}" in: ${text.slice(0, 120)}`);
 });
+
+test("the funding card shows spending per pupil in red when the school spent more than came in", () => {
+  // Arrange: William Patten 2025-26 spent £4,097,753 against £3,927,968 income
+  const { m } = model();
+  const L = pf(LATEST), spp = Math.round(L.total_expenditure / L.pupils), ipp = Math.round(L.total_income / L.pupils);
+  // Act
+  const c = card(m, "funding");
+  // Assert
+  assert.equal(c.verdict.tone, "bad");
+  assert.ok(c.verdict.text.includes(spp.toLocaleString("en-GB")), c.verdict.text);
+  assert.ok(c.verdict.sub.includes((spp - ipp).toLocaleString("en-GB")) && c.verdict.sub.startsWith("▼"), c.verdict.sub);
+  assert.ok(c.lines.some((l) => l.startsWith("Spending was ")), "the text version says it too");
+});
+
+test("the funding card is green when a school spent less than came in", () => {
+  // Arrange: a year with an in-year surplus
+  const f = fixture();
+  const y = LATEST;
+  f.sx.m.total_expenditure[y] = { v: pf(y).total_income - 43_250, pp: (pf(y).total_income - 43_250) / pf(y).pupils };
+  // Act
+  const c = card(MW.buildCards(MW.adapt(f.s, f.sx, f.council, f.england, CTX), "school"), "funding");
+  // Assert
+  assert.equal(c.verdict.tone, "good");
+  assert.ok(c.verdict.sub.startsWith("✓"), c.verdict.sub);
+});
+
+test("PTFA comparison bars put this PTFA beside England in the same year", () => {
+  // Act
+  const c = card(model({}, "ptfa").m, "pta-gap");
+  // Assert
+  assert.equal(c.title, "How the PTFA compares");
+  assert.ok(c.bars && c.bars.length >= 2, JSON.stringify(c.bars));
+  assert.ok(c.bars[0].mine && c.bars[0].label === "This PTFA");
+  assert.ok(c.bars.some((b) => b.label === "England's middle PTA" && b.v === 31));
+  assert.ok(c.barsNote.includes("2024-25"));
+});
+
+test("every card is drawn on its own bold background", () => {
+  // Arrange
+  const fills = [];
+  const g = new Proxy({}, { get: (o, k) => (k in o ? o[k] : (k === "measureText" ? () => ({ width: 100 }) : () => {})),
+    set: (o, k, v) => { if (k === "fillStyle") fills.push(v); o[k] = v; return true; } });
+  const { m } = model();
+  // Act
+  const firsts = m.cards.map((c, i) => { fills.length = 0; MW.drawCard(g, c, 1, {}, { index: i, count: m.cards.length }); return fills[0]; });
+  // Assert: the first fill is the card background, and the cards don't all share one
+  assert.ok(new Set(firsts).size >= 5, firsts.join(","));
+  assert.ok(firsts.every((f) => /^#[0-9A-F]{6}$/i.test(f)), firsts.join(","));
+});

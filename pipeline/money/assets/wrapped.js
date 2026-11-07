@@ -213,6 +213,8 @@
       schools: num(S.schools), inDeficit: num(S.in_deficit), inDeficitPct: num(S.in_deficit_pct),
       ptaYear: ptaYear, ptaPP: firstNum(P, ["pta_pp_median", "pta_median_pp"]), ptaSchools: num(P.pta_schools), ptaSchoolsOf: num(P.schools),
       ptaBands: ptaBands,
+      spendPP: num(S.spend_pp_median), incomePP: num(S.income_pp_median), govPP: firstNum(S, ["gov_pp_median", "grant_pp_median"]),
+      reservePP: num(S.reserve_median_pp),
       ptaRanking: arr(first(pta, ["ranking", "schools", "rank"])),
       dsg: dsg
     };
@@ -459,12 +461,22 @@
 
   function fundingCard(d) {
     var L = d.latest, useGrant = L && L.grant != null;
-    var c = newCard("funding", "stat", useGrant ? "Government funding per pupil" : "Income per pupil");
+    var c = newCard("funding", "stat", useGrant ? "Funding and spending per pupil" : "Income and spending per pupil");
     var v = L ? (useGrant ? L.grant : L.income) : null, pp = L ? perPupil(v, L.pupils) : null;
     if (v == null || pp == null) return noHeadline(c, d, ["grant", "income"], "Figures for this year aren't published yet.");
-    c.big = { v: pp, text: fmtExact(pp), fmt: "exact", unit: "per pupil" };
-    c.lines.push((useGrant ? "Government funding" : "Income") + " per pupil in " + L.y + ".");
-    c.lines.push(fmtMoney(v) + " in total for " + fmtPupils(L.pupils) + " pupils.");
+    c.big = { v: pp, text: fmtExact(pp), fmt: "exact", unit: (useGrant ? "government funding" : "income") + " per pupil" };
+    c.lines.push((useGrant ? "Government funding" : "Income") + " per pupil in " + L.y + ": " + fmtMoney(v) + " in total for " + fmtPupils(L.pupils) + " pupils.");
+    var spp = L.spend != null ? perPupil(L.spend, L.pupils) : null, ipp = L.income != null ? perPupil(L.income, L.pupils) : null;
+    if (spp != null && ipp != null) {
+      // Red or green against ALL income, not government funding alone: lettings, catering and donations count too.
+      var gap = spp - ipp, over = gap > 0;
+      c.verdict = { tone: over ? "bad" : "good", text: "Spent " + fmtExact(spp) + " per pupil",
+        sub: over ? "▼ " + fmtExact(gap) + " per pupil more than came in (" + fmtExact(ipp) + ")"
+                  : "✓ " + (gap === 0 ? "the same as" : fmtExact(-gap) + " per pupil less than") + " came in (" + fmtExact(ipp) + ")" };
+      c.lines.push("Spending was " + fmtExact(spp) + " per pupil, " + (over ? fmtExact(gap) + " more than" : (gap === 0 ? "the same as" : fmtExact(-gap) + " less than")) +
+        " the " + fmtExact(ipp) + " per pupil that came in from all sources.");
+      c.figures.push(fig("total_expenditure", "Spending", L.spend, spp, L.y, d.source));
+    }
     c.figures.push(fig(useGrant ? "grant_funding" : "total_income", useGrant ? "Government funding" : "Income", v, pp, L.y, d.source));
     if (useGrant && L.income) {
       c.lines.push("Government grants were " + pct(L.grant / L.income) + " of all income (" + fmtMoney(L.income) + ").");
@@ -553,6 +565,13 @@
       return (Math.abs(r) < 0.1 ? "a little " : "") + (r > 0 ? "more than" : "less than");
     }
     c.big = { v: main.mine, text: fmtExact(main.mine), fmt: "exact", unit: main.label.toLowerCase() + " per pupil" };
+    c.bars = [];
+    d.compare.forEach(function (p) {
+      c.bars.push({ label: p.label + ": this school", v: p.mine, text: fmtExact(p.mine), mine: true });
+      c.bars.push({ label: p.label + ": similar schools", v: p.theirs, text: fmtExact(p.theirs) });
+    });
+    c.bars = c.bars.slice(0, 4);
+    c.barsNote = "Per pupil in " + main.year + ". Similar schools: the closest in phase, size and free school meals.";
     d.compare.forEach(function (p) {
       c.lines.push(p.label + ": " + fmtExact(p.mine) + " per pupil, " + word(p.mine, p.theirs) + " the middle of similar schools (" + fmtExact(p.theirs) + ").");
       c.figures.push(fig(p.metric, p.label, p.v, p.mine, p.year, d.source));
@@ -585,6 +604,18 @@
       c.lines.push("The council's high needs (Dedicated Schools Grant) balance at the end of " + A.dsg.year + ": " +
         (A.dsg.balance != null ? fmtMoney(A.dsg.balance) : "not published") + (A.dsg.pp != null ? ", " + fmtExact(A.dsg.pp) + " per pupil" : "") + ".");
       c.figures.push(fig("dsg_balance", "High needs balance", A.dsg.balance, A.dsg.pp, A.dsg.year, "DfE section 251 outturn"));
+    }
+    var E = d.england, row = d.years.filter(function (r) { return r.y === A.year && !r.suspect; })[0];
+    var mineSpend = row && row.spend != null ? perPupil(row.spend, row.pupils) : null;
+    if (A.spendPP != null || (E && E.spendPP != null)) {
+      c.bars = [];
+      if (mineSpend != null) c.bars.push({ label: "This school", v: mineSpend, text: fmtExact(mineSpend), mine: true });
+      if (A.spendPP != null) c.bars.push({ label: name + "'s middle school", v: A.spendPP, text: fmtExact(A.spendPP) });
+      if (E && E.spendPP != null && E.year === A.year) c.bars.push({ label: "England's middle school", v: E.spendPP, text: fmtExact(E.spendPP) });
+      c.barsNote = "Spending per pupil, " + A.year + ". Area figures mix primary and secondary schools.";
+    }
+    if (E && E.inDeficitPct != null && A.inDeficitPct != null && E.year === A.year) {
+      c.lines.push("Across England, " + Math.round(E.inDeficitPct) + "% of schools ended " + E.year + " in deficit, against " + Math.round(A.inDeficitPct) + "% in " + name + ".");
     }
     var override = councilLine(d, "high_needs_deficits");
     if (override) c.lines.push(override);
@@ -675,7 +706,18 @@
   function ptaGapCard(d) {
     var E = d.england;
     if (!E || (E.ptaPP == null && !Object.keys(E.ptaBands).length)) return null;
-    var c = newCard("pta-gap", "stat", "Across England");
+    var c = newCard("pta-gap", "stat", "How the PTFA compares");
+    var P = d.pta, A = d.area, mineRow = P ? P.years.filter(function (r) { return r.y === E.ptaYear && r.pp != null; })[0] : null;
+    c.bars = [];
+    if (mineRow) c.bars.push({ label: "This PTFA", v: mineRow.pp, text: fmtExact(mineRow.pp), mine: true });
+    if (A && A.ptaPP != null && A.ptaYear === E.ptaYear) c.bars.push({ label: (A.name || "The council") + "'s middle PTA", v: A.ptaPP, text: fmtExact(A.ptaPP) });
+    if (E.ptaPP != null) c.bars.push({ label: "England's middle PTA", v: E.ptaPP, text: fmtExact(E.ptaPP) });
+    if (!c.bars.length) c.bars = null;
+    else c.barsNote = "Raised per pupil, " + E.ptaYear + ", among schools with a registered parents' association.";
+    if (mineRow && E.ptaPP != null) {
+      c.lines.push("This PTFA raised " + fmtExact(mineRow.pp) + " per pupil in " + E.ptaYear + ", " +
+        (mineRow.pp >= E.ptaPP ? "more than" : "less than") + " the middle registered parents' association in England (" + fmtExact(E.ptaPP) + ").");
+    }
     var bands = E.ptaBands, b1 = num(first(bands, ["1", "band1", "b1"])), b5 = num(first(bands, ["5", "band5", "b5"]));
     if (b1 != null && b5 != null) {
       c.big = { v: null, text: fmtExact(b1) + " vs " + fmtExact(b5), fmt: "text", unit: "per pupil" };
@@ -934,18 +976,82 @@
     }
   }
 
+  // ----------------------------------------------------------------- colour
+  // Every card has its own bold colours, the same on screen and in the video and in light or dark mode (a shared video
+  // shouldn't depend on the sender's settings). ink and big are at least 4.5:1 on bg; blob is decoration only.
+  var THEMES = {
+    indigo:    { bg: "#2B1E7A", ink: "#FFFFFF", sub: "#DCD6FF", big: "#FFD25A", blob: "#FF6FB5" },
+    blue:      { bg: "#0B5FA5", ink: "#FFFFFF", sub: "#D6E9FF", big: "#FFE066", blob: "#5CE1E6" },
+    navy:      { bg: "#13213C", ink: "#FFFFFF", sub: "#C9D3E6", big: "#7CF2D9", blob: "#3D7BFF" },
+    green:     { bg: "#0F5C3A", ink: "#FFFFFF", sub: "#CDEBD9", big: "#C6F57A", blob: "#2FD38A" },
+    plum:      { bg: "#4A1B6B", ink: "#FFFFFF", sub: "#E6D4F5", big: "#FFB3D9", blob: "#B36BFF" },
+    magenta:   { bg: "#9E1654", ink: "#FFFFFF", sub: "#FFD9EA", big: "#FFE3A3", blob: "#FF7AA8" },
+    teal:      { bg: "#0D5257", ink: "#FFFFFF", sub: "#CDEDEE", big: "#FFD25A", blob: "#3FD0C9" },
+    vermilion: { bg: "#A8321C", ink: "#FFFFFF", sub: "#FFE0D6", big: "#FFE28A", blob: "#FF8A5B" },
+    midnight:  { bg: "#17172B", ink: "#FFFFFF", sub: "#D0D0E8", big: "#7CF2D9", blob: "#6C63FF" },
+    sunflower: { bg: "#FFC93C", ink: "#1D1A10", sub: "#3D3520", big: "#4B1D96", blob: "#FF7A45" }
+  };
+  var CARD_THEME = { intro: "indigo", pupils: "blue", funding: "navy", staff: "green", reserve: "plum", similar: "magenta",
+    council: "teal", pta: "sunflower", "pta-money": "sunflower", "pta-rank": "vermilion", "pta-gap": "blue", "pta-spend": "green",
+    helps: "vermilion", thanks: "magenta", register: "teal", outro: "midnight", notice: "indigo" };
+  var CYCLE = ["indigo", "blue", "magenta", "green", "vermilion", "teal", "plum", "navy"];
+  // Red and green for "spent more than came in" / "lived within its means": white text on both is above 4.5:1.
+  var TONE = { bad: "#C81E3A", good: "#15803D" };
+  function themeFor(card, index) {
+    return THEMES[CARD_THEME[card.id] || CYCLE[(index || 0) % CYCLE.length]];
+  }
+  // The CSS palette with the card's colours laid over it (status colours keep the site's meanings).
+  function themed(pal, th) {
+    var out = {};
+    Object.keys(pal || {}).forEach(function (k) { out[k] = pal[k]; });
+    out.paper = th.bg; out.card = "#FFFFFF"; out.ink = th.ink; out["ink-2"] = th.sub; out["ink-3"] = th.sub;
+    out.accent = th.big; out.line = th.sub; out["line-strong"] = th.sub; out.grid = th.sub; out.c1 = th.big; out.c2 = th.blob;
+    return out;
+  }
+  function roundBox(g, x, y, w, h, r) {
+    g.beginPath();
+    if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h);
+  }
+  // Horizontal comparison bars: [{label, v, text, mine, tone}], negative values drawn left of a zero line.
+  function drawBars(g, bars, x, y, w, th, s, k) {
+    var vals = bars.map(function (b) { return b.v; }), lo = Math.min.apply(null, [0].concat(vals)), hi = Math.max.apply(null, [0].concat(vals));
+    var span = hi - lo || 1, zero = x + w * (-lo / span), rowH = 96 * s;
+    bars.forEach(function (b, i) {
+      var yy = y + i * rowH;
+      g.textBaseline = "top"; g.textAlign = "left";
+      g.font = (b.mine ? "800 " : "500 ") + Math.round(32 * s) + "px " + FONT;
+      g.fillStyle = b.mine ? th.ink : th.sub;
+      g.fillText(b.label, x, yy);
+      g.textAlign = "right"; g.fillText(b.text, x + w, yy); g.textAlign = "left";
+      var len = Math.abs(b.v) / span * w * k, bx = b.v >= 0 ? zero : zero - len;
+      g.globalAlpha = b.mine || b.tone ? 1 : 0.55;
+      g.fillStyle = b.tone ? TONE[b.tone] : (b.mine ? th.big : th.sub);
+      roundBox(g, bx, yy + 44 * s, Math.max(len, 4 * s), 34 * s, 10 * s); g.fill();
+      g.globalAlpha = 1;
+    });
+    if (lo < 0) { g.fillStyle = th.ink; g.fillRect(zero - 1.5 * s, y + 36 * s, 3 * s, bars.length * rowH - 40 * s); }
+    return y + bars.length * rowH;
+  }
+
   // Draws one card at progress t (0..1) on a width x height canvas (default 1080x1920). opts: {index, count,
   // fade, reducedMotion, qr: {size, dark(r, c)}}. palette: {paper, ink, accent, ...} read from the CSS tokens.
   function drawCard(g, card, t, pal, opts) {
-    opts = opts || {}; pal = pal || {};
+    opts = opts || {};
+    var th = themeFor(card, opts.index);
+    pal = themed(pal || {}, th);
     var w = opts.width || W, h = opts.height || H, s = w / W;
     if (opts.reducedMotion) t = 1;
     t = clamp(t == null ? 1 : t, 0, 1);
     var k = ease(t / 0.55), M = 96 * s, inner = w - 2 * M, footY = h - 150 * s;
     g.save();
     g.globalAlpha = 1;
-    g.fillStyle = col(pal, "paper", "#fff"); g.fillRect(0, 0, w, h);
-    g.fillStyle = col(pal, "accent", "#000"); g.fillRect(0, 0, w, 18 * s);
+    g.fillStyle = th.bg; g.fillRect(0, 0, w, h);
+    // Two soft shapes drifting in, Wrapped-style; behind everything, light enough that text keeps its contrast.
+    g.globalAlpha = 0.2; g.fillStyle = th.blob;
+    g.beginPath(); g.arc(w * 0.95 + (1 - k) * 80 * s, h * 0.07, w * 0.4, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(w * 0.02, h * 0.95 - (1 - k) * 80 * s, w * 0.32, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = th.big; g.fillRect(0, 0, w, 18 * s);
     g.font = "700 " + Math.round(34 * s) + "px " + FONT;
     g.fillStyle = col(pal, "accent", "#000"); g.textAlign = "left"; g.textBaseline = "top";
     g.fillText(card.kicker || "In 30 seconds", M, 110 * s);
@@ -963,7 +1069,7 @@
       g.beginPath();
       if (g.roundRect) g.roundRect(M, y, bw, bh, bh / 2); else g.rect(M, y, bw, bh);
       g.fill(); g.stroke();
-      g.fillStyle = col(pal, "ink", "#000"); g.textBaseline = "middle";
+      g.fillStyle = "#14161A"; g.textBaseline = "middle";
       g.fillText(label, M + 24 * s, y + bh / 2);
       g.textBaseline = "top";
       y += bh + 30 * s;
@@ -992,6 +1098,19 @@
       }
       y += 20 * s;
     }
+    if (card.verdict) {
+      var vt = card.verdict, vpad = 28 * s, vh = 200 * s;
+      g.fillStyle = TONE[vt.tone] || th.big; roundBox(g, M, y, inner, vh, 28 * s); g.fill();
+      g.font = "800 " + Math.round(fitFont(g, vt.text, inner - 2 * vpad, 56 * s, "800")) + "px " + FONT;
+      g.fillStyle = "#FFFFFF"; g.textBaseline = "top"; g.textAlign = "left";
+      g.fillText(vt.text, M + vpad, y + vpad);
+      paragraph(g, vt.sub, M + vpad, y + vpad + 72 * s, inner - 2 * vpad, 32 * s, "#FFFFFF", "600", 2, 1.2);
+      y += vh + 30 * s;
+    }
+    if (card.bars && card.bars.length) {
+      y = drawBars(g, card.bars, M, y, inner, th, s, opts.reducedMotion ? 1 : ease(t / 0.6)) + 16 * s;
+      if (card.barsNote) y = paragraph(g, card.barsNote, M, y, inner, 26 * s, th.sub, "400", 2) + 16 * s;
+    }
     var qrSize = card.qr && opts.qr ? 380 * s : 0, limit = footY - (qrSize ? qrSize + 40 * s : 0) - 20 * s;
     if (card.chart && card.chart.points.length) {
       // The chart gives up height (down to 340 px) before the text has to shrink below 31 px.
@@ -1002,7 +1121,7 @@
       var x0 = M;
       card.split.forEach(function (p, i) {
         var bwid = inner * p.share * k;
-        g.fillStyle = col(pal, i === 0 ? "accent" : ["c2", "c3", "c4", "band"][(i - 1) % 4], "#888");
+        g.fillStyle = i === 0 ? th.big : ["#FFFFFF", th.blob, th.sub, "#FFB86B"][(i - 1) % 4];
         g.fillRect(x0, y, Math.max(0, bwid), 60 * s);
         x0 += inner * p.share;
       });
@@ -1305,6 +1424,13 @@
     cards.forEach(function (c) {
       var li = el("li"); li.appendChild(el("h3", null, c.title));
       if (c.big && c.big.text) li.appendChild(el("p", "wr-big", c.big.text + (c.big.unit ? " " + c.big.unit : "")));
+      if (c.verdict) li.appendChild(el("p", "wr-big", (c.verdict.tone === "bad" ? "Red: " : "Green: ") + c.verdict.text + ". " + c.verdict.sub));
+      if (c.bars && c.bars.length) {
+        var ul = el("ul");
+        c.bars.forEach(function (b) { ul.appendChild(el("li", null, b.label + ": " + b.text)); });
+        li.appendChild(ul);
+        if (c.barsNote) li.appendChild(el("p", "muted small", c.barsNote));
+      }
       c.lines.forEach(function (l) { li.appendChild(el("p", null, l)); });
       if (c.source) li.appendChild(el("p", "muted small", "Source: " + c.source));
       if (c.link) { var a = el("a", null, c.link); a.href = c.link; li.appendChild(a); }
