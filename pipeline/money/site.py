@@ -119,11 +119,21 @@ def _nav(path):
     return "".join(links)
 
 
+AUDIENCE_LEGEND = "Show me what matters to a"
+# Runs in <head> before first paint: html.js shows the picker (without JavaScript its chips would do nothing), and the
+# reader chosen on an earlier page (app.js's localStorage key) sets html[data-reader], so audience.css reserves the
+# panel's space and tags the sections from the start instead of moving the page when app.js runs.
+AUDIENCE_BOOT = ('<script>!function(h){h.classList.add("js");try{var r=JSON.parse(localStorage.getItem("moneyAudience"));'
+                 '/^(' + "|".join(key for key, _ in AUDIENCES) + ')$/.test(r)&&h.setAttribute("data-reader",r)}catch(e){}}'
+                 '(document.documentElement)</script>')
+
+
 def _audience():
-    buttons = "".join(
-        f'<button type="button" data-audience="{key}" aria-pressed="{"true" if key == "parent" else "false"}">{esc(label)}</button>'
-        for key, label in AUDIENCES)
-    return f'<fieldset class="audience"><legend>I am a</legend>{buttons}</fieldset>'
+    """The reader picker, on its own row under the header's: a chip per reader (app.js presses the chosen one and
+    shows its links in #for-you), then Clear, outside the scrolling row so a phone always shows it."""
+    buttons = "".join(f'<button type="button" data-audience="{key}" aria-pressed="false">{esc(label)}</button>' for key, label in AUDIENCES)
+    return (f'<div class="aud-bar"><fieldset class="audience"><legend>{AUDIENCE_LEGEND}</legend><span class="aud-chips">{buttons}</span>'
+            '<button type="button" class="aud-clear">Clear</button></fieldset></div>')
 
 
 def _footer():
@@ -163,7 +173,9 @@ def page(title, description, path, body, crumbs, *, og_image=None, indexable=Tru
         head.append(f'<meta property="og:image" content="{esc(og_image)}"><meta name="twitter:image" content="{esc(og_image)}">')
     head.append('<meta name="theme-color" content="#f6f2ea" media="(prefers-color-scheme: light)">'
                 '<meta name="theme-color" content="#16181b" media="(prefers-color-scheme: dark)">')
-    head.append('<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script>')
+    head.append(AUDIENCE_BOOT)
+    head.append('<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script>'
+                '<link rel="stylesheet" href="/assets/audience.css">')
     head.append(f'<script type="application/ld+json">{ld}</script>')
     if extra_head:
         head.append(extra_head)
@@ -173,10 +185,10 @@ def page(title, description, path, body, crumbs, *, og_image=None, indexable=Tru
               '<ul id="q-list" class="listbox" role="listbox" aria-label="Suggestions" hidden></ul></form>')
     header = (f'<header class="top"><div class="wrap"><a class="brand" href="/">{MARK}<span class="name">{SITE_NAME}</span></a>'
               f'<a class="tagline" href="{BASE_SIR}">by Schools in Reach</a>{search}'
-              f'<nav class="main-nav" aria-label="Main">{_nav(path)}</nav>{_audience()}</div></header>')
+              f'<nav class="main-nav" aria-label="Main">{_nav(path)}</nav></div>{_audience()}</header>')
     return (f'<!doctype html>\n<html lang="en-GB" data-audience="parent"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n{chr(10).join(head)}\n</head>'
-            f'<body><a class="skip" href="#main">Skip to content</a>{header}'
+            f'<body><a class="skip" href="#main">Skip to content</a>{header}<div id="for-you"></div>'
             f'<main id="main" class="wrap"><nav class="crumbs" aria-label="Breadcrumb">{_trail(crumbs)}</nav>{body}</main>'
             f'{_footer()}</body></html>\n')
 

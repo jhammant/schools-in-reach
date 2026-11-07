@@ -1,0 +1,83 @@
+/* School Money — audience.css: the "Show me what matters to a" picker, the chosen reader's panel under the header
+   (#for-you, filled by app.js) and the "For governors"-style tags on a school page's sections ([data-readers]).
+   Loaded after app.css and uses its tokens only, so light and dark mode come from there. Contrast (light / dark):
+   chip text 16.9 / 13.2, pressed chip 6.1 / 7.5, panel links and tags 4.9 / 5.1, secondary text 7.1 / 7.2; chip
+   borders 3.6 / 4.4 (3:1 for controls).
+
+   site.page's head script sets html.js and, when a reader was chosen on an earlier page, html[data-reader] before
+   first paint, so the picker, the pressed chip, the panel's space and the tags are right before app.js runs. */
+
+/* ---------- picker: its own row under the header's, so it never squeezes the search box ---------- */
+.aud-bar { max-width: var(--measure); margin: 0 auto; padding: 2px clamp(14px, 3vw, 28px) 10px; }
+html:not(.js) .aud-bar { display: none; }  /* without JavaScript the chips would do nothing */
+header.top fieldset.audience { display: flex; flex-wrap: nowrap; align-items: center; justify-content: flex-start; gap: 4px 12px;
+  min-width: 0; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+header.top fieldset.audience legend { display: block; float: left; flex: none; margin: 0; padding: 0; font-size: .9rem; font-weight: 600; color: var(--ink); }
+/* One row of chips; it scrolls sideways when the screen is too narrow. The padding keeps focus rings inside the scroller. */
+.aud-chips { display: flex; gap: 6px; min-width: 0; overflow-x: auto; padding: 6px; margin: -6px; scrollbar-width: thin; }
+header.top fieldset.audience button { flex: none; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
+  border: 1px solid var(--ink-3); border-radius: 999px; background: var(--card); color: var(--ink); font-size: .875rem; font-weight: 600;
+  white-space: nowrap; }
+header.top fieldset.audience button:hover { background: var(--card-2); }
+/* The chosen chip: filled, with a tick so the choice never rests on colour alone. */
+header.top fieldset.audience button[aria-pressed="true"],
+html[data-reader="parent"] header.top button[data-audience="parent"], html[data-reader="governor"] header.top button[data-audience="governor"],
+html[data-reader="ptfa"] header.top button[data-audience="ptfa"], html[data-reader="leader"] header.top button[data-audience="leader"],
+html[data-reader="pupil"] header.top button[data-audience="pupil"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+header.top fieldset.audience button[aria-pressed="true"]::before,
+html[data-reader="parent"] header.top button[data-audience="parent"]::before, html[data-reader="governor"] header.top button[data-audience="governor"]::before,
+html[data-reader="ptfa"] header.top button[data-audience="ptfa"]::before, html[data-reader="leader"] header.top button[data-audience="leader"]::before,
+html[data-reader="pupil"] header.top button[data-audience="pupil"]::before { content: "✓"; content: "✓" / ""; margin-right: 6px; }
+header.top fieldset.audience button.aud-clear { display: none; border-style: dashed; background: transparent; color: var(--ink-2); font-weight: 500; }
+header.top fieldset.audience button.aud-clear::before { content: "✕"; content: "✕" / ""; margin-right: 6px; }
+html[data-reader] header.top fieldset.audience button.aud-clear { display: inline-flex; }
+
+/* ---------- the reader's panel ---------- */
+/* Two rows of links (one from 1024px): the empty slot holds that space until app.js fills it, so nothing moves. */
+#for-you { --fy-h: 158px; max-width: var(--measure); margin: 0 auto; padding: 12px clamp(14px, 3vw, 28px) 0; }
+#for-you:empty { display: none; }
+html[data-reader] #for-you:empty { display: block; }
+html[data-reader] #for-you:empty::before { content: ""; display: block; height: var(--fy-h); border: 1px solid var(--line);
+  border-left: 4px solid var(--accent-soft); border-radius: var(--radius); background: var(--card); }
+.fy { padding: 10px 14px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--card); }
+.fy-head { display: flex; align-items: baseline; gap: 10px; height: 24px; margin: 0 0 8px; line-height: 24px; white-space: nowrap; overflow: hidden; }
+.fy-title { flex: none; font-size: 1rem; font-weight: 800; color: var(--ink); }
+.fy-sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: .85rem; color: var(--ink-2); }
+.fy ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(48px, auto); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fy li { display: flex; min-width: 0; }
+.fy a { display: flex; align-items: center; width: 100%; padding: 4px 12px; border-radius: var(--radius-s); background: var(--accent-soft);
+  color: var(--accent); font-size: .875rem; font-weight: 700; line-height: 1.2; text-decoration: none; }
+.fy a:hover { text-decoration: underline; }
+@media (min-width: 1024px) {
+  #for-you { --fy-h: 102px; }
+  .fy ul { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  /* The wording on its own line (app.css hides it here; it is the point) with Clear at its end, then the chips. */
+  header.top fieldset.audience { flex-wrap: wrap; row-gap: 6px; }
+  header.top fieldset.audience legend { flex: 1 1 auto; font-size: .85rem; line-height: 30px; }
+  header.top fieldset.audience button.aud-clear { order: 1; min-height: 30px; padding: 0 10px; font-size: .8rem; }
+  .aud-chips { order: 2; flex: 1 1 100%; }
+  .fy ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fy li:nth-child(n+5) { display: none; }  /* the best four: two rows, so the page's own heading stays near the top */
+}
+
+/* ---------- tags on a school page's sections ---------- */
+.sp-sec[data-readers] > h2::after, .sp-sec[data-readers] > .status-line::after { display: inline-block; margin-left: 10px; padding: 0 9px;
+  border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: .75rem; font-weight: 700; letter-spacing: .02em;
+  line-height: 1.7; vertical-align: middle; white-space: nowrap; }
+html[data-reader="parent"] .sp-sec[data-readers~="parent"] > h2::after,
+html[data-reader="parent"] .sp-sec[data-readers~="parent"] > .status-line::after { content: "For parents"; content: "For parents" / ""; }
+html[data-reader="governor"] .sp-sec[data-readers~="governor"] > h2::after,
+html[data-reader="governor"] .sp-sec[data-readers~="governor"] > .status-line::after { content: "For governors"; content: "For governors" / ""; }
+html[data-reader="ptfa"] .sp-sec[data-readers~="ptfa"] > h2::after,
+html[data-reader="ptfa"] .sp-sec[data-readers~="ptfa"] > .status-line::after { content: "For PTFAs"; content: "For PTFAs" / ""; }
+html[data-reader="leader"] .sp-sec[data-readers~="leader"] > h2::after,
+html[data-reader="leader"] .sp-sec[data-readers~="leader"] > .status-line::after { content: "For school leaders"; content: "For school leaders" / ""; }
+html[data-reader="pupil"] .sp-sec[data-readers~="pupil"] > h2::after,
+html[data-reader="pupil"] .sp-sec[data-readers~="pupil"] > .status-line::after { content: "For pupils"; content: "For pupils" / ""; }
+
+@media print {
+  .aud-bar, #for-you { display: none !important; }
+  .sp-sec[data-readers] > h2::after, .sp-sec[data-readers] > .status-line::after { content: none !important; }
+}
