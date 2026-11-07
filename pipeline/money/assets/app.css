@@ -80,6 +80,7 @@ main { padding-top: 12px; padding-bottom: 64px; }
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 img, svg { max-width: 100%; }
+pre { max-width: 100%; overflow-x: auto; font-size: .875rem; }
 
 /* skip link */
 .skip { position: absolute; left: 8px; top: -60px; z-index: 100; padding: 10px 14px; background: var(--accent); color: var(--accent-ink);
@@ -88,18 +89,19 @@ img, svg { max-width: 100%; }
 
 /* ---------- header ---------- */
 header.top { background: var(--card); border-bottom: 1px solid var(--line); }
-header.top .wrap { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "brand search nav" "tag search aud";
+header.top .wrap { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand search nav" "tag search aud";
   column-gap: 20px; row-gap: 2px; align-items: center; padding-top: 10px; padding-bottom: 10px; }
 .brand { grid-area: brand; display: inline-flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; font-weight: 800;
   font-size: 1.2rem; min-height: var(--tap); }
 .brand .mark { color: var(--accent); flex: none; }
+.brand .name { white-space: nowrap; }
 .tagline { grid-area: tag; font-size: .85rem; color: var(--ink-2); text-decoration: none; margin-top: -8px; }
 .tagline:hover { color: var(--accent); }
 form.search { grid-area: search; position: relative; display: flex; gap: 6px; align-self: center; max-width: 520px; width: 100%; justify-self: center; }
 form.search input { flex: 1 1 auto; min-width: 0; min-height: var(--tap); padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: 999px;
   background: var(--paper); color: var(--ink); }
 form.search input::placeholder { color: var(--ink-3); }
-form.search button { min-height: var(--tap); padding: 0 16px; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+form.search button { flex: none; white-space: nowrap; min-height: var(--tap); padding: 0 16px; border: 1px solid var(--accent); border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .listbox { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40; margin: 0; padding: 6px; list-style: none; background: var(--card);
   border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); max-height: 60vh; overflow: auto; }
 .listbox[hidden] { display: none; }
@@ -265,9 +267,10 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
-  header.top .wrap { grid-template-columns: 1fr auto; grid-template-areas: "brand aud" "tag aud" "search search" "nav nav"; row-gap: 6px; }
-  nav.main-nav { justify-content: flex-start; }
+  header.top .wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "brand" "tag" "search" "nav" "aud"; row-gap: 6px; }
+  nav.main-nav, fieldset.audience { justify-content: flex-start; }
   form.search { max-width: none; }
+  .tagline { margin-top: -4px; }
 }
 @media (max-width: 600px) {
   body { font-size: 16px; }
