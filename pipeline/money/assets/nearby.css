@@ -1,0 +1,46 @@
+/* "Compared with schools nearby" on the school page (school_page.nearby_section). Uses app.css's variables, so
+   light and dark follow the same palette; classes are prefixed nb-. This school's row and bar are marked in words
+   ("This school", "(this school)") as well as by colour and weight. */
+
+.nb-ranks { margin: 0 0 12px; padding-left: 1.2em; }
+.nb-ranks li { margin: 2px 0; }
+
+/* the table scrolls sideways on narrow screens rather than squeezing its money columns */
+.nb-scroll { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 0 12px; }
+.nb-table { font-variant-numeric: tabular-nums; width: auto; min-width: 100%; }
+.nb-table th, .nb-table td { overflow-wrap: normal; word-break: normal; }
+.nb-table td { white-space: nowrap; }
+.nb-table th[scope="col"] { min-width: 4.5rem; }
+.nb-table caption { caption-side: top; text-align: left; color: var(--ink-2); font-size: .9rem; padding: 0 0 6px; }
+.nb-table th[scope="row"] { text-align: left; font-weight: 600; background: transparent; min-width: 10rem; max-width: 16rem; }
+.nb-table th[scope="row"] a { font-weight: 600; }
+.nb-table td small { display: block; color: var(--ink-2); white-space: normal; max-width: 11rem; }
+.nb-table .mf small { white-space: nowrap; }
+.nb-table tr.nb-self th, .nb-table tr.nb-self td { background: var(--accent-soft); }
+.nb-table tr.nb-self th { box-shadow: inset 4px 0 0 var(--accent); }
+.nb-you { display: inline-block; margin-left: 4px; padding: 0 6px; border: 1px solid var(--accent); border-radius: 999px;
+  color: var(--accent); font-size: .78rem; font-weight: 700; white-space: nowrap; }
+
+/* spending per pupil bars: every bar carries its school and value as text */
+.nb-chart { display: block; width: 100%; max-width: 34rem; height: auto; margin: 4px 0 12px; overflow: visible; }
+.nb-chart text { font-size: 12px; fill: var(--ink); }
+.nb-chart text.me { font-weight: 700; }
+.nb-chart rect { fill: var(--band); }
+.nb-chart rect.me { fill: var(--accent); }
+.nb-chart line.med { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.nb-chart text.med { fill: var(--ink-2); font-size: 11px; }
+
+@media (max-width: 600px) {
+  .nb-table { font-size: .9rem; }
+  .nb-table th, .nb-table td { padding-left: 6px; padding-right: 6px; }
+}
+
+@media print {
+  .nb-scroll { overflow: visible; }
+  .nb-table { min-width: 0; font-size: 9pt; }
+  .nb-table tr.nb-self th, .nb-table tr.nb-self td { background: transparent; font-weight: 700; }
+  .nb-table tr.nb-self th { box-shadow: none; border-left: 3px solid #000; }
+  .nb-chart rect { fill: #bbb; } .nb-chart rect.me { fill: #000; }
+  .nb-chart text, .nb-chart text.med { fill: #000; }
+  #nearby .button { border: 0; padding: 0; min-height: 0; }
+}
