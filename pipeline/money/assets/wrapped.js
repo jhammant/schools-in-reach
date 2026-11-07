@@ -824,12 +824,13 @@
   }
 
   // This PTFA beside England's and the council's middle values and up to 3 nearby parents' associations, all in one
-  // year: England's PTA year, or this PTFA's own latest year when there are no England figures. PTA income is never
-  // added to the school's own donations (the two can overlap).
+  // year: England's PTA year, or this PTFA's own latest year when there are no dated England figures (undated ones are
+  // left out). PTA income is never added to the school's own donations (the two can overlap).
   function ptaGapCard(d) {
     var E = d.england, P = d.pta, A = d.area, src = "Charity Commission register";
-    var hasE = !!(E && (E.ptaPP != null || Object.keys(E.ptaBands).length));
-    var year = hasE ? E.ptaYear : (P && P.latest ? yearLabel(P.latest.y) : null);
+    var eYear = E ? yearLabel(E.ptaYear) : null;
+    var hasE = !!(eYear && (E.ptaPP != null || Object.keys(E.ptaBands).length));
+    var year = hasE ? eYear : (P && P.latest ? yearLabel(P.latest.y) : null);
     var near = d.nearby && year ? d.nearby.schools.filter(function (r) { return r.pta_pp != null && r.pta_year === year; }).slice(0, 3) : [];
     if (!hasE && !near.length) return null;
     var c = newCard("pta-gap", "stat", "How the PTFA compares");

@@ -811,6 +811,22 @@ test("PTFA mode without England figures sets nearby PTAs beside this PTFA's own 
   assert.match(c.lines.join(" "), /Elm Lane PTA was matched with lower confidence/);
 });
 
+test("PTFA mode treats undated England PTA figures as missing and uses this PTFA's own latest year", () => {
+  // Arrange
+  const contract = nearbyContract();
+  const undated = { id: "england", type: "england", name: "England", pta: { bands: { 1: 96, 5: 6 } } };
+  // Act
+  const c = card(nearbyModel(contract, "ptfa", (f) => { f.england = undated; }), "pta-gap");
+  const without = card(nearbyModel(undefined, "ptfa", (f) => { f.england = undated; }), "pta-gap");
+  // Assert
+  assert.equal(without, undefined, "undated England figures and no contract: no card, never 'in null'");
+  assert.deepEqual(c.bars.map((b) => b.label), ["This PTFA", "Elm Lane PTA", "Birch Road PTA", "St Anne's PTA"]);
+  assert.match(c.barsNote, /2024-25/);
+  assert.match(c.big.unit, /2024-25/);
+  assert.ok(!c.figures.some((f) => /^pta_band|^pta_pp_median$/.test(f.key)), "undated England figures are left out");
+  assert.doesNotMatch(textOf(c), /\bnull\b|\bundefined\b|NaN/);
+});
+
 test("PTFA mode keeps to 3 nearby PTAs when more share the year", () => {
   // Arrange
   const contract = nearbyContract();
