@@ -93,6 +93,11 @@ def write_dsg(path, code="204", name="Hackney"):
     return path
 
 
+
+def unversioned(html):
+    """Built pages carry /assets/<name>?v=<hash>; compare them with the unversioned head constants."""
+    return re.sub(r"\?v=[0-9a-f]{10}", "", html)
+
 class Balance(HTMLParser):
     """Checks that non-void elements open and close in order (a HeadMetadata-like parser)."""
 
@@ -222,8 +227,8 @@ class BuildMoneyTest(unittest.TestCase):
             parsed = Balance(html)
             self.assertEqual(parsed.errors, [], page)
             self.assertTrue(parsed.canonical and parsed.canonical.startswith(BASE_MONEY + "/"), (page, parsed.canonical))
-            self.assertIn('href="/assets/app.css"', html)
-            self.assertIn('src="/assets/app.js"', html)
+            self.assertRegex(html, r'href="/assets/app\.css\?v=[0-9a-f]{10}"')  # versioned at write time
+            self.assertRegex(html, r'src="/assets/app\.js\?v=[0-9a-f]{10}"')
             self.assertIn('id="q"', html)
             self.assertIn("data-pin-count", html)
         stub = self.read("search")
@@ -1037,7 +1042,7 @@ class WaveBTest(unittest.TestCase):
         self.assertTrue(ctx["ifs"])
         # The page is wrapped with the dashboard's head and its own indexable flag, under the school budget.
         html = self.read(money, "school", "100000-peer-0")
-        self.assertIn(build_money.SCHOOL_HEAD, html)
+        self.assertIn(build_money.SCHOOL_HEAD, unversioned(html))
         self.assertIn('content="noindex,follow"', html)
         self.assertGreater(len(html.encode("utf-8")), build_money.PAGE_BUDGET)
         self.assertNotIn("/school/100000-peer-0/", self.sitemap(money))
@@ -1079,7 +1084,7 @@ class WaveBTest(unittest.TestCase):
         for path in ("england", "areas", "areas/london", "council", "council/hackney", "constituency/hackney-north-and-stoke-newington",
                      "trust", "trust/good-trust", "debts", "ptfa"):
             html = self.read(money, *path.split("/"))
-            self.assertIn(build_money.AREA_HEAD if path != "areas" else "/assets/areas.css", html, path)
+            self.assertIn(build_money.AREA_HEAD if path != "areas" else "/assets/areas.css", unversioned(html), path)
             self.assertNotIn("noindex", html, path)
         home = self.read(money)
         self.assertIn('data-headline="England"', home)
@@ -1349,6 +1354,25 @@ class DeployFilesTest(unittest.TestCase):
         www = (ROOT / "deploy/railway/deploy.sh").read_text(encoding="utf-8")
         self.assertNotIn("build_money", www.split("\n# School Money is a separate service")[-1].split("\n", 2)[-1])
         self.assertNotIn("Money payload", www)
+
+
+class AssetVersionTest(unittest.TestCase):
+    def test_asset_links_carry_a_content_hash_that_changes_with_the_file(self):
+        # Arrange
+        with tempfile.TemporaryDirectory() as tmp:
+            js = Path(tmp) / "app.js"
+            js.write_text("one", encoding="utf-8")
+            first = build_money.asset_versions([js])
+            js.write_text("two", encoding="utf-8")
+            second = build_money.asset_versions([js])
+        html = '<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script><a href="/assets/other.pdf">'
+        # Act
+        out = build_money.versioned(html, {"app.js": second["app.js"], "app.css": "c0ffee1234"})
+        # Assert
+        self.assertNotEqual(first["app.js"], second["app.js"])
+        self.assertIn(f'src="/assets/app.js?v={second["app.js"]}"', out)
+        self.assertIn('href="/assets/app.css?v=c0ffee1234"', out)
+        self.assertIn('href="/assets/other.pdf"', out)  # not one of ours: left alone
 
 
 class PostcodeIndexTest(unittest.TestCase):

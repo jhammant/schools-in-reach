@@ -1865,6 +1865,22 @@ def search_index(councils, schools, trusts):
     return index
 
 
+# "/assets/app.js" in a page, quoted: versioned at write time so a deploy's pages always fetch that deploy's assets.
+ASSET_REF = re.compile(r'(["\'])/assets/([A-Za-z0-9_.-]+)\1')
+
+
+def asset_versions(files):
+    """{file name: first 10 hex of its SHA-1}: the ?v= each asset gets, changing only when the file does."""
+    return {Path(f).name: hashlib.sha1(Path(f).read_bytes()).hexdigest()[:10] for f in files}
+
+
+def versioned(html, versions):
+    """Add ?v=<hash> to every quoted /assets/<name> the page links. Asset URLs were unversioned, so after a deploy a
+    browser could pair new HTML with yesterday's app.js (Cache-Control lets it serve stale while it revalidates)."""
+    return ASSET_REF.sub(lambda m: (f'{m.group(1)}/assets/{m.group(2)}?v={versions[m.group(2)]}{m.group(1)}'
+                                    if m.group(2) in versions else m.group(0)), html)
+
+
 POSTCODE_NEAREST = 30  # schools listed per postcode district, nearest to the district's centre first
 
 
@@ -1965,14 +1981,16 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
         stage = Path(staging) / "site_money"
         stage.mkdir()
         written = set()
+        versions = asset_versions(getattr(_shell(), "asset_files", lambda: [])())
 
         def write(path, html):
-            """One page at a clean path, never twice, never at or over its size budget."""
+            """One page at a clean path, never twice, never at or over its size budget; asset links versioned."""
             if not PATH.fullmatch(path):
                 raise ValueError(f"Unsafe page path {path!r}")
             if path in written:
                 raise ValueError(f"Two pages share the path {path}")
             written.add(path)
+            html = versioned(html, versions)
             size = len(html.encode("utf-8"))
             budget = SCHOOL_PAGE_BUDGET if path.startswith("/school/") else PAGE_BUDGET
             if size >= budget:
@@ -2131,7 +2149,7 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
         for path, title, text, links in STUBS:
             if path not in written:
                 write(path, render_stub(path, title, text, links, metadata))
-        (stage / "404.html").write_text(render_404(metadata), encoding="utf-8")
+        (stage / "404.html").write_text(versioned(render_404(metadata), versions), encoding="utf-8")
         (stage / "robots.txt").write_text(f"User-agent: *\nAllow: /\nDisallow: /data/\nSitemap: {BASE_MONEY}/sitemap.xml\n", encoding="utf-8")
         write_sitemaps(stage, urls, today)
         if out.is_symlink():
