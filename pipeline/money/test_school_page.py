@@ -597,7 +597,7 @@ class LinesTest(unittest.TestCase):
         missing = school_page.render(missing_item, missing_ctx)["body"]
 
         # Assert
-        self.assertRegex(zero, r'data-mf="donations_revenue" data-v="0"[^>]*>£0</span> recorded')
+        self.assertRegex(zero, r'data-mf="donations_revenue" data-v="0" data-pp="0"[^>]*>£0 <small>£0 per pupil</small></span> recorded')
         self.assertIn("Not reported in 2025-26", missing)
 
     def test_other_dfe_grants_carries_the_pass_through_framing(self):

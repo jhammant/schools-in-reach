@@ -45,6 +45,9 @@ PTA_ROWS = 10        # PTA years listed as figures; older ones stay in the chart
 MAX_QUESTIONS = 8
 SIMILAR_LISTED = 5
 GOV, SPEND, RESERVE = "grant_funding_government", "total_expenditure", "revenue_reserve"
+RESERVE_INCL_TRUST = "revenue_reserve_incl_trust_share"
+TRUST_CENTRAL_KEYS = ("trust_central_spend_per_pupil", "trust_central_spend_pp", "trust_central_pp")  # suspect-flag names
+CFR_I18_REMOVED = "2025-26"  # finance_history KNOWN_ISSUES: I18 removed, its grants now in I06
 
 _METRICS = ([(k, k, "income") for k in (
     "total_income", "grant_funding_government", "sen_funding", "pupil_premium", "self_generated_income",
@@ -214,7 +217,8 @@ class _View:
             self._derive_other_dfe_grants()
 
     def _derive_other_dfe_grants(self):
-        """other_dfe_grants from the rows when the series predates it (CFR I18, AAR other DfE revenue grants)."""
+        """other_dfe_grants from the rows when the series predates it (CFR I18, AAR other DfE revenue grants).
+        From 2025-26 the CFR has no I18: those grants moved into I06 Other government grants."""
         out = {}
         for r in self.item.get("rows") or []:
             label = str(r.get("year", "")).replace("/", "-")
@@ -224,6 +228,8 @@ class _View:
             v = derive(r) if derive else r.get("other_dfe_grants")
             if v is None and not derive:
                 v = r.get("aar_other_dfe_revenue_grants") if r.get("source") == "AAR" else r.get("cfr_additional_grants_i18")
+            if v is None and not derive and r.get("source") == "CFR" and label >= CFR_I18_REMOVED:
+                v = (r.get("lines") or {}).get("I06")
             if _num(v) is None:
                 continue
             p = self.pupils.get(label)
@@ -243,6 +249,16 @@ class _View:
     def clean(self, metric, year, basis="v"):
         """A value fit for comparisons: present and not flagged suspect."""
         return None if self.is_suspect(metric, year) else self.v(metric, year, basis)
+
+    def similar(self, metric, year):
+        """The similar-school median per pupil for metric in year: ctx['similar'] holds the latest year's medians,
+        ctx['similar_series'] each year's. None when that year's median isn't known, so older figures are never
+        compared with a newer cohort."""
+        if year == self.latest:
+            latest = _num((self.ctx.get("similar") or {}).get(metric))
+            if latest is not None:
+                return latest
+        return _num(((self.ctx.get("similar_series") or {}).get(metric) or {}).get(year))
 
     def has_real(self) -> bool:
         return bool(self.real_label) and any(_num(c.get("r")) is not None for c in (self.m.get(SPEND) or {}).values())
@@ -408,20 +424,30 @@ def _overseer(item) -> str:
     return "the council"
 
 
+def status_reserve_figure(item, view, *, deficit=False) -> str | None:
+    """status.py's reserve as a money figure, or None without one. A trust-inclusive reserve keeps its own glossary
+    key, and the figure is greyed when the series flags that year's reserve as suspect. deficit=True shows it as
+    the deficit (a positive amount)."""
+    st = item.get("status") or {}
+    if _num(st.get("reserve")) is None:
+        return None
+    year = str(st.get("year") or view.latest or "").replace("/", "-")
+    pupils = view.pupils.get(year) or (item.get("latest") or {}).get("pupils")
+    key = RESERVE_INCL_TRUST if st.get("trust_share_included") else RESERVE
+    cls = "suspect" if view.is_suspect(RESERVE, year) or view.is_suspect(key, year) else ""
+    if deficit:
+        return site.money_figure("deficit_total", -st["reserve"], pupils, year, label="Deficit", src=view.check, cls=cls)
+    return site.money_figure(key, st["reserve"], pupils, year, src=view.check, cls=cls)
+
+
 def reason_html(item, view) -> str:
     """status.py's reason with its £ figure as a money figure."""
     st = item["status"]
     text = esc(st["reason"])
     m = re.search(r"-?£[0-9][0-9.,]*(?:bn|m|k)?", text)
-    if not m or _num(st.get("reserve")) is None:
+    fig = status_reserve_figure(item, view, deficit=st["status"] == "in_deficit")
+    if not m or fig is None:
         return text
-    year = str(st.get("year") or view.latest or "").replace("/", "-")
-    pupils = view.pupils.get(year) or (item.get("latest") or {}).get("pupils")
-    if st["status"] == "in_deficit":
-        fig = site.money_figure("deficit_total", -st["reserve"], pupils, year, label="Deficit", src=view.check)
-    else:
-        key = "revenue_reserve_incl_trust_share" if st.get("trust_share_included") else "revenue_reserve"
-        fig = site.money_figure(key, st["reserve"], pupils, year, src=view.check)
     return text[:m.start()] + fig + text[m.end():]
 
 
@@ -519,7 +545,7 @@ def funding_section(item, view) -> str:
     if latest:
         gov_v, spend_v = view.v(GOV, latest), view.v(SPEND, latest)
         summary = (f'<p>In {esc(latest)}, government funding was {view.figure(GOV, latest, src=False)} and spending '
-                   f'{view.figure(SPEND, latest, src=False, cmp_similar=(view.ctx.get("similar") or {}).get(SPEND))}. ')
+                   f'{view.figure(SPEND, latest, src=False, cmp_similar=view.similar(SPEND, latest))}. ')
         gap = spend_v - gov_v
         if gap > 0:
             summary += (f'Spending was {site.money_figure("gov_vs_spend_gap", gap, view.pupils.get(latest), latest)} more than government '
@@ -603,25 +629,27 @@ def _columns(view) -> int:
 
 
 def _metric_row(view, metric):
-    """One row of the income or spending table, or None when the school never reports the line."""
+    """One row of the income or spending table, or None when the school never reports the line. Donations always
+    get a row: a zero reads '£0 recorded' and a gap 'not reported', with the earlier years' trend kept."""
     latest = view.latest
-    similar = (view.ctx.get("similar") or {}).get(metric)
+    similar = view.similar(metric, latest)
     label = esc(_label(metric))
     value = view.v(metric, latest)
     academy_gap = metric == "pupil_premium" and view.source.get(latest) == "AAR"
     if value is None and (metric in view.not_reported or academy_gap):
         reason = view.not_reported.get(metric) or "not reported in academy accounts"
         return f'<tr><th scope="row">{label}</th><td colspan="{_columns(view) - 1}" class="muted">{esc(reason[:1].upper() + reason[1:])}</td></tr>'
-    if metric == "donations_revenue":
-        if value == 0:
-            return (f'<tr><th scope="row">{label}</th><td colspan="{_columns(view) - 1}">'
-                    f'{site.money_figure(metric, 0, None, latest, drill=view.drill(metric))} recorded in {esc(latest)}</td></tr>')
-        if value is None:
-            return f'<tr><th scope="row">{label}</th><td colspan="{_columns(view) - 1}" class="muted">Not reported in {esc(latest)}</td></tr>'
     values = [(y, view.clean(metric, y, "pp")) for y in view.years]
     if all(v is None for _, v in values) and value is None:
+        if metric == "donations_revenue":
+            return f'<tr><th scope="row">{label}</th><td colspan="{_columns(view) - 1}" class="muted">Not reported in {esc(latest)}</td></tr>'
         return None
-    fig = view.figure(metric, latest, src=False, cmp_similar=similar) if value is not None else f'<span class="muted">not reported in {esc(latest)}</span>'
+    if value is None:
+        fig = f'<span class="muted">not reported in {esc(latest)}</span>'
+    else:
+        fig = view.figure(metric, latest, src=False, cmp_similar=similar)
+        if metric == "donations_revenue" and value == 0:
+            fig += " recorded"
     sim = (site.money_figure("per_pupil", similar, None, latest)
            if _num(similar) is not None and not view.is_suspect(metric, latest) else "—")
     line = f'<td>{spark(values, f"{_label(metric)} per pupil, {view.first} to {latest}")}</td>' if len(view.years) > 2 else ""
@@ -685,6 +713,8 @@ def spending_section(item, view) -> str:
         if staff_line:
             html += f' {ifs_text(staff_line["text"])}{ifs_cite(staff_line.get("page"))}'
         html += "</p>"
+    elif staff_line:  # the national fact stands without this school's staff total
+        html += f'<p>{ifs_text(staff_line["text"])}{ifs_cite(staff_line.get("page"))}</p>'
     phase_line = _context_line(view, {"primary": "per_pupil_primary", "secondary": "per_pupil_secondary"}.get(view.phase, ""))
     if phase_line:
         real = view.clean(SPEND, latest, "r") if view.has_real() else None
@@ -746,10 +776,13 @@ def trust_section(item, view) -> str:
     name = (f'<a href="{esc(item["trust_path"])}">{esc(trust)}</a>' if trust and item.get("trust_path")
             else esc(trust) if trust else "its trust")
     if central:
-        items = "".join(f'<li><span class="y">{esc(y)}</span> {site.money_figure("trust_central_spend_pp", v, None, y, label="Trust central spending per pupil")}</li>'
+        suspect = {y for y in central if any(view.is_suspect(k, y) for k in TRUST_CENTRAL_KEYS)}
+        items = "".join(f'<li><span class="y">{esc(y)}</span> {site.money_figure("trust_central_spend_pp", v, None, y, label="Trust central spending per pupil", cls="suspect" if y in suspect else "")}</li>'
                         for y, v in sorted(central.items()))
         html = f'<p>What {name} spent centrally per pupil, on top of this school\'s own accounts:</p><ol class="sp-pupils">{items}</ol>'
         html += '<p class="small muted">These are cash figures. The IFS average below is in 2025-26 prices.</p>'
+        if suspect:
+            html += '<p class="small muted">Greyed figures look out of line with the trust\'s other years and are left out of comparisons.</p>'
     else:
         html = f'<p>The DfE doesn\'t publish central spending per pupil for {name} for these years.</p>'
     fr = (view.ifs.get("framings") or {}).get("academy_central_top_slice") or {}
@@ -768,8 +801,12 @@ def _history_status(c) -> tuple[str, int | None]:
              if h.get("period_end") and (_num(h.get("income")) or 0) > 0]
     last = c.get("last_income_year") or (max(years) if years else None)
     status = c.get("history_status")
-    if not status:
-        status = "historical" if not last or last < 2019 else ("current" if last >= 2024 else "recent")
+    if not status and not last:
+        # No returns on file says nothing about whether it still runs: only a removal from the register does.
+        removed = c.get("removed") or c.get("removed_year") or str(c.get("status") or "").lower() == "removed"
+        status = "historical" if removed else "unknown"
+    elif not status:
+        status = "historical" if last < 2019 else ("current" if last >= 2024 else "recent")
     return status, last
 
 
@@ -831,6 +868,9 @@ def _charity_line(c, view) -> str:
     share = 1 / (1 + len(c.get("shared_with") or []))
     if status == "historical":
         bits.append(f"Had a registered PTA until {esc(c.get('removed_year') or last or 'an earlier year')}.")
+    elif status == "unknown":
+        bits.append("Its yearly returns aren't available here yet, so this page can't show how much it raised; "
+                    "the Charity Commission register has its accounts.")
     elif hist:
         h = hist[-1]
         pe = h["period_end"]
@@ -852,13 +892,25 @@ def _charity_line(c, view) -> str:
     return "<li>" + " ".join(bits) + "</li>"
 
 
+def _pta_national(view) -> str:
+    """ctx['pta_national']'s latest median per pupil, as context whether or not this school has a registered PTA."""
+    national = view.ctx.get("pta_national") or {}
+    nby = {y: e for y, e in (national.get("by_year") or {}).items() if _num((e or {}).get("median_pp")) is not None}
+    if not nby:
+        return ""
+    ny = max(nby)
+    return (f'<p>Across England, the typical registered parents\' association raised '
+            f'{site.money_figure("pta_per_pupil", nby[ny]["median_pp"], None, ny, label="England: median PTA income per pupil")} '
+            f'per pupil in {esc(ny)}.</p>')
+
+
 def pta_section(item, view) -> str:
     charities = [c for c in item.get("pta") or [] if not c.get("review")]
     if not charities:
         html = (f'<p><strong>No registered parents\' association found</strong> for {esc(item["name"])}. Charities with an income of '
                 f'{threshold_figure()} or less a year don\'t have to register with the Charity Commission, so many schools have an '
                 'active PTA or friends\' group that isn\'t on the register.</p>')
-        return _section("ptfa", "Money raised by parents", html)
+        return _section("ptfa", "Money raised by parents", html + _pta_national(view))
     by_year = view.s.get("pta") or _pta_by_year(view, charities)
     years = sorted(by_year)
     html = ""
@@ -886,13 +938,7 @@ def pta_section(item, view) -> str:
     html += ('<p class="small muted">Each return is placed in the school year that holds the end of the charity\'s financial year, '
              'and per-pupil figures use that year\'s pupils. A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
              f'{esc(OVERLAP)}</p>')
-    national = view.ctx.get("pta_national") or {}
-    nby = {y: e for y, e in (national.get("by_year") or {}).items() if _num((e or {}).get("median_pp")) is not None}
-    if nby:
-        ny = max(nby)
-        html += (f'<p>Across England, the typical registered parents\' association raised '
-                 f'{site.money_figure("pta_per_pupil", nby[ny]["median_pp"], None, ny, label="England: median PTA income per pupil")} '
-                 f'per pupil in {esc(ny)}.</p>')
+    html += _pta_national(view)
     return _section("ptfa", "Money raised by parents", html)
 
 
@@ -1004,10 +1050,8 @@ def context_section(item, view) -> str:
 def _fill(text, item, view) -> str:
     """Fill {name} {overseer} {reserve} {years}, escaping the words and keeping £ figures as money figures."""
     st = item.get("status") or {}
-    year = str(st.get("year") or view.latest or "").replace("/", "-")
-    reserve = (site.money_figure("revenue_reserve", st["reserve"], view.pupils.get(year), year, src=view.check)
-               if _num(st.get("reserve")) is not None else "its reserve")
-    subs = {"{name}": esc(item["name"]), "{overseer}": esc(_overseer(item)), "{reserve}": reserve,
+    reserve = status_reserve_figure(item, view) or "its reserve"
+    subs ={"{name}": esc(item["name"]), "{overseer}": esc(_overseer(item)), "{reserve}": reserve,
             "{years}": esc(st.get("deficit_streak") or "several")}
     out, last = [], 0
     for m in re.finditer(r"\{(name|overseer|reserve|years)\}", text):
