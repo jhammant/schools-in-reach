@@ -1,6 +1,7 @@
-"""Runs the node tests for assets/tools.js (MoneyTools) with 40 status cases worked out by status.py, so the
-JS port is checked against the Python it copies, and scans tools.js for any network call other than a
-same-site fetch of a /data/ path. Offline; node is optional (skipped without it)."""
+"""Runs the node tests for assets/tools.js (MoneyTools) with 50 status cases worked out by status.py (47 on the
+default reserve basis, 3 with an explicit one), so the JS port is checked against the Python it copies, and scans
+tools.js for any network call other than a same-site fetch of a /data/ path. Offline; node is optional (skipped
+without it)."""
 import json
 import os
 import re
@@ -17,6 +18,10 @@ REPO = Path(__file__).resolve().parents[2]
 TOOLS_JS = REPO / "pipeline/money/assets/tools.js"
 SUITE = REPO / "pipeline/money/test_tools_js.mjs"
 INCOME = 3_000_000
+MAT = "Multi Academy Trust (MAT)"
+CHARITY_PREFIX = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                  "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                  "CharityDetailsPortlet_regId=")
 
 
 def row(end, *, income=INCOME, balance=0, reserve=200_000, **extra):
@@ -79,6 +84,31 @@ def build_cases():
                                                             pupils=450 - 10 * (y - 2020)) for y in range(2020, 2026)]),
         ("no phase and no in-year balance", [row("2024-03", phase=None, in_year_balance=None, reserve=280_000),
                                              row("2025-03", phase=None, in_year_balance=None, reserve=270_000)]),
+        ("pooled own zero is held by the trust", [row("2024-08", reserve=0, source="AAR", trust_type=MAT),
+                                                  row("2025-08", balance=-50_000, reserve=0, source="AAR", trust_type="MAT")]),
+        ("own zero in a single-academy trust is tight", [row("2025-08", reserve=0, source="AAR", trust_type="Single Academy Trust (SAT)")]),
+        ("own zero without a trust type is tight", [row("2025-08", reserve=0, source="AAR")]),
+        ("own zero beside a trust share is judged on the share", [row("2025-08", reserve=0, source="AAR", trust_type=MAT,
+                                                                      revenue_reserve_incl_trust_share=287_581)]),
+        ("trust basis tight names the share", [row("2025-08", reserve=0, source="AAR", trust_type=MAT, revenue_reserve_incl_trust_share=60_000)]),
+        ("trust basis heading for deficit names the share",
+         [row("2024-08", balance=-100_000, reserve=0, source="AAR", trust_type=MAT),
+          row("2025-08", balance=-100_000, reserve=0, source="AAR", trust_type=MAT, revenue_reserve_incl_trust_share=150_000)]),
+        ("own years then a trust share below zero", [row("2023-08", reserve=0, source="AAR", trust_type=MAT),
+                                                     row("2024-08", balance=22_000, reserve=0, source="AAR", trust_type=MAT),
+                                                     row("2025-08", balance=274_000, reserve=274_000, source="AAR", trust_type=MAT,
+                                                         revenue_reserve_incl_trust_share=-284_662)]),
+    ]
+
+
+def build_basis_cases():
+    """(name, rows, basis) triples: assess(rows, basis) with an explicit reserve basis."""
+    share = [row("2025-08", reserve=90_000, source="AAR", trust_type=MAT, revenue_reserve_incl_trust_share=120_000)]
+    own_only = [row("2025-08", reserve=0, source="AAR", trust_type=MAT)]
+    return [
+        ("explicit own basis on a trust-share row", share, "own"),
+        ("explicit trust basis on a trust-share row", share, "incl_trust_share"),
+        ("trust basis on a year without the share falls back to own", own_only, "incl_trust_share"),
     ]
 
 
@@ -88,9 +118,13 @@ class StatusCasesTest(unittest.TestCase):
         cases = build_cases()
         # Act
         results = [health.assess(rows) for _, rows in cases]
+        basis_results = [health.assess(rows, basis) for _, rows, basis in build_basis_cases()]
         # Assert
-        self.assertEqual(len(cases), 40)
+        self.assertEqual(len(cases), 47)
+        self.assertEqual(len(basis_results), 3)
         self.assertEqual({r["status"] for r in results if r}, set(health.ORDER))
+        self.assertEqual({r["reserve_basis"] for r in results if r}, {"own", "incl_trust_share"})
+        self.assertEqual([r["reserve_basis"] for r in basis_results], ["own", "incl_trust_share", "own"])
         self.assertGreaterEqual(sum(r is None for r in results), 2)
         self.assertIn("about 0 year.", next(r["reason"] for (n, _), r in zip(cases, results) if n.startswith("runway 0.4")))
 
@@ -100,8 +134,9 @@ class ToolsJsNodeTest(unittest.TestCase):
     def test_node_suite_passes_with_python_status_cases(self):
         # Arrange
         cases = build_cases()
-        payload = {"cases": [{"name": n, "rows": rows} for n, rows in cases],
-                   "expected": [health.assess(rows) for _, rows in cases]}
+        extra = build_basis_cases()
+        payload = {"cases": [{"name": n, "rows": rows} for n, rows in cases] + [{"name": n, "rows": rows, "basis": b} for n, rows, b in extra],
+                   "expected": [health.assess(rows) for _, rows in cases] + [health.assess(rows, b) for _, rows, b in extra]}
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "status_cases.json"
             path.write_text(json.dumps(payload, allow_nan=False), encoding="utf-8")
@@ -139,12 +174,20 @@ class ToolsJsStaticTest(unittest.TestCase):
     def test_only_known_urls_appear_and_none_is_requested(self):
         # Arrange
         allowed = {site.BASE_MONEY, "https://financial-benchmarking-and-insights-tool.education.gov.uk/",
-                   "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/", "http://www.w3.org/2000/svg"}
+                   CHARITY_PREFIX[:CHARITY_PREFIX.index("CharityDetailsPortlet")], "http://www.w3.org/2000/svg"}
         # Act
         urls = set(re.findall(r"https?://[^\s\"'<>)]+", self.source))
         # Assert
         self.assertEqual(urls - allowed, set())
         self.assertIn(f'var BASE = "{site.BASE_MONEY}";', self.source)
+
+    def test_charity_links_are_built_only_by_charity_url(self):
+        # Arrange / Act
+        prefix_uses = self.source.count("CHARITY_PAGE[0]")
+        # Assert: one builder, and no prefix + number concatenation of the old register URL
+        self.assertEqual(prefix_uses, 1)
+        self.assertNotIn("charity-details/", self.source)
+        self.assertIn("charityUrl(c.number)", self.source)
 
     def test_no_html_built_from_strings(self):
         # Act / Assert
