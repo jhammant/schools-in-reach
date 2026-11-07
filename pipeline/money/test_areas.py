@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import unittest.mock
 
 from pipeline.money import areas
 
@@ -321,6 +322,18 @@ class BuildAreasTest(unittest.TestCase):
         self.assertEqual(trust["by_year"]["2024-25"]["council-run"]["schools"], 0)
         self.assertEqual(sum(trust["statuses_latest"].values()), 5)
 
+    def test_dsg_provisional_years_come_from_the_source_notes(self):
+        # Arrange: la_dsg.json's own note shape, an explicit list, and notes that only mention the word.
+        dsg = {"provisional": ["2026-27"], "source": {"notes": [
+            "2025-26 is the newest year: data as submitted by LAs; treat as provisional. Earlier years are identical.",
+            "Data quality is weaker before 2018-19; nothing here is provisional.",
+            "2024-25 matches the official statistics."]}}
+        # Act
+        years = areas.dsg_provisional(dsg)
+        # Assert
+        self.assertEqual(years, {"2025-26", "2026-27"})
+        self.assertEqual(areas.dsg_provisional(None), set())
+
     def test_dsg_per_pupil_uses_that_years_pupils(self):
         # Act
         result = self.build()
@@ -328,7 +341,8 @@ class BuildAreasTest(unittest.TestCase):
         council = result["councils"]["204"]
         self.assertEqual(council["dsg"]["2024-25"]["balance"], -16_000_000)
         self.assertAlmostEqual(council["dsg"]["2024-25"]["per_pupil"], -16_000_000 / council["pupils_by_year"]["2024-25"])
-        self.assertEqual(council["dsg"]["2025-26"], {"balance": -20_000_000, "per_pupil": None})
+        self.assertEqual(council["dsg"]["2024-25"]["pupils"], council["dsg_pupils_by_year"]["2024-25"])  # the denominator
+        self.assertEqual(council["dsg"]["2025-26"], {"balance": -20_000_000, "per_pupil": None, "pupils": None})
         england = result["england"]
         self.assertEqual(england["dsg"]["2024-25"]["balance"], -3_000_000_000)
         self.assertEqual(result["regions"]["London"]["dsg"], {})
@@ -360,6 +374,32 @@ class BuildAreasTest(unittest.TestCase):
         result = self.build(schools=extra)
         # Assert
         self.assertEqual(result["councils"]["204"]["schools_by_year"]["2024-25"], 8)
+
+
+class FixWaveOneAreasTest(unittest.TestCase):
+    """Reserve medians leave out a trust-held zero; deficits per pupil leave out pupils that don't match the money."""
+
+    def test_reserve_held_by_trust_is_left_out_of_reserve_medians(self):
+        # Arrange: one academy's two years judged 'reserve_held_by_trust' (its own reserve is zero).
+        rows = [row("140001", end, 2_000_000, 1_990_000, 0, source="AAR") for end in ("2024-08", "2025-08")]
+        held = [{"year": "2023-24", "status": "reserve_held_by_trust", "reserve": 0, "reserve_pp": 0.0},
+                {"year": "2024-25", "status": "reserve_held_by_trust", "reserve": 0, "reserve_pp": 0.0}]
+        # Act
+        with unittest.mock.patch.object(areas, "status_by_year", lambda rows: held):
+            entries = areas.school_years(rows, None)
+        # Assert
+        self.assertEqual([e["reserve_pp"] for e in entries], [None, None])
+        self.assertEqual([e["status"] for e in entries], ["reserve_held_by_trust"] * 2)
+
+    def test_deficit_per_pupil_leaves_out_returns_whose_pupils_are_suspect(self):
+        # Arrange: five schools in deficit; one is a federation lead listing one school's pupils for the federation's money.
+        entries = [{"reserve": -100_000, "pupils": 400, "pp_pupils": 400, "status": "in_deficit"} for _ in range(4)]
+        entries.append({"reserve": -900_000, "pupils": 300, "pp_pupils": None, "status": "in_deficit"})
+        # Act
+        s = areas.summarise(entries)
+        # Assert
+        self.assertEqual((s["in_deficit"], s["deficit_total"]), (5, -1_300_000))
+        self.assertEqual(s["deficit_pp"], -400_000 / 1_600)
 
 
 class PtaTest(unittest.TestCase):

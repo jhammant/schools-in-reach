@@ -28,7 +28,7 @@ class DashboardReviewTest(unittest.TestCase):
             "Government funding and spending per pupil",
             "Median reserve per pupil",
             "Deficits per pupil, in schools in deficit",
-            "Council high-needs (DSG) balance",
+            "Dedicated Schools Grant balance (all four blocks)",
             "Median parents' association income per pupil",
             "Pupils eligible for free school meals (median school)",
             "Pupils in schools with a full-year return",

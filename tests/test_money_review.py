@@ -24,11 +24,25 @@ class MoneyReviewTest(unittest.TestCase):
             # Act
             build_money.build(*args, out=args[0] / "money")  # never the real ROOT/site_money
 
-            # Assert: the requirement applies to every page, not only schools.
+            # Assert: the requirement applies to every page, not only schools. The one
+            # exception is the first page of a council's or constituency's school table:
+            # 40 KB held about five schools under its charts (Hackney showed 5 of 60), so
+            # that page alone also gets the table's own allowance, AREA_TABLE_ROWS rows of
+            # up to 2.5 KB, and must then list at least that many schools.
             money = args[0] / "money"
+            firsts = {"council/hackney/index.html"} | {
+                str(p.relative_to(money)) for p in money.glob("constituency/*/index.html")}
+
+            def budget(rel):
+                return 40_000 + (build_money.AREA_TABLE_ALLOWANCE if rel in firsts else 0)
+
             oversized = {str(p.relative_to(money)): p.stat().st_size
-                         for p in money.rglob("*.html") if p.stat().st_size >= 40_000}
-            self.assertFalse(oversized, f"Pages exceed the 40 KB budget: {oversized}")
+                         for p in money.rglob("*.html")
+                         if p.stat().st_size >= budget(str(p.relative_to(money)))}
+            self.assertFalse(oversized, f"Pages exceed their budget: {oversized}")
+            first = (money / "council/hackney/index.html").read_text(encoding="utf-8")
+            table = first[first.index("<table"):first.index("</table>")]
+            self.assertGreaterEqual(table.count('data-preview="school:'), build_money.AREA_TABLE_ROWS)
 
     def test_reported_year_matches_reserve_and_share(self):
         for missing in ({"total_income": 0}, {"revenue_reserve": None}):
