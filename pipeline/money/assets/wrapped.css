@@ -1,0 +1,74 @@
+/* School Money — wrapped.css (unit C3): the School Wrapped / PTFA Wrapped story player.
+   Uses the app.css tokens only (no colours of its own), so light and dark follow prefers-color-scheme.
+   The story keeps a 9:16 frame that fits the viewport height, with its buttons below; nothing scrolls sideways at 360 px. */
+
+main.wrapped { max-width: var(--measure); margin: 0 auto; padding: 12px clamp(12px, 3vw, 28px) 48px; }
+.wrapped { min-width: 0; }
+.wrapped-intro { max-width: 44rem; }
+.wr-pick, .wr-noscript { max-width: 40rem; }
+
+.wr-player { display: flex; flex-direction: column; align-items: center; gap: 12px; min-width: 0; max-width: 100%; }
+.wr-top { align-self: stretch; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0 4px; margin: 0; color: var(--ink-2); }
+.wr-top a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 4px; }
+
+.wr-stage {
+  position: relative; flex: none; max-width: 100%; min-width: 0; aspect-ratio: 9 / 16;
+  width: clamp(200px, calc((100vh - 220px) * 9 / 16), 100%);
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  background: var(--paper); box-shadow: var(--shadow); touch-action: pan-y; user-select: none; -webkit-user-select: none;
+  cursor: pointer;
+}
+@supports (height: 100svh) {
+  .wr-stage { width: clamp(200px, calc((100svh - 220px) * 9 / 16), 100%); }
+}
+.wr-stage:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.wr-stage canvas { display: block; width: 100%; height: 100%; }
+
+.wr-bars { position: absolute; top: 6px; left: 8px; right: 8px; display: flex; gap: 4px; pointer-events: none; }
+.wr-bar { flex: 1 1 0; min-width: 0; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.wr-bar > i { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
+
+.wr-controls, .wr-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-width: 0; max-width: 100%; }
+.wr-controls button, .wr-actions button, .wr-replay {
+  min-height: var(--tap); min-width: var(--tap); padding: 0 16px;
+  border: 1px solid var(--accent); border-radius: 999px; background: var(--card); color: var(--accent); font-weight: 600;
+}
+.wr-actions button.primary, .wr-replay { background: var(--accent); color: var(--accent-ink); }
+.wr-controls button:hover, .wr-actions button:hover { background: var(--accent-soft); }
+.wr-actions button.primary:hover { background: var(--accent); }
+.wrapped button:disabled { opacity: .6; cursor: progress; }
+.wrapped button:focus-visible, .wrapped a:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.wr-replay { display: block; margin: 16px auto; }
+.wr-replay[hidden], .wrapped [hidden] { display: none !important; }
+
+.wr-progress { width: min(100%, 420px); height: 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--card-2); overflow: hidden; }
+.wr-progress > i { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: left center; }
+.wr-status { margin: 0; min-height: 1.5em; text-align: center; }
+
+.wr-sheet {
+  width: min(100%, 32rem); padding: 16px; border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--card); box-shadow: var(--shadow); min-width: 0;
+}
+.wr-sheet h2 { margin: 0 0 12px; font-size: 1.15rem; }
+.wr-sheet ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.wr-sheet .button { min-height: var(--tap); }
+.wr-sheet .wr-actions { justify-content: flex-start; }
+.wr-sheet p { margin: 8px 0 0; overflow-wrap: anywhere; }
+
+.wr-text { width: min(100%, 40rem); margin-top: 8px; }
+.wr-text summary { display: flex; align-items: center; min-height: var(--tap); color: var(--accent); cursor: pointer; }
+.wr-text ol { padding-left: 1.4em; }
+.wr-text li { margin-bottom: 1.2em; }
+.wr-text h3 { margin: .4em 0 .2em; }
+.wr-text p { margin: 0 0 .4em; }
+.wr-text .wr-big { font-size: 1.3rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 400px) {
+  .wr-controls button, .wr-actions button { padding: 0 12px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wr-controls button, .wr-actions button { transition: background-color .12s; }
+}
+@media print {
+  .wr-controls, .wr-actions, .wr-progress, .wr-sheet, .wr-bars { display: none !important; }
+}
