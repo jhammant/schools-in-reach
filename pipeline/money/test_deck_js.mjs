@@ -1114,3 +1114,15 @@ test("with reserve_basis, a year the series leaves out has no reserve rather tha
   assert.equal(m.rows.find((r) => r.y === "2024-25").metrics.revenue_reserve, undefined);
   assert.ok(m.rows.find((r) => r.y === "2025-26").trustShare);
 });
+
+test("federation years: the PTFA pack makes no per-pupil figure or target from the whole federation's pupils", () => {
+  // Arrange: a federation lead school whose every return covers the whole federation (series.federation_years)
+  const m = D.adapt(sFixture({}), sxFixture({ flags: { suspect: {}, federation_years: YEARS } }), COUNCIL, ENGLAND);
+  // Act
+  const deck = D.ptfaDeck(m, CTXT);
+  // Assert
+  const money = findSlide(deck, "pta_money");
+  assert.ok(money.figures.every((f) => f.pp == null), JSON.stringify(money.figures.map((f) => f.pp)));
+  assert.ok(!findSlide(deck, "summary").messages[0].includes("per pupil"), findSlide(deck, "summary").messages[0]);
+  assert.equal(D.ptaTarget(m), null);
+});

@@ -141,6 +141,12 @@ def suspect_pupils(rows: list[dict]) -> dict:
     return out
 
 
+def federation_years(rows: list[dict]) -> list[str]:
+    """School years whose return is a federation lead school's combined one, oldest first: the money and pupils
+    are the whole federation's, so a parents' association (one school's) gets no per-pupil figure in them."""
+    return sorted({year_label(r) for r in rows if r.get("year") and r.get("federated") == "Lead school"})
+
+
 def sen_share(row: dict):
     """SEN funding as a share of the year's total income, or None."""
     sen, income = row.get("sen_funding"), row.get("total_income")
@@ -385,9 +391,12 @@ def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
         if entry:
             gap[label] = entry
 
-    # A year whose pupils don't match the money gives its parents' association no per-pupil figure either.
+    # A year whose pupils don't match the money gives its parents' association no per-pupil figure either, and nor
+    # does a federation lead's combined return: its pupils are the whole federation's, its PTA one school's.
     odd_labels = {year_label(r) for r in full if r["period_end"] in odd_pupils}
-    pta_pupils = {k: v for k, v in {**_pupils_any_year(rows), **pupils}.items() if k not in odd_labels}
+    federation = federation_years(rows)
+    pta_pupils = {k: v for k, v in {**_pupils_any_year(rows), **pupils}.items()
+                  if k not in odd_labels and k not in federation}
     not_reported = {k: why for k, why in NOT_IN_AAR.items() if any(r.get("source") == "AAR" for r in full)}
     return {
         "years": years,
@@ -404,6 +413,7 @@ def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
             "not_reported": not_reported,
             "reserve_basis_missing": basis_missing,
             "reserve_held_by_trust": held,
+            "federation_years": federation,
         },
         "trust_central_pp": trust_central,
         "reserve_basis": basis,

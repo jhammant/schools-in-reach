@@ -1534,6 +1534,18 @@ class NearbyTest(unittest.TestCase):
         self.assertEqual(nb["medians"]["reserve_pp"], round(statistics.median(reserves)))
         self.assertEqual(set(nb["line_medians"]), {"teaching_staff", "education_support_staff", "premises", "energy"})
 
+    def test_a_federation_leads_pta_gets_no_per_pupil_figure_from_the_whole_federations_pupils(self):
+        # Arrange: Home Primary's returns are a federation lead's combined ones; its PTA is one school's
+        schools, rows, pta, _ = self.neighbourhood()
+        for r in rows:
+            if r["urn"] == "100000":
+                r["federated"] = "Lead school"
+        # Act
+        me = self.model(schools, rows, pta)["100000"]["nearby"]["self"]
+        # Assert: its total stays, with no per-pupil figure
+        self.assertNotIn("pta_pp", me)
+        self.assertEqual(me["pta_income"], 32_000)
+
     def test_pta_uses_the_nearest_charity_year_within_two_years_and_needs_three_for_a_median(self):
         # Arrange
         schools, rows, pta, _ = self.neighbourhood()

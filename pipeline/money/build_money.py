@@ -2398,15 +2398,18 @@ class _NearbyFacts:
         return self.ptas[item["urn"]]
 
     def pta(self, item, label):
-        """(pta_pp, pta_year, lower confidence?, PTA income) for the PTA school year nearest label, or None."""
+        """(pta_pp, pta_year, lower confidence?, PTA income) for the PTA school year nearest label, or None. pta_pp is
+        None in a federation lead's year: its pupils are the whole federation's, its parents' association one school's."""
         start = int(label[:4])
         years = [(abs(int(y[:4]) - start), -int(y[:4]), y) for y in self.pta_years(item) if y[:4].isdigit()]
         for gap, _, y in sorted(years):
             if gap > NEARBY_PTA_YEARS:
                 break
+            income, low = self.pta_years(item)[y]
+            if any(year_label(r) == y and r.get("federated") == "Lead school" for r in item["rows"] if r.get("year")):
+                return None, y, low, round(income)
             pupils = self.pupils(item, y)
             if pupils:
-                income, low = self.pta_years(item)[y]
                 return round(income / pupils), y, low, round(income)
         return None
 
@@ -2445,7 +2448,9 @@ class _NearbyFacts:
             out["staff_pct"] = round(staff / spend * 100, 1)
         pta = self.pta(item, label)
         if pta:
-            out["pta_pp"], out["pta_year"], out["pta_income"] = pta[0], pta[1], pta[3]
+            if pta[0] is not None:
+                out["pta_pp"] = pta[0]
+            out["pta_year"], out["pta_income"] = pta[1], pta[3]
             if pta[2]:
                 out["pta_confidence"] = "medium"
         fsm = item.get("fsm")

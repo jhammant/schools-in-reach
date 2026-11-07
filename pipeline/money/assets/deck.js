@@ -339,8 +339,11 @@
 
     // Parents' associations: register history from /data/s, per-pupil figures from sx.pta where given.
     var sxPta = sx && isObj(sx.pta) ? sx.pta : {};
-    var rowPupils = {}, rowMarked = {};
-    m.rows.forEach(function (r) { rowPupils[r.y] = r.pupils; rowMarked[r.y] = r.suspect; });
+    var rowPupils = {}, rowMarked = {}, fedYears = {};
+    // A federation lead's combined return counts the whole federation's pupils; its parents' association is one
+    // school's, so those years give the association no per-pupil figure (series.federation_years).
+    (sx && isObj(sx.flags) && Array.isArray(sx.flags.federation_years) ? sx.flags.federation_years : []).forEach(function (y) { fedYears[y] = true; });
+    m.rows.forEach(function (r) { r.federation = !!fedYears[r.y]; rowPupils[r.y] = r.pupils; rowMarked[r.y] = r.suspect || r.federation; });
     // pta.attach_history writes period_end as YYYY-MM; older rows carry YYYY-MM-DD. One rule for every school, as
     // series.pta_year and the area medians count it: a return sits in the school year (September to August) its
     // accounts end in, so a return to August 2025 is 2024-25 for a council-run school and an academy alike.
@@ -1166,7 +1169,7 @@
   function ptaWhen(e) { var a = accountsEnd(e); return "the " + ptaYearWords(e.y) + (a ? " (" + a + ")" : ""); }
   function ptaLead(e) { var a = accountsEnd(e); return capital(ptaYearWords(e.y)) + (a ? " (" + a + ")" : ""); }
   function ptaYearText(e) { var a = accountsEnd(e); return ptaYearWords(e.y) + " (school year " + e.y + (a ? ", " + a : "") + ")"; }
-  function usablePupils(row) { return !!(row && !row.suspect && isNum(row.pupils) && row.pupils > 0); }
+  function usablePupils(row) { return !!(row && !row.suspect && !row.federation && isNum(row.pupils) && row.pupils > 0); }
   // What a parents' association raising the council's median per pupil would bring in, with the same year's pupils.
   // A year whose figures are marked as unusual is never used: the latest unmarked year with a council median stands
   // in, named as such, and with none there is no illustration.
@@ -1174,7 +1177,8 @@
     var main = m.pta[0] || null, last = lastPta(main);
     var cmp = ptaComparison(m, last);
     if (!cmp.council) return null;
-    var year = cmp.councilYear, row = rowOf(m, year), marked = row && row.suspect ? year : null;
+    var year = cmp.councilYear, row = rowOf(m, year), marked = row && (row.suspect || row.federation) ? year : null;
+    var why = row && row.federation ? " counts the whole federation's pupils" : " is marked as unusual";
     if (!usablePupils(row)) {
       year = null;
       row = null;
@@ -1189,7 +1193,7 @@
     var median = areaStat(m.area, year, "all", "ptaPp").v, target = median * row.pupils;
     var same = ptaIn(main, year), income = same && isNum(same.income) ? same.income : null;
     var t = { year: year, median: median, pupils: row.pupils, target: Math.round(target), income: income, gap: isNum(income) ? Math.round(target - income) : null };
-    if (marked) t.note = marked + " is marked as unusual, so the illustration uses " + year + ", the latest unmarked year with a median.";
+    if (marked) t.note = marked + why + ", so the illustration uses " + year + ", the latest unmarked year with a median.";
     var when = ptaYearWords(t.year), w = isNum(income) ? ratioWords(income, t.target) : null;
     var base = "At " + councilName + "'s median of " + fmtExact(t.median) + " per pupil, " + fmtPupils(t.pupils) + " pupils (" + when + ") would bring in about " + fmtExact(t.target) + " a year";
     if (t.gap != null && t.gap <= 0) {

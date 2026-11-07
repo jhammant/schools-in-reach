@@ -379,6 +379,28 @@ class SuspectPupilsTest(unittest.TestCase):
         self.assertEqual(series.suspect_pupils(tiny), {"2024-03": ["pupils"], "2025-03": ["pupils"]})
         self.assertEqual(series.suspect_pupils(two), {})
 
+    def test_federation_years_give_the_pta_no_per_pupil_figure(self):
+        # Arrange: Grazebrook-like, a federation lead whose PTA is one school's (charity 1084738, year to August 2025)
+        rows = federation_rows()
+        pta = [charity(1084738, [("2025-08", 25_000, 11_440), ("2024-08", 20_770, 21_485)])]
+        # Act
+        result = series.school_series(rows, pta)
+        # Assert: the PTA keeps its totals but is never divided by the whole federation's 1,793.5 pupils
+        self.assertEqual(result["flags"]["federation_years"], sorted(r["year"] for r in rows))
+        self.assertEqual(result["pta"]["2024-25"]["income"], 25_000)
+        self.assertIsNone(result["pta"]["2024-25"]["income_pp"])
+        self.assertIsNone(result["pta"]["2023-24"]["spend_pp"])
+
+    def test_a_school_outside_a_federation_has_no_federation_years(self):
+        # Arrange
+        rows = [row("2023-24"), row("2024-25")]
+        pta = [charity(1, [("2025-08", 20_000, 10_000)])]
+        # Act
+        result = series.school_series(rows, pta)
+        # Assert
+        self.assertEqual(result["flags"]["federation_years"], [])
+        self.assertEqual(result["pta"]["2024-25"]["income_pp"], 100)
+
     def test_row_suspect_pupils_merges_without_duplicates(self):
         rows = federation_rows()
         rows[3]["suspect"] = ["pupils"]

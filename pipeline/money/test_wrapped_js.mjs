@@ -1159,3 +1159,18 @@ test("with reserve_basis, a year the series leaves out has no reserve rather tha
   assert.equal(data.years.find((r) => r.y === "2024-25").reserve, null);
   assert.equal(without.years.find((r) => r.y === "2024-25").reserve, pf("2024-25").revenue_reserve, "today's fallback without reserve_basis");
 });
+
+test("federation years: the PTFA cards never divide by the whole federation's pupils", () => {
+  // Arrange: a federation lead school whose every return covers the whole federation (series.federation_years)
+  const flags = { suspect: {}, federation_years: YEARS };
+  // Act
+  const school = model({ flags }).m, ptfa = model({ flags }, "ptfa").m;
+  // Assert: PTA totals stay, with no per-pupil figure beside them
+  for (const m of [school, ptfa]) {
+    // This association's own figures (England's and band medians are per pupil by definition).
+    const figures = m.cards.flatMap((c) => c.figures || []).filter((f) => ["pta_income", "pta_spend", "pta_line"].includes(f.key));
+    assert.ok(figures.length > 0);
+    for (const f of figures) assert.equal(f.pp == null, true, f.key + " " + f.year + " pp " + f.pp);
+  }
+  assert.equal(card(school, "pta").figures.find((f) => f.key === "pta_income").v, 48547);
+});

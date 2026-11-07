@@ -727,7 +727,8 @@ def school_years(rows, charities):
             "grant_pp": pp(_usable(r, "grant_funding", suspect)),
             "gov_pp": pp(gov), "gov_rpp": pp(_real(gov, r)), "spend_rpp": pp(_real(spend, r)),
             "reserve_rpp": pp(_real(point["reserve"], r)) if reserve_pp is not None else None,
-            "pta_pp": pp(own_pta["income"]) if own_pta else None,
+            # A federation lead's pupils are the whole federation's; its parents' association is one school's.
+            "pta_pp": pp(own_pta["income"]) if own_pta and r.get("federated") != "Lead school" else None,
             "donations_pp": pp(_usable(r, "donations_revenue", suspect)),
             "fsm_pct": _usable(r, "fsm_pct", suspect),
             "trust": (r.get("trust") or "").strip() or None, "company_number": r.get("company_number"),
@@ -1059,6 +1060,8 @@ def pta_record(school, code, la, rows, entries, charities, band_ctx):
     """One school's PTA years for build_pta, each with that year's pupils (None when the school
     has no return for it, so no per-pupil figure is made up)."""
     by_key = {(e["year"], e["source"]): e for e in entries}
+    # A federation lead's combined return counts the whole federation's pupils, never this one school's PTA's.
+    federation = {label_of(r) for r in rows if r.get("federated") == "Lead school"}
     years, tags = {}, {}
     for (label, source), slot in sorted(school_pta(health.full_years(rows), charities).items()):
         entry = by_key.get((label, source))
@@ -1072,7 +1075,7 @@ def pta_record(school, code, la, rows, entries, charities, band_ctx):
         own["names"].update(slot["names"])
         if slot["confidence"] != "high":
             own["confidence"] = "medium"
-        if entry and entry["pp_pupils"]:
+        if entry and entry["pp_pupils"] and label not in federation:
             own["pupils"] = entry["pp_pupils"]
         tags[label] = {"governance": "academy" if source == "AAR" else "council-run",
                        "admissions": admissions_tag(school),

@@ -250,6 +250,7 @@ class _View:
         self.reserve_key = RESERVE_INCL_TRUST if self.basis == INCL else RESERVE
         self.held_years = set(self.flags.get("reserve_held_by_trust") or [])
         self.not_reported = self.flags.get("not_reported") or {}
+        self.federation_years = set(self.flags.get("federation_years") or [])
         self.latest = self.years[-1] if self.years else None
         self.first = self.years[0] if self.years else None
         self.urn = str(item["urn"])
@@ -293,6 +294,11 @@ class _View:
     def pupils_for(self, year):
         """That year's pupils as a per-pupil denominator, or None when they don't match the money."""
         return None if year in self.odd_pupils else self.pupils.get(year)
+
+    def pta_pupils_for(self, year):
+        """pupils_for a parents' association: None in a federation lead's combined return too, whose pupils are the
+        whole federation's while the association is this one school's."""
+        return None if year in self.federation_years else self.pupils_for(year)
 
     def glossary_key(self, metric) -> str:
         """The glossary key for a SERIES row: the reserve row names its basis, the own row is the plain reserve."""
@@ -1112,6 +1118,11 @@ def _pp_figure(key, pp, total, pupils, year, whole="total") -> str:
 def _nb_money(key, row, field, year_field=None, year=None):
     """A per-pupil value as a money figure with that year's pupils (the total is pp x pupils), or a dash."""
     pp, pupils = _num(row.get(field)), _num(row.get("pupils"))
+    if pp is None and year_field and _num(row.get("pta_income")) is not None:
+        # A federation lead's parents' association: its total alone, as the federation's pupils aren't its school's.
+        y = row.get(year_field) or year
+        return (f'{site.money_figure(key, _num(row.get("pta_income")), None, y)}<small> total, {esc(y)}; '
+                'no per-pupil figure for a federation</small>')
     if pp is None:
         return "—"
     if year_field:  # PTA: its own school year, and its own income (else pp x that row's pupils when the years match)
@@ -1387,7 +1398,7 @@ def _pta_by_year(view, charities) -> dict:
             if _low_confidence(c):
                 e["confidence"] = "medium"
     for label, e in out.items():
-        p = view.pupils_for(label)
+        p = view.pta_pupils_for(label)
         for k in ("income", "spend"):
             if e[k] is not None:
                 e[k] = round(e[k])
@@ -1413,7 +1424,7 @@ def _charity_line(c, view) -> str:
         h = hist[-1]
         pe = h["period_end"]
         label = pta_label(view, pe)
-        fig = site.money_figure("pta_income", round(h["income"] * share), view.pupils_for(label), label)
+        fig = site.money_figure("pta_income", round(h["income"] * share), view.pta_pupils_for(label), label)
         when = "Latest return" if status == "current" else "Last reported income"
         bits.append(f"{when}: {fig} in the year to {esc(_month_year(pe))}.")
     shared = c.get("shared_with") or []
@@ -1458,7 +1469,7 @@ def pta_section(item, view) -> str:
                 'active PTA or friends\' group that isn\'t on the register.</p>')
         return _section("ptfa", "Money raised by parents", html + _pta_national(view))
     # A year whose pupils don't match the money has no per-pupil figure to chart or compare, even from an older series.
-    by_year = {y: dict(e, income_pp=None, spend_pp=None) if y in view.odd_pupils else e
+    by_year = {y: dict(e, income_pp=None, spend_pp=None) if y in view.odd_pupils | view.federation_years else e
                for y, e in (view.s.get("pta") or _pta_by_year(view, charities)).items()}
     years = sorted(by_year)
     html = ""
@@ -1481,7 +1492,7 @@ def pta_section(item, view) -> str:
     rows = []
     for y in reversed(years[-PTA_ROWS:]):
         e = by_year[y]
-        p = view.pupils_for(y)
+        p = view.pta_pupils_for(y)
         inc = site.money_figure("pta_income", e["income"], p, y) if _num(e.get("income")) is not None else "—"
         exp = site.money_figure("pta_spending", e["spend"], p, y) if _num(e.get("spend")) is not None else "—"
         low = ' <small>matched with lower confidence</small>' if e.get("confidence") == "medium" else ""
@@ -1499,6 +1510,9 @@ def pta_section(item, view) -> str:
              f'{esc(OVERLAP)}</p>')
     if view.odd_pupils & set(by_year):
         html += f'<p class="small muted">{esc(odd_pupils_note(view))}</p>'
+    if view.federation_years & set(by_year):
+        html += ('<p class="small muted">No per-pupil figure is shown for the parents\' association in years when this school\'s '
+                 'return covers its whole federation: those pupil counts are every school\'s, and the association is this school\'s own.</p>')
     html += _pta_national(view, by_year)
     watch = _watch(item, "ptfa")
     if watch:

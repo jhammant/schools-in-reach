@@ -342,8 +342,14 @@
       if (!Object.keys(rows[y].spendLines || {}).length) rows[y].spendLines = obj(b.expenditure_lines);
       if (!Object.keys(rows[y].incomeLines || {}).length) rows[y].incomeLines = obj(b.income_lines);
     });
+    // A year marked unusual, or a federation lead's combined return (the whole federation's pupils against one
+    // school's parents' association), gives no per-pupil figure (series.federation_years).
+    var fedYears = {};
+    arr(obj(obj(sx).flags).federation_years).forEach(function (y) { fedYears[y] = true; });
     var list = Object.keys(rows).sort().map(function (y) {
-      var r = rows[y], yr = years.filter(function (x) { return x.y === y; })[0], pupils = yr && yr.pupils;
+      var r = rows[y], yr = years.filter(function (x) { return x.y === y; })[0];
+      var pupils = yr && !yr.suspect && !fedYears[y] ? yr.pupils : null;
+      if (fedYears[y] || (yr && yr.suspect)) { r.givenPP = null; r.givenSpendPP = null; }
       r.pupils = pupils || null;
       r.pp = r.givenPP != null ? Math.round(r.givenPP) : perPupil(r.income, pupils);
       r.spendPP = r.givenSpendPP != null ? Math.round(r.givenSpendPP) : perPupil(r.spend, pupils);

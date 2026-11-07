@@ -180,16 +180,16 @@ class FederationTest(unittest.TestCase):
         self.assertIn("doesn't match the money", unescape(odd))
         self.assertIn("No per-pupil figure is shown for 2021-22 and 2022-23", unescape(reserve))
 
-    def test_parents_association_money_in_an_odd_year_has_no_per_pupil_figure(self):
-        # Arrange: charity years ending in 2021-22 (odd pupils) and 2023-24 (the federation's own count)
+    def test_parents_association_money_in_a_federation_year_has_no_per_pupil_figure(self):
+        # Arrange: charity years ending in 2021-22 (odd pupils) and 2023-24 (the whole federation's count)
         rows = federation_rows()
         pta = [charity(1103834, [("2022-03", 20_000, 18_000), ("2024-03", 20_000, 18_000)])]
         # Act
         by_year = series.school_series(rows, pta)["pta"]
-        # Assert
+        # Assert: the association is one school's, so neither the odd count nor the federation's 1,541.5 divides it
         self.assertEqual((by_year["2021-22"]["income"], by_year["2021-22"]["income_pp"], by_year["2021-22"]["spend_pp"]),
                          (20_000, None, None))
-        self.assertEqual(by_year["2023-24"]["income_pp"], round(20_000 / 1541.5))
+        self.assertEqual((by_year["2023-24"]["income"], by_year["2023-24"]["income_pp"]), (20_000, None))
 
     def test_unnamed_federation_and_a_school_on_its_own(self):
         rows = federation_rows()
