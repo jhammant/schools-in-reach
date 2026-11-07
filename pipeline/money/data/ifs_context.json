@@ -1,0 +1,1684 @@
+{
+  "schema_version": 1,
+  "citation": "Farquharson, C., Ogden, K., Ornadel, N., Ridpath, N., Sibieta, L., Snape, D. and Tahir, I. (2026), Annual report on education spending in England: 2025–26, IFS Report, IFS, January 2026, URL https://ifs.org.uk/sites/default/files/2026-01/IFS-annual-report-on-education-spending-in-England-2025%E2%80%9326.pdf",
+  "source": {
+    "title": "Annual report on education spending in England: 2025–26",
+    "publisher": "Institute for Fiscal Studies (IFS)",
+    "published": "January 2026",
+    "funder": "Nuffield Foundation",
+    "url": "https://ifs.org.uk/sites/default/files/2026-01/IFS-annual-report-on-education-spending-in-England-2025%E2%80%9326.pdf",
+    "short_cite": "IFS, Annual report on education spending in England: 2025–26 (January 2026)",
+    "page_convention": "page = printed page number in the report; PDF page index = page + 1",
+    "prices": "All £ figures are in 2025–26 prices and relate to England unless marked otherwise (report p.7).",
+    "deflator": "Real-terms changes use economy-wide inflation from HM Treasury GDP deflators, November 2025 (report p.23 and figure notes).",
+    "school_years": "School spending and funding use financial years (April start) unless marked; sixth-form per-student funding uses academic years (August start)."
+  },
+  "national": {
+    "per_pupil_2025_26": {
+      "total_5_18": {
+        "label": "Total school spending per pupil, all ages 5–18",
+        "value": 8400,
+        "unit": "£ per pupil per year",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–18",
+          "measure": "Core schools budget plus school sixth form funding and wider local authority spending on schools (e.g. SEND transport); IFS's preferred measure",
+          "geography": "England"
+        },
+        "quote": "All school spending (including wider spending): £8,400 per pupil (same as in 2010–11)",
+        "page": 7,
+        "also": [
+          {
+            "quote": "In our view, the measure of total school spending per pupil aged 5–18 (the blue series on Figure 3.3) represents the most comprehensive and consistent measure of the real-terms changes in school spending per pupil.",
+            "page": 54
+          }
+        ]
+      },
+      "primary": {
+        "label": "Primary school spending per pupil",
+        "value": 7000,
+        "unit": "£ per pupil per year",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "primary",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Primary schools: £7,000 per pupil (+12% since 2010–11)",
+        "page": 7,
+        "also": [
+          {
+            "quote": "Actual figures up to 2023–24 are based on spending levels by individual schools. This includes spending on school sixth forms, but excludes central spending by local authorities and multi-academy trusts.",
+            "page": 54
+          }
+        ],
+        "note": "2025–26 is a projection (dashed line on Figure 3.4, p.55), based on mainstream school spending per pupil. Closest national comparator for a school's own spend per pupil from CFR/AAR returns, but those returns are cash and academies' figures exclude trust central spending."
+      },
+      "secondary": {
+        "label": "Secondary school spending per pupil",
+        "value": 7800,
+        "unit": "£ per pupil per year",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "secondary, including school sixth forms",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Secondary schools: £7,800 per pupil (–3% since 2010–11)",
+        "page": 7,
+        "note": "Includes spending on school sixth forms (p.54). 2025–26 is a projection."
+      },
+      "secondary_vs_primary_gap": {
+        "label": "How much more secondaries spend per pupil than primaries",
+        "value": 12,
+        "unit": "% higher",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Secondary school spending per pupil in England in 2025–26 is due to be about £7,800, which is 12% higher than in primary schools (£7,000).",
+        "page": 10,
+        "also": [
+          {
+            "quote": "In the 1980s, secondary school spending per pupil was about 56% higher than primary school spending per pupil. This narrowed to 49% in the 1990s and then to 30% in the 2000s.",
+            "page": 56
+          }
+        ]
+      }
+    },
+    "real_terms_change": {
+      "total_5_18": {
+        "label": "Total school spending per pupil (5–18): change over time",
+        "unit": "% real-terms change",
+        "changes": {
+          "2010-11_to_2019-20": -10,
+          "2019-20_to_2025-26": 11,
+          "2010-11_to_2025-26": 0
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–18",
+          "measure": "Total school spending per pupil",
+          "geography": "England"
+        },
+        "quote": "Under this measure, total school spending per pupil aged 5–18 fell by 10% in real terms between 2010–11 and 2019–20.",
+        "page": 53,
+        "also": [
+          {
+            "quote": "Since 2019–20, this measure of spending per pupil has risen by 11% in real terms, largely in line with spending on pupils aged 5–16. As a result, spending per pupil aged 5–18 is now about the same level as it was in 2010–11.",
+            "page": 54
+          },
+          {
+            "quote": "Total school spending per pupil aged 5–18 in England fell by 10% in real terms between 2010–11 and 2019–20. Recent funding increases have reversed these cuts and mean that it is now back to 2010–11 levels.",
+            "page": 9
+          }
+        ],
+        "note": "Figure 3.3 (p.53) labels the 2010–11 to 2025–26 change as 0%."
+      },
+      "core_schools_budget_per_pupil_5_16": {
+        "label": "Core schools budget per pupil (5–16), the DfE's main measure",
+        "unit": "% real-terms change",
+        "changes": {
+          "2010-11_to_2019-20": -3,
+          "2019-20_to_2025-26": 12,
+          "2010-11_to_2025-26": 9
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "measure": "Core schools budget per pupil; includes grants for employer pension and National Insurance contributions",
+          "geography": "England"
+        },
+        "quote": "This measure of spending per pupil fell by 3% in real terms between 2010–11 and 2019–20, before rising by 12% since 2019–20, and it is now about 9% higher than in 2010–11.",
+        "page": 53
+      },
+      "school_spending_per_pupil_5_16_excl_grants": {
+        "label": "School spending per pupil (5–16) excluding pension and National Insurance grants",
+        "unit": "% real-terms change",
+        "changes": {
+          "2010-11_to_2019-20": -5,
+          "2019-20_to_2025-26": 10,
+          "2010-11_to_2025-26": 5
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "measure": "Planned school spending excluding grants for employer pension and National Insurance contributions",
+          "geography": "England"
+        },
+        "quote": "If we exclude these grants, spending per pupil fell by 5% between 2010–11 and 2019–20 and has since risen by 10% in real terms. This leaves spending per pupil about 5% higher than in 2010–11.",
+        "page": 53,
+        "also": [
+          {
+            "quote": "This drove a 10% real-terms increase in spending per pupil aged 5–16.",
+            "page": 10
+          }
+        ]
+      },
+      "mainstream_per_pupil_5_16": {
+        "label": "Mainstream school spending per pupil (5–16), excluding special needs (high needs) spending",
+        "unit": "% real-terms change",
+        "changes": {
+          "2019-20_to_2025-26": 5
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "measure": "Excludes high needs spending and pupils in special schools and alternative provision",
+          "geography": "England"
+        },
+        "quote": "Mainstream school spending per pupil has risen by 5% in real terms since 2019–20, about half of the overall rise in school spending per pupil over this period.",
+        "page": 54,
+        "also": [
+          {
+            "quote": "Furthermore, there has been almost no net real-terms change in mainstream school spending compared with 2015–16.",
+            "page": 54
+          },
+          {
+            "quote": "In fact, mainstream school spending per pupil is currently about the same level it was in 2015–16.",
+            "page": 10
+          }
+        ]
+      },
+      "primary_and_secondary_since_2019": {
+        "label": "Primary and secondary spending per pupil since 2019",
+        "value": 1,
+        "unit": "% per year real-terms growth",
+        "year": "2019–20 to 2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Since 2019, we have seen a recovery in spending per pupil, with 1% per year real-terms growth in primary and secondary school spending per pupil expected between 2019–20 and 2025–26.",
+        "page": 55
+      },
+      "primary_2010s": {
+        "label": "Primary spending per pupil in the 2010s",
+        "value": 6,
+        "unit": "% real-terms change",
+        "year": "2010–11 to 2019–20",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Primary school spending per pupil actually rose by 6% in real terms between 2010–11 and 2019–20, reflecting the transfer of responsibilities and funding.",
+        "page": 106
+      },
+      "secondary_2010s": {
+        "label": "Secondary spending per pupil in the 2010s",
+        "value": -7,
+        "unit": "% real-terms change",
+        "year": "2010–11 to 2019–20",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Spending by individual schools (actual to 2023–24, projected to 2025–26); excludes central spending by local authorities and multi-academy trusts",
+          "geography": "England"
+        },
+        "quote": "Secondary schools saw a worse picture, with a 7% real-terms cut over the same period.",
+        "page": 106,
+        "note": "Largely reflects the 28% drop in school sixth form funding per pupil (p.106)."
+      }
+    },
+    "totals": {
+      "core_schools_budget": {
+        "label": "Core schools budget (government funding for pupils aged 5–16)",
+        "value": 65,
+        "unit": "£ billion",
+        "year": "2025–26",
+        "basis": {
+          "terms": "cash/plans for 2025–26 (2025–26 prices)",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "measure": "Core schools budget: central government funding to councils, trusts and schools for day-to-day spending",
+          "geography": "England"
+        },
+        "quote": "In 2025–26, the government is set to provide about £65 billion for school funding in England.",
+        "page": 46,
+        "also": [
+          {
+            "quote": "the total core schools budget has risen between 2019–20 and 2025–26 by about 16% in real terms or by £9 billion in 2025–26 prices. It has also risen by about 25% or £13 billion in real terms since 2010–11.",
+            "page": 48
+          }
+        ]
+      },
+      "schools_block": {
+        "label": "Schools block of the National Funding Formula (mainstream schools)",
+        "value": 49,
+        "unit": "£ billion",
+        "year": "2025–26",
+        "basis": {
+          "terms": "2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "geography": "England"
+        },
+        "quote": "By far the largest of these funding streams is the schools block of the National Funding Formula, which totalled about £49 billion in 2025–26.",
+        "page": 46
+      },
+      "mainstream_school_budgets": {
+        "label": "Mainstream school budgets",
+        "value": 47,
+        "unit": "£ billion",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "geography": "England"
+        },
+        "quote": "funding for mainstream state schools, which totalled about £47 billion in 2025–26.",
+        "page": 51,
+        "also": [
+          {
+            "quote": "Spending on mainstream school budgets has risen by 8% in real terms since 2019–20, significantly below the overall growth in spending.",
+            "page": 51
+          }
+        ]
+      },
+      "total_school_spending": {
+        "label": "Total school spending (5–18, incl. sixth forms and wider council spending)",
+        "value": 73,
+        "unit": "£ billion",
+        "year": "2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–18",
+          "geography": "England"
+        },
+        "quote": "we estimate that it is likely to total about £73 billion in 2025–26.",
+        "page": 49,
+        "also": [
+          {
+            "quote": "Since 2019–20, total school spending has risen by 19% in real terms or £12 billion in 2025–26 prices.",
+            "page": 49
+          }
+        ]
+      },
+      "growth_5_16_since_2019": {
+        "label": "Growth in spending on pupils aged 5–16, and how much was pension/NI pass-through",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "geography": "England"
+        },
+        "quote": "total spending on schools for ages 5–16 grew by £10 billion or 17% in real terms between 2019–20 and 2025–26. However, about £2.3 billion of this growth can be accounted for by additional grants to compensate schools for higher employer pension and National Insurance contributions.",
+        "page": 50,
+        "also": [
+          {
+            "quote": "If we exclude these grants, total spending grew by about 13% or £7.5 billion between 2019–20 and 2025–26.",
+            "page": 50
+          },
+          {
+            "quote": "Over half of this increase in school funding can be explained by growth in spending on special educational needs and disabilities (SEND).",
+            "page": 10
+          }
+        ]
+      },
+      "council_overspend_vs_budget": {
+        "label": "Councils' planned school spending above the core schools budget (high needs overspending)",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "planned spending on schools has exceeded the core schools budget by about £500 million in 2024–25 and by about £900 million in 2025–26. This almost certainly relates to overspending on high needs by local authorities",
+        "page": 49
+      },
+      "council_central_spending": {
+        "label": "Council central spending on schools (admissions, place planning, admin)",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "This is a small element of overall spending, and fell from about £1 billion in 2019–20 to about £0.7 billion in 2025–26.",
+        "page": 51,
+        "also": [
+          {
+            "quote": "there is also a much smaller block of funding for central school services (close to £500 million per year)",
+            "page": 47
+          }
+        ]
+      },
+      "council_wider_spending": {
+        "label": "Other council spending that benefits schools (SEND transport, assessments)",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "local authorities also spend nearly £4 billion per year on other services that mostly or largely benefit schools and pupils, such as SEND assessments and transport",
+        "page": 52,
+        "also": [
+          {
+            "quote": "Since then, spending has grown by £1.5 billion or 70% in real terms. This is mostly explained by SEND transport and assessment spending, which has grown by £1.1 billion or more than doubled in real terms since 2019–20.",
+            "page": 52
+          }
+        ]
+      },
+      "figure_3_2_changes_since_2019_20": {
+        "label": "Real-terms change since 2019–20 by component of council spending on schools (Figure 3.2)",
+        "values_pct": {
+          "school_sixth_form_funding": 24,
+          "other_la_spending_on_schools": 70,
+          "planned_la_spending_5_16_excl_grants": 13,
+          "pupil_premium": 0,
+          "high_needs_spending": 54,
+          "mainstream_school_budgets": 8
+        },
+        "year": "2019–20 to 2025–26",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "page": 50,
+        "note": "Data labels on Figure 3.2; each is also stated in the text on pp.50–52."
+      }
+    },
+    "costs": {
+      "staff_share_of_costs": {
+        "label": "Share of schools' costs that are staff costs",
+        "value": 80,
+        "unit": "% (over)",
+        "basis": {
+          "terms": "share",
+          "geography": "England"
+        },
+        "quote": "Over 80% of schools’ costs are staff costs.",
+        "page": 63,
+        "also": [
+          {
+            "quote": "Staff expenditure accounts for around 70% of total spending in further education colleges in England",
+            "page": 82
+          }
+        ]
+      },
+      "funding_vs_costs_2024_25_2025_26": {
+        "label": "Mainstream funding per pupil vs school costs, 2024–25 and 2025–26",
+        "value": 2,
+        "unit": "percentage points (funding growth below cost growth)",
+        "year": "2024–25 and 2025–26",
+        "basis": {
+          "terms": "cash",
+          "measure": "Cash-terms growth in mainstream funding per pupil vs a weighted average of teacher paybill, other staff paybill and non-staff costs (Figure 3.9)",
+          "geography": "England"
+        },
+        "quote": "For 2024–25 and 2025–26, mainstream school funding per pupil (the core schools budget less high needs spending) has been growing by less than overall funding per pupil. This reflects the rapid rises in SEND spending. Partly as a result, mainstream school funding per pupil grew by 2 percentage points less than school costs.",
+        "page": 62,
+        "note": "The report does not say whether the 2 points is per year or across both years; Figure 3.9 (p.62) shows expected cost growth above mainstream funding growth in each of the two years (bars are unlabelled, so no exact yearly values are published)."
+      },
+      "funding_vs_costs_outlook": {
+        "label": "Projected gap between cost growth and funding growth to 2028–29",
+        "value": [
+          0.5,
+          1
+        ],
+        "unit": "percentage points per year",
+        "year": "2026–27 to 2028–29",
+        "basis": {
+          "terms": "cash",
+          "measure": "Scenario where mainstream funding per pupil only rises with general inflation",
+          "geography": "England"
+        },
+        "quote": "we project that actual growth in schools’ costs would exceed funding growth by about 0.5–1 percentage points per year. This would place mainstream schools in a very tight position.",
+        "page": 11,
+        "also": [
+          {
+            "quote": "If we assume that recommendations for all staff are in line with forecasts for average earnings (around 3% for 2026–27 and about 2% thereafter), then the picture looks tight for schools, with funding per pupil growth lagging costs by about 0.5% per year",
+            "page": 63
+          },
+          {
+            "quote": "However, if average earnings growth (and pay awards) were closer to 3% per year (the average for the period between 2010–11 and 2024–25) and the costs of SEND provision also added 0.25% to cost growth (as has occurred in recent years), then schools’ costs would lag mainstream funding growth by about 1% per year over the next three years",
+            "page": 63
+          }
+        ],
+        "note": "The p.63 wording 'costs would lag mainstream funding growth' means funding lags costs (see p.11)."
+      },
+      "pay_offer": {
+        "label": "Government's proposed teacher pay offer vs earnings forecast",
+        "basis": {
+          "terms": "cash",
+          "period": "2026–27 to 2028–29",
+          "geography": "England"
+        },
+        "quote": "In its evidence to the STRB, the government proposed a total pay offer of 6.5% covering the three years. This would be slightly below the current forecast growth in average earnings (7.6%)",
+        "page": 63
+      },
+      "nff_2026_27": {
+        "label": "National Funding Formula uplift for 2026–27",
+        "value": 2.1,
+        "unit": "% cash",
+        "year": "2026–27",
+        "basis": {
+          "terms": "cash",
+          "geography": "England"
+        },
+        "quote": "with growth of 2.1% in main factor values in the National Funding Formula confirmed for 2026–27.",
+        "page": 63
+      }
+    },
+    "outlook_to_2028_29": {
+      "core_schools_budget_plan": {
+        "label": "Core schools budget plan to 2028–29",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "geography": "England"
+        },
+        "quote": "The core schools budget is set to be held constant in real terms between 2025–26 and 2028–29, plus extra funding to cover an extension to free school meals to all those on universal credit.",
+        "page": 16,
+        "also": [
+          {
+            "quote": "the core schools budget is due to grow by about 3% per year in cash terms between 2025–26 and 2028–29.",
+            "page": 63
+          }
+        ]
+      },
+      "per_pupil_real_change": {
+        "label": "Real-terms change in funding per pupil, 2025–26 to 2028–29",
+        "value": 3,
+        "unit": "% real-terms rise over three years",
+        "year": "2025–26 to 2028–29",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "5–16",
+          "geography": "England"
+        },
+        "quote": "After accounting for an additional £400 million in funding to expand eligibility for free school meals and an expected drop in pupil numbers, this amounts to a 3% rise in real-terms spending per pupil over the three years.",
+        "page": 62,
+        "also": [
+          {
+            "quote": "This settlement implies a 3% real-terms rise in overall funding per pupil as pupil numbers are expected to fall for the next few years.",
+            "page": 66
+          },
+          {
+            "quote": "After accounting for the expected fall in pupil numbers, this equates to a 4% rise in real-terms spending per pupil.",
+            "page": 54
+          }
+        ],
+        "note": "The report gives 3% on pp.62 and 66 but 4% on p.54. Use 3% (repeated in the summary)."
+      },
+      "mainstream_freeze_cash_growth": {
+        "label": "Cash growth in funding per pupil if mainstream spending per pupil is frozen in real terms",
+        "value": 2,
+        "unit": "% per year cash",
+        "year": "2026–27 to 2028–29",
+        "basis": {
+          "terms": "cash",
+          "geography": "England"
+        },
+        "quote": "Under a real-terms freeze in mainstream school spending per pupil, cash-terms funding per pupil for primary and secondary schools would grow by about 2% per year.",
+        "page": 63
+      },
+      "savings_from_falling_rolls": {
+        "label": "Money that could be released for SEND by freezing mainstream per-pupil funding",
+        "value": 1.8,
+        "unit": "£ billion",
+        "year": "2028–29",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "Under this scenario, the government could release about £1.8 billion in funding that could be used towards filling the £6 billion SEND funding gap expected for 2028–29, though that still leaves about £4 billion to be filled through other means.",
+        "page": 63,
+        "also": [
+          {
+            "quote": "the government would only be able to realise the £1.8 billion in savings if policymakers and schools are able to cut resources, such as through staff reductions or reducing the number of schools in the system.",
+            "page": 64
+          }
+        ]
+      },
+      "dfe_day_to_day_budget": {
+        "label": "Department for Education day-to-day budget growth",
+        "value": 1,
+        "unit": "% per year real",
+        "year": "2025–26 to 2028–29",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "Under current plans, the Department for Education is due to see a 1% per year real-terms increase in day-to-day funding for services in England",
+        "page": 15
+      }
+    },
+    "pupil_numbers": {
+      "primary_past": {
+        "label": "Primary pupil numbers: past trend",
+        "basis": {
+          "terms": "count",
+          "measure": "Pupils in state-funded primary schools",
+          "geography": "England"
+        },
+        "quote": "Numbers in primary schools grew by 17% between 2009–10 and 2019–20, the equivalent of an extra 700,000 pupils – or effectively a full school year of children.",
+        "page": 19,
+        "also": [
+          {
+            "quote": "primary pupil numbers have since fallen, with a 3% or 100,000 drop between 2019–20 and 2024–25.",
+            "page": 19
+          }
+        ]
+      },
+      "primary_projection": {
+        "label": "Primary pupil numbers: projection",
+        "value": -8,
+        "unit": "% (about)",
+        "year": "2024–25 to 2030–31",
+        "basis": {
+          "terms": "count",
+          "measure": "DfE National pupil projections July 2025; ONS for 2030",
+          "geography": "England"
+        },
+        "quote": "the primary pupil population is currently expected to fall by over 300,000 more between 2024–25 and 2030–31, or about 8%.",
+        "page": 19
+      },
+      "secondary_past": {
+        "label": "Secondary pupil numbers: past trend",
+        "basis": {
+          "terms": "count",
+          "measure": "Pupils in state-funded secondary schools",
+          "geography": "England"
+        },
+        "quote": "Between 2014–15 and 2024–25, they then grew by nearly 18% or 500,000.",
+        "page": 19
+      },
+      "secondary_projection": {
+        "label": "Secondary pupil numbers: projection",
+        "value": -4,
+        "unit": "% (about)",
+        "year": "2024–25 to 2030–31",
+        "basis": {
+          "terms": "count",
+          "geography": "England"
+        },
+        "quote": "The secondary pupil population is expected to fall by about 100,000 or 4%, with these falls only starting from about 2026–27.",
+        "page": 19
+      },
+      "total_projection": {
+        "label": "All school pupils: projection",
+        "value": -6,
+        "unit": "% (about)",
+        "year": "2024–25 to 2030–31",
+        "basis": {
+          "terms": "count",
+          "geography": "England"
+        },
+        "quote": "This implies a fall in the total pupil population of only about 6% or just under 500,000 between 2024–25 and 2030–31.",
+        "page": 19,
+        "also": [
+          {
+            "quote": "the number of children is expected to continue to decline after 2030 (Sibieta, 2025).",
+            "page": 21
+          }
+        ]
+      },
+      "policy_choice": {
+        "label": "What falling pupil numbers mean for policy",
+        "basis": {
+          "terms": "n/a",
+          "geography": "England"
+        },
+        "quote": "They could use the drop in the number of pupils as an opportunity to make savings by reducing the numbers of schools and teachers in the system. Alternatively, they could choose to increase per-pupil funding and increase the overall intensity of resources, such as by reducing class or school sizes.",
+        "page": 21,
+        "also": [
+          {
+            "quote": "Over the last 10 years, rapid falls in primary school pupil numbers in London have been accompanied by falling numbers of teachers, though not much change in the number of schools",
+            "page": 21
+          }
+        ]
+      },
+      "age_16_18": {
+        "label": "16- to 18-year-olds: population",
+        "basis": {
+          "terms": "count",
+          "geography": "England"
+        },
+        "quote": "Population projections suggest a further increase of around 70,000 (3%) by 2028, when the number of 16- to 18-year-olds is expected to peak.",
+        "page": 72,
+        "also": [
+          {
+            "quote": "Between 2018 and 2025, the size of this age group grew by around 300,000, or 16%.",
+            "page": 72
+          }
+        ]
+      }
+    },
+    "send": {
+      "ehcp_share": {
+        "label": "Share of pupils with an Education, Health and Care Plan (EHCP)",
+        "value": 5.3,
+        "unit": "% of pupils",
+        "basis": {
+          "terms": "share",
+          "geography": "England"
+        },
+        "quote": "Historically, the share of pupils with EHCPs or their earlier equivalent hovered just below 3%; today this share is 5.3%.",
+        "page": 58
+      },
+      "high_needs_spend": {
+        "label": "High needs (SEND) spending by councils",
+        "unit": "£ billion",
+        "series": {
+          "2015-16": 7.8,
+          "2023-24": 11.8,
+          "2028-29_forecast_over": 18
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Spending allowable from the high needs block of the Dedicated Schools Grant (OBR Economic and Fiscal Outlook, November 2025)",
+          "geography": "England"
+        },
+        "quote": "high needs spending has risen from £7.8 billion in 2015–16 to £11.8 billion in 2023–24. The Office for Budget Responsibility has forecast that this will rise to over £18 billion in real terms by 2028–29, with £1.7 billion (13%) real-terms growth in spending in 2025–26 alone.",
+        "page": 58,
+        "also": [
+          {
+            "quote": "Over the last decade, spending on SEND through the high needs block has nearly doubled in real terms, and can account for over half of the increase in total school funding over the period.",
+            "page": 46
+          },
+          {
+            "quote": "planned spending on high needs (excluding the early years) has risen by 54% in real terms since 2019–20.",
+            "page": 51
+          },
+          {
+            "quote": "growth in high needs spending can explain over half of the increase in overall funding since 2019–20, despite only representing about a sixth of overall spending.",
+            "page": 52
+          },
+          {
+            "quote": "The Office for Budget Responsibility (OBR) forecasts that spending on special educational needs and disabilities will have more than doubled in real terms by 2028–29 as compared with 2015–16, including real-terms growth of 13% in 2025–26.",
+            "page": 10
+          }
+        ]
+      },
+      "first_6000_threshold": {
+        "label": "The £6,000 a year that mainstream schools fund themselves for a pupil with SEND",
+        "value": 6000,
+        "unit": "£ per pupil per year",
+        "basis": {
+          "terms": "cash",
+          "geography": "England"
+        },
+        "quote": "top-ups to mainstream schools if the expected costs of extra provision for individual pupils go above £6,000 per year (which mainly just applies to pupils with Education, Health and Care Plans). The first £6,000 per year is expected to be covered from schools’ core budgets.",
+        "page": 46,
+        "also": [
+          {
+            "quote": "high needs block is meant to be ring-fenced and to fully cover schools’ costs above £6,000 per year for each pupil.",
+            "page": 47
+          }
+        ],
+        "note": "The report does not use the term 'notional SEN budget'; it describes the same rule."
+      },
+      "funding_gap_2028_29": {
+        "label": "Gap between SEND spending and funding in 2028–29",
+        "value": 6,
+        "unit": "£ billion",
+        "year": "2028–29",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "OBR forecasts imply a £6 billion gap between expected funding and spending on SEND in 2028–29.",
+        "page": 10,
+        "also": [
+          {
+            "quote": "£6 billion represents about 9% of the schools budget and about 11% of existing mainstream school budgets.",
+            "page": 10
+          },
+          {
+            "quote": "the £6 billion funding gap that is forecast is 9% of the total schools budget for 2028–29 and 11% of mainstream school spending.",
+            "page": 61
+          }
+        ]
+      },
+      "statutory_override": {
+        "label": "Councils' accumulated SEND deficits and the statutory override",
+        "value": 14,
+        "unit": "£ billion cumulative",
+        "year": "2028",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "These deficits have been allowed to build up since 2019 due to an accounting fudge known as the ‘statutory override’, which is due to end in 2028. By that year, the Office for Budget Responsibility forecasts that cumulative high needs deficits (the total debt) will have reached £14 billion in real terms.",
+        "page": 61,
+        "also": [
+          {
+            "quote": "which the OBR forecasts will equate to a total debt of £14 billion by 2027–28.",
+            "page": 47
+          },
+          {
+            "quote": "The government has indicated that local authorities will be expected to meet some but not all of these costs, but the exact shape of any support is yet to be specified",
+            "page": 61
+          }
+        ],
+        "note": "p.47 dates the £14 billion to 2027–28; p.61 to 2028. Say 'by 2028'."
+      },
+      "largest_council_deficits": {
+        "label": "Councils with the largest high needs deficits",
+        "councils": [
+          "Hampshire",
+          "Norfolk",
+          "Bournemouth, Christchurch and Poole"
+        ],
+        "basis": {
+          "terms": "n/a",
+          "geography": "England"
+        },
+        "quote": "with the largest deficits seen in Hampshire, Norfolk, and Bournemouth, Christchurch and Poole (Farquharson et al., 2025).",
+        "page": 47
+      },
+      "independent_special_schools": {
+        "label": "Independent special school places",
+        "basis": {
+          "terms": "2025–26 prices / NAO average",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "Placements in independent special schools cost on average over £60,000 a year (National Audit Office, 2024) and as a result account for over £2 billion of high needs spending despite only 6% of pupils with EHCPs attending them.",
+        "page": 59,
+        "also": [
+          {
+            "quote": "with the cost of fees nearly doubling in real terms between 2018–19 and 2024–25 and now standing at over £2 billion.",
+            "page": 10
+          }
+        ]
+      },
+      "mainstream_top_ups": {
+        "label": "Growth in top-up funding to mainstream schools",
+        "value": 1.4,
+        "unit": "£ billion real increase",
+        "year": "2018–19 to 2024–25",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "top-up funding to state-funded mainstream schools, which has grown by £1.4 billion in real terms since 2018–19.",
+        "page": 60,
+        "also": [
+          {
+            "quote": "the vast majority of ‘new’ pupils with EHCPs are in mainstream schools.",
+            "page": 60
+          }
+        ]
+      },
+      "figure_3_8_growth_2018_24": {
+        "label": "Real-terms % increase in high needs spending by category, 2018–19 to 2024–25 (Figure 3.8)",
+        "values_pct": {
+          "high_needs_place_funding": 52,
+          "top_up_state_special_schools": 73,
+          "top_up_independent_special_schools": 92,
+          "top_up_state_mainstream_schools": 77,
+          "top_up_other_independent_schools": 97,
+          "send_transport": 81,
+          "other": 43
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "page": 60,
+        "note": "Data labels on Figure 3.8."
+      },
+      "policy_changes": {
+        "label": "SEND funding policy changes",
+        "basis": {
+          "terms": "n/a",
+          "geography": "England"
+        },
+        "quote": "the government has suspended the high needs funding formula for 2026–27",
+        "page": 59,
+        "also": [
+          {
+            "quote": "In the 2025 Budget, the government announced that, from 2028–29, high needs spending would be managed within central government spending. It is not clear at all what this means in practice.",
+            "page": 60
+          },
+          {
+            "quote": "The government is set to publish a White Paper with proposals to reform the SEND system early in 2026.",
+            "page": 47
+          }
+        ],
+        "note": "The report was written before the schools White Paper was published; check what it said before repeating 'due early in 2026'."
+      }
+    },
+    "academies": {
+      "maintained_vs_academy_spend_gap": {
+        "label": "Spend per pupil: council-run (maintained) schools vs academies",
+        "year": "most recent year of data (not stated; central-spend data run to 2023–24)",
+        "primary": {
+          "gbp": 400,
+          "pct": 6
+        },
+        "secondary": {
+          "gbp": 300,
+          "pct": 4
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "School-level spending per pupil; academies exclude trust central spending",
+          "geography": "England"
+        },
+        "quote": "spending per pupil is about £400 or 6% higher in local authority maintained schools than in academies amongst primary schools, and about £300 or 4% higher amongst secondary schools.",
+        "page": 56,
+        "also": [
+          {
+            "quote": "Some of these differences will reflect the composition of each group. However, they will also reflect the fact that multi-academy trusts can hold back some funding to spend centrally across all their schools, which is known as ‘top-slicing’.",
+            "page": 56
+          }
+        ]
+      },
+      "trust_central_spend": {
+        "label": "Academy trust central spending per pupil",
+        "value": 510,
+        "unit": "£ per pupil",
+        "year": "2023–24",
+        "series": {
+          "academy_trusts": {
+            "2016-17": 240,
+            "2023-24": 510
+          },
+          "local_authorities": {
+            "2016-17": 230,
+            "2023-24": 180
+          }
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "measure": "Central spending: academy trusts (FBIT 'central services') vs councils (LA and school expenditure sections 1.1, 1.4, 1.6)",
+          "geography": "England"
+        },
+        "quote": "Since 2016–17, the amount per pupil spent centrally by academy trusts has more than doubled, from £240 to £510 (Figure 3.5), which compares with a slight decline from £230 to £180",
+        "page": 56,
+        "also": [
+          {
+            "quote": "Central spending on academies is now £510 per pupil, more than double the level in 2016–17.",
+            "page": 10
+          },
+          {
+            "quote": "Furthermore, it has increased significantly in recent years, now making up 6.5% of academy spending.",
+            "page": 56
+          },
+          {
+            "quote": "around £3.2 billion of total school spending in 2023–24 was ‘central spending’",
+            "page": 56
+          }
+        ],
+        "note": "Figure 3.5 (p.57) ends in 2023–24, so £510 is the 2023–24 figure in 2025–26 prices. p.56 also rounds it to 'about £500 per pupil'."
+      },
+      "why_central_spend_rose": {
+        "label": "Why trust central spending has grown",
+        "basis": {
+          "terms": "n/a",
+          "geography": "England"
+        },
+        "quote": "First, academy trusts have on average become larger over this period, and central spending is higher in bigger trusts. Second, even within trusts of a given size, central spending has risen",
+        "page": 57
+      },
+      "central_spend_breakdown_2023_24": {
+        "label": "Academy trust central spending by category, £ per pupil, 2023–24 (Figure 3.6)",
+        "values_gbp_per_pupil": {
+          "educational_staff": 159,
+          "administrative_staff": 157,
+          "centralised_resources": 54,
+          "other_staff_costs": 51,
+          "building_costs": 47,
+          "other": 45
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "page": 58,
+        "also": [
+          {
+            "quote": "The largest elements relate to the direct employment of administrative and educational staff by the academy trust",
+            "page": 57
+          }
+        ],
+        "note": "Data labels on Figure 3.6, matched to the legend by colour."
+      },
+      "what_top_slice_covers": {
+        "label": "What trusts' central spending covers",
+        "basis": {
+          "terms": "n/a",
+          "geography": "England"
+        },
+        "quote": "This is partly to deliver services that would otherwise be provided by councils, but they can also spend money centrally on some things that would be provided by individual maintained schools, such as teachers.",
+        "page": 10,
+        "also": [
+          {
+            "quote": "Academies and free schools are essentially treated in an identical way to local-authority-maintained schools in the same local authority.",
+            "page": 46
+          }
+        ]
+      }
+    },
+    "pupil_premium": {
+      "rates": {
+        "label": "Pupil premium rates",
+        "unit": "£ per eligible pupil per year (cash)",
+        "year": "2025–26",
+        "primary": 1515,
+        "secondary": 1075,
+        "basis": {
+          "terms": "cash",
+          "measure": "Deprivation element (free school meals in last six years)",
+          "geography": "England"
+        },
+        "quote": "with £1,515 per year for primary school pupils who have been eligible for free school meals in the last six years and £1,075 per year for such pupils in secondary schools.",
+        "page": 51
+      },
+      "real_terms_change": {
+        "label": "Pupil premium: real-terms change",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "pupil premium rates in 2025–26 are over 16% lower in real terms in 2025–26 than they were a decade earlier in 2015–16.",
+        "page": 51,
+        "also": [
+          {
+            "quote": "These pupil premium rates were frozen in cash terms between 2015–16 and 2021–22.",
+            "page": 51
+          },
+          {
+            "quote": "total pupil premium funding in 2025–26 is about 8% lower in real terms than in 2015–16 (as compared with 16% lower rates) and about the same level in real terms as in 2019–20.",
+            "page": 51
+          },
+          {
+            "quote": "The government has recently indicated that it is intending to consult about changing the measure of deprivation used in the pupil premium",
+            "page": 52
+          }
+        ]
+      }
+    },
+    "sixth_form": {
+      "school_sixth_form_funding_total": {
+        "label": "Total funding for school sixth forms",
+        "value": 3,
+        "unit": "£ billion per year",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "secondary schools receive about £3 billion per year in funding for school sixth forms, which represents a crucial component of their budgets.",
+        "page": 47,
+        "also": [
+          {
+            "quote": "This fell by about 16% in real terms between 2015–16 and 2019–20",
+            "page": 52
+          },
+          {
+            "quote": "Since 2019–20, this funding has gone up by about 24% in real terms",
+            "page": 52
+          }
+        ]
+      },
+      "per_student_2025_26": {
+        "label": "Funding per student aged 16–18 by type of provider",
+        "unit": "£ per student per year",
+        "year": "2025–26 academic year",
+        "school_sixth_forms": 6400,
+        "fe_colleges": 8000,
+        "sixth_form_colleges": 6000,
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "16–18",
+          "measure": "16–19 funding allocations per student (not actual spending)",
+          "period": "academic year starting August",
+          "geography": "England"
+        },
+        "quote": "In the 2025–26 academic year, funding per student in further education colleges is approximately £8,000, compared with £6,400 in school sixth forms and £6,000 in sixth-form colleges.",
+        "page": 69,
+        "also": [
+          {
+            "quote": "Throughout this section, we focus on funding allocated per student aged 16–18 rather than the actual expenditures.",
+            "page": 69
+          }
+        ]
+      },
+      "real_terms_change": {
+        "label": "School sixth form funding per student: real-terms change",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "16–18",
+          "period": "financial years",
+          "geography": "England"
+        },
+        "quote": "Between 2010–11 and 2019–20, real-terms funding per student aged 16–18 fell by 14% in colleges and 28% in school sixth forms.",
+        "page": 11,
+        "also": [
+          {
+            "quote": "In 2025–26, funding per student in colleges is around 8% lower than in 2010–11 and around 20% lower in school sixth forms.",
+            "page": 11
+          },
+          {
+            "quote": "real-terms funding per student is about 7% higher in sixth-form colleges and about 11% higher in school sixth forms and further education colleges than in 2019–20.",
+            "page": 70
+          },
+          {
+            "quote": "college funding per student would remain around 6% below its 2010–11 level, while school sixth-form funding would remain around 18% lower.",
+            "page": 71
+          }
+        ]
+      },
+      "outlook": {
+        "label": "16–19 funding outlook",
+        "value": 2.5,
+        "unit": "% real",
+        "year": "2025–26 to 2026–27",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "age_range": "16–19",
+          "geography": "England"
+        },
+        "quote": "this would lead to a 2.5% real-terms increase in spending per student aged 16–19 over this period.",
+        "page": 71,
+        "also": [
+          {
+            "quote": "It confirmed a real-terms increase of around £450 million in the 16–19 budget between 2025–26 and 2026–27",
+            "page": 71
+          },
+          {
+            "quote": "maintaining spending per student at its 2026–27 level in real terms would require total funding to increase by a further £150 million (in today’s prices) by 2028–29.",
+            "page": 72
+          }
+        ]
+      },
+      "providers": {
+        "label": "Number of school sixth forms",
+        "basis": {
+          "terms": "count",
+          "geography": "England"
+        },
+        "quote": "Together, there are just over 2,800 further education providers with around 2,400 school sixth forms (including academies) and around 400 further education and sixth-form colleges.",
+        "page": 68
+      }
+    },
+    "capital": {
+      "plans": {
+        "label": "School buildings (capital) budget",
+        "value": 6.8,
+        "unit": "£ billion",
+        "year": "2025–26",
+        "breakdown_gbp_million": {
+          "school_maintenance_and_repairs": 2100,
+          "school_rebuilding_programme": 1400,
+          "high_needs_provision": 740,
+          "new_free_schools": 670,
+          "new_school_places_councils": 520,
+          "other_school_programmes_about": 300,
+          "of_which_raac": 160,
+          "further_education_colleges_nearly": 1000
+        },
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "England"
+        },
+        "quote": "Out of the £6.8 billion in planned education capital spending for 2025–26, the government currently expects to spend:",
+        "page": 65,
+        "also": [
+          {
+            "quote": "the government is planning to increase education capital spending up to £8 billion in 2026–27, before it then falls back to just over £7 billion in 2027–28 and 2028–29 (all in today’s prices).",
+            "page": 65
+          }
+        ]
+      }
+    },
+    "whole_system": {
+      "uk_education_spending": {
+        "label": "Total UK public spending on education",
+        "value": 122,
+        "unit": "£ billion",
+        "year": "2024–25",
+        "basis": {
+          "terms": "real terms, 2025–26 prices",
+          "deflator": "HM Treasury GDP deflators, November 2025",
+          "geography": "UK"
+        },
+        "quote": "The latest data (for 2024–25) show that total public spending on education in the UK was £122 billion (in 2025–26 prices).",
+        "page": 8,
+        "also": [
+          {
+            "quote": "from about 5.6% of national income in 2010–11 down to about 4.1% in 2024–25.",
+            "page": 8
+          }
+        ]
+      },
+      "evidence_spending_matters": {
+        "label": "Evidence that school spending affects results",
+        "basis": {
+          "terms": "n/a",
+          "geography": "mostly US evidence"
+        },
+        "quote": "a $1,000 increase in school spending over three to four years can improve test scores by about 0.03 standard deviations (Jackson and Mackevicius, 2024).",
+        "page": 15,
+        "also": [
+          {
+            "quote": "Effects tend to be larger for children from disadvantaged backgrounds",
+            "page": 15
+          }
+        ]
+      },
+      "fe_college_deficits": {
+        "label": "Further education colleges in deficit (a comparison point for one-year deficits)",
+        "basis": {
+          "terms": "share",
+          "geography": "England"
+        },
+        "quote": "While a single year of deficit does not necessarily indicate acute financial distress, 16% of those colleges reporting deficits in 2023–24 had been in deficit for at least three consecutive years",
+        "page": 82,
+        "also": [
+          {
+            "quote": "in 2023–24 (the latest year for which data are available), 28% of colleges were operating in deficit.",
+            "page": 82
+          }
+        ],
+        "note": "About further education colleges, not schools. The report has no school-level deficit or reserve statistics."
+      }
+    }
+  },
+  "framings": {
+    "why_schools_go_into_deficit": {
+      "title": "Why schools go into deficit",
+      "text": "Most of a school's money goes on people: over 80% of schools' costs are staff costs. So when pay and other costs rise faster than funding, or a school loses pupils and the money that comes with each one, the budget is squeezed quickly and staffing is the only big thing left to cut. In 2024–25 and 2025–26, mainstream school funding per pupil grew by 2 percentage points less than school costs, partly because rising special needs costs took a large share of the extra money. A deficit usually comes from several of these pressures at once, not one bad decision.",
+      "pages": [
+        62,
+        63
+      ]
+    },
+    "one_deficit_year": {
+      "title": "What one year of overspending means",
+      "text": "Spending more than you receive in one year is not the same as being in deficit. Many schools keep savings (a reserve) and plan to use some of it, for example to cover a pay rise before funding catches up, or to keep staff while numbers dip for a year. What matters is the pattern: is the reserve still above zero, and is this the first year of overspending or the third? The IFS makes the same point about further education colleges: a single year of deficit does not necessarily mean serious financial trouble, but repeated deficits are a warning sign. On this site, 'in deficit' means the school's total reserve has gone below zero; 'heading for deficit' means it has overspent for at least two years running and, at that rate, would use up its reserve within about three years.",
+      "pages": [
+        82
+      ],
+      "note": "The IFS sentence is about colleges; the site definitions come from pipeline/money/status.py."
+    },
+    "falling_rolls": {
+      "title": "Falling pupil numbers",
+      "text": "Schools are mostly funded per pupil, so fewer pupils means less money. Costs do not fall in step: a class with a few fewer pupils still needs a teacher. Primary schools in England have already lost about 100,000 pupils (3%) between 2019–20 and 2024–25, and are expected to lose over 300,000 more (about 8%) by 2030–31. Secondary numbers are expected to start falling from about 2026–27. The IFS points out that money is only saved if schools actually reduce what they spend, such as staff or the number of schools. That is why a well-run school with falling numbers can still find its budget under pressure.",
+      "pages": [
+        19,
+        64
+      ]
+    },
+    "pass_through_grants": {
+      "title": "Grants that pass straight through",
+      "text": "Not every rise in a school's income is extra spending power. When the government raised what schools pay as employers into staff pensions and National Insurance, it gave schools grants to cover the bill. The IFS describes this as extra money to pay for extra outgoings, with no change in real resources. About £2.3 billion of the growth in school funding between 2019–20 and 2025–26 was this kind of grant. So when a school's income jumps, check whether its staff costs jumped by the same amount: the money may simply have passed through.",
+      "pages": [
+        50
+      ]
+    },
+    "send_pressure": {
+      "title": "Special educational needs (SEND) pressure",
+      "text": "Support for children with special educational needs and disabilities is the fastest-growing part of school spending. About 5.3% of pupils now have an Education, Health and Care Plan (EHCP), up from just below 3% in the past. A mainstream school is expected to pay the first £6,000 a year of extra support for a pupil from its own budget; the council tops up costs above that from its 'high needs' money. Councils' high needs budgets have run up large deficits, which the Office for Budget Responsibility expects to reach £14 billion by 2028. Since 2019, SEND has taken over half of the increase in school funding. A school with many pupils who need extra support can feel this in its core budget even if it is well run.",
+      "pages": [
+        46,
+        58,
+        61,
+        63
+      ]
+    },
+    "academy_central_top_slice": {
+      "title": "Academy trusts' central spending (the 'top-slice')",
+      "text": "Academy trusts can keep back part of their schools' funding to pay for things run centrally across the trust, such as administration, buildings or staff shared between schools. This is often called a 'top-slice'. Trusts spent £510 per pupil centrally in 2023–24 (in today's prices), more than double the £240 in 2016–17. Councils spent £180 per pupil centrally on the schools they run in 2023–24. The largest items are administrative and teaching staff employed by the trust. This means an academy's own accounts can look leaner than a council-run school's: some of the money spent on its pupils sits in the trust's accounts, not the school's.",
+      "pages": [
+        56,
+        57
+      ]
+    },
+    "real_terms": {
+      "title": "What 'real terms' means",
+      "text": "£1 buys less each year as prices rise. 'Real terms' figures adjust for this so years can be compared fairly. Like the IFS, this site adjusts using the GDP deflator, the standard measure of economy-wide inflation used for public spending, and shows money in 2025–26 prices. Schools' own costs, mostly pay, can rise faster than general inflation, so a school can be better off in real terms and still feel squeezed.",
+      "pages": [
+        7,
+        23
+      ]
+    },
+    "funding_vs_spending_per_pupil": {
+      "title": "Funding per pupil vs spending per pupil",
+      "text": "Funding is the money a school receives; spending is what it pays out. The two differ when a school adds to or draws on its savings, and because some money is spent on its pupils by someone else: the council (for example special needs top-ups and transport) or, for academies, the trust's central team. Nationally, the IFS puts total school spending at about £8,400 per pupil aged 5–18 in 2025–26, while spending by schools themselves is about £7,000 per pupil in primaries and £7,800 in secondaries (including sixth forms). Compare a school with the figure for its own phase.",
+      "pages": [
+        7,
+        10,
+        46,
+        52,
+        54
+      ]
+    },
+    "pupil_premium": {
+      "title": "Pupil premium",
+      "text": "Pupil premium is extra money for pupils from poorer families: £1,515 a year for each primary pupil and £1,075 for each secondary pupil who has had free school meals in the last six years. The rates were frozen in cash terms from 2015–16 to 2021–22 and are over 16% lower in real terms than in 2015–16.",
+      "pages": [
+        51
+      ]
+    },
+    "sixth_form_funding": {
+      "title": "Sixth-form funding",
+      "text": "Sixth forms are funded separately from the rest of a school, per student. In 2025–26, school sixth forms get about £6,400 per student, compared with about £8,000 in further education colleges. Funding per student in school sixth forms is around 20% lower in real terms than in 2010–11, which is a big reason secondary budgets have been tighter than primary ones.",
+      "pages": [
+        11,
+        55,
+        69
+      ]
+    }
+  },
+  "questions": {
+    "_placeholders": {
+      "{name}": "School name",
+      "{overseer}": "'the council' for council-run schools, the trust's name for academies",
+      "{reserve}": "Latest reserve, formatted money (e.g. £120k)",
+      "{years}": "Number of years running the school has spent more than it received"
+    },
+    "in_deficit": {
+      "when": "status == in_deficit (reserve below zero)",
+      "questions": [
+        {
+          "text": "What is the plan to get {name} back into balance, and how many years will it take? Has {overseer} agreed it?",
+          "page": null
+        },
+        {
+          "text": "What is driving the deficit: falling pupil numbers, staff costs, special needs support, or something else?",
+          "why": "Over 80% of schools' costs are staff costs.",
+          "page": 63
+        },
+        {
+          "text": "Will the recovery plan change class sizes, the subjects on offer or the number of support staff?",
+          "page": null
+        },
+        {
+          "text": "Is {overseer} giving the school extra help or a loan while it recovers?",
+          "page": null
+        },
+        {
+          "text": "How often do governors see the budget forecast, and how close were last year's forecasts to what happened?",
+          "page": null
+        }
+      ]
+    },
+    "heading_for_deficit": {
+      "when": "status == heading_for_deficit (overspent {years} years running; reserve runs out within ~3 years)",
+      "questions": [
+        {
+          "text": "{name} has spent more than it received for {years} years. Is that planned, and what does the school expect its reserve to be in three years' time?",
+          "page": null
+        },
+        {
+          "text": "What does the budget assume about pay rises and pupil numbers over the next three years?",
+          "why": "The IFS projects school costs could grow 0.5 to 1 percentage points a year faster than funding to 2028–29.",
+          "page": 11
+        },
+        {
+          "text": "If the gap does not close, what would the school cut first?",
+          "page": null
+        }
+      ]
+    },
+    "falling_rolls": {
+      "when": "Suggested site rule (not from IFS): pupils down 5% or more over the years shown, or down in each of the last three years",
+      "questions": [
+        {
+          "text": "How many pupils does {name} expect in each year group over the next three years?",
+          "why": "Primary pupil numbers in England are expected to fall by over 300,000 (about 8%) by 2030–31.",
+          "page": 19
+        },
+        {
+          "text": "Is the school planning to merge classes, share staff or work more closely with another school?",
+          "page": null
+        },
+        {
+          "text": "Has the council talked about reducing places, merging or closing schools in this area?",
+          "why": "The IFS notes savings from falling numbers only come if staff or the number of schools are reduced.",
+          "page": 64
+        },
+        {
+          "text": "Could spare space be let out or shared to bring in income?",
+          "page": null
+        }
+      ]
+    },
+    "high_send": {
+      "when": "Suggested site rule (not from IFS): EHCP share above the national 5.3%, or SEN funding a top-quarter share of income",
+      "questions": [
+        {
+          "text": "How many pupils at {name} have an EHCP or need extra support, and how is support above the first £6,000 a year funded?",
+          "why": "Mainstream schools are expected to fund the first £6,000 a year per pupil from their core budget.",
+          "page": 46
+        },
+        {
+          "text": "Does the council's top-up money arrive on time and cover what the support actually costs?",
+          "page": null
+        },
+        {
+          "text": "Is the council's high needs budget in deficit, and could that affect the school's top-ups?",
+          "why": "Councils' accumulated high needs deficits are forecast to reach £14 billion by 2028.",
+          "page": 61
+        },
+        {
+          "text": "What training do staff get in supporting pupils with special needs?",
+          "why": "The IFS says reform would likely involve building mainstream schools' ability to support pupils with high needs, for instance through more teacher training.",
+          "page": 61
+        }
+      ]
+    },
+    "academy": {
+      "when": "School is an academy or free school",
+      "questions": [
+        {
+          "text": "How much of {name}'s funding does {overseer} keep centrally each year, and what does the school get for it?",
+          "why": "Academy trusts spent £510 per pupil centrally in 2023–24 on average.",
+          "page": 56
+        },
+        {
+          "text": "Does the school's reserve figure include its share of the trust's central reserves?",
+          "page": null
+        },
+        {
+          "text": "Can the trust move money between its schools, and has this school given or received any?",
+          "page": null
+        },
+        {
+          "text": "Who sets the school's budget: the headteacher, local governors or the trust board?",
+          "page": null
+        }
+      ]
+    },
+    "large_reserves": {
+      "when": "status == large_reserves (reserve at or above 8% of income, 5% for secondaries)",
+      "questions": [
+        {
+          "text": "What is {name}'s {reserve} reserve being kept for, and is there a timetable to spend it?",
+          "page": null
+        },
+        {
+          "text": "Is any of it already committed, for example to building work or to cover a planned overspend?",
+          "page": null
+        },
+        {
+          "text": "Could some be spent on current pupils without putting future years at risk?",
+          "page": null
+        }
+      ]
+    },
+    "tight": {
+      "when": "status == tight (reserve under 3% of a year's income)",
+      "questions": [
+        {
+          "text": "With {reserve} in reserve, what would happen if costs rose faster than expected next year?",
+          "why": "Pay awards are set each year by the government after independent advice; the IFS says the picture is tight for schools if they follow forecast earnings growth.",
+          "page": 63
+        },
+        {
+          "text": "Which costs does {name} expect to rise most next year?",
+          "page": null
+        },
+        {
+          "text": "Is the budget relying on one-off grants or fundraising to balance?",
+          "page": null
+        }
+      ]
+    },
+    "any": {
+      "when": "Every school",
+      "questions": [
+        {
+          "text": "How much does the PTA (or friends' association) raise each year, and what does it pay for?",
+          "page": null
+        },
+        {
+          "text": "How does {name}'s spending per pupil compare with similar schools, and why?",
+          "why": "Nationally, primaries spend about £7,000 and secondaries about £7,800 per pupil in 2025–26.",
+          "page": 7
+        }
+      ]
+    }
+  },
+  "context_lines": {
+    "school": [
+      {
+        "id": "per_pupil_primary",
+        "use_when": "phase == primary",
+        "text": "Across England, primary schools are expected to spend about £7,000 per pupil in 2025–26.",
+        "page": 7
+      },
+      {
+        "id": "per_pupil_secondary",
+        "use_when": "phase == secondary",
+        "text": "Across England, secondary schools are expected to spend about £7,800 per pupil in 2025–26, including sixth forms.",
+        "page": 7
+      },
+      {
+        "id": "staff_share",
+        "use_when": "always",
+        "text": "Across England, over 80% of schools' costs are staff costs.",
+        "page": 63
+      },
+      {
+        "id": "costs_outpaced_funding",
+        "use_when": "status in (in_deficit, heading_for_deficit, tight)",
+        "text": "In 2024–25 and 2025–26, mainstream school funding per pupil grew by 2 percentage points less than school costs nationally.",
+        "page": 62
+      },
+      {
+        "id": "primary_rolls",
+        "use_when": "phase == primary or falling_rolls",
+        "text": "Primary pupil numbers in England are expected to fall by over 300,000 (about 8%) between 2024–25 and 2030–31.",
+        "page": 19
+      },
+      {
+        "id": "secondary_rolls",
+        "use_when": "phase == secondary",
+        "text": "Secondary pupil numbers in England are expected to fall by about 100,000 (4%) by 2030–31, starting from about 2026–27.",
+        "page": 19
+      },
+      {
+        "id": "trust_central",
+        "use_when": "academy",
+        "text": "On average, academy trusts spent £510 per pupil centrally in 2023–24, money that is not counted in their individual schools' own spending.",
+        "page": 56
+      },
+      {
+        "id": "maintained_vs_academy",
+        "use_when": "always",
+        "text": "Council-run primary schools spend about £400 (6%) more per pupil than primary academies, and council-run secondaries about £300 (4%) more, partly because trusts spend some money centrally.",
+        "page": 56
+      },
+      {
+        "id": "pupil_premium",
+        "use_when": "pupil_premium > 0",
+        "text": "Pupil premium is £1,515 a year per eligible primary pupil and £1,075 per eligible secondary pupil, over 16% lower in real terms than in 2015–16.",
+        "page": 51
+      },
+      {
+        "id": "send_first_6000",
+        "use_when": "high_send or sen_funding > 0",
+        "text": "Mainstream schools are expected to fund the first £6,000 a year of extra support for a pupil with special needs from their own budget.",
+        "page": 46
+      },
+      {
+        "id": "sixth_form_per_student",
+        "use_when": "has sixth form",
+        "text": "School sixth forms get about £6,400 per student in 2025–26, compared with about £8,000 in further education colleges.",
+        "page": 69
+      },
+      {
+        "id": "sixth_form_real_cut",
+        "use_when": "has sixth form",
+        "text": "Funding per student in school sixth forms is around 20% lower in real terms than in 2010–11.",
+        "page": 11
+      },
+      {
+        "id": "pass_through",
+        "use_when": "income rose sharply 2023–24 onwards",
+        "text": "About £2.3 billion of the rise in school funding since 2019–20 was grants to cover higher employer pension and National Insurance costs, not extra spending power.",
+        "page": 50
+      }
+    ],
+    "council": [
+      {
+        "id": "high_needs_deficits",
+        "use_when": "always",
+        "text": "Councils' special needs (high needs) budgets have been allowed to run deficits since 2019 under a 'statutory override' due to end in 2028; total deficits are forecast to reach £14 billion.",
+        "page": 61
+      },
+      {
+        "id": "high_needs_top_up",
+        "use_when": "always",
+        "text": "Councils top up a mainstream school's costs for a pupil with special needs above £6,000 a year from their high needs budget.",
+        "page": 46
+      },
+      {
+        "id": "send_transport",
+        "use_when": "always",
+        "text": "Council spending on special needs transport and assessments has more than doubled in real terms since 2019–20, up £1.1 billion.",
+        "page": 52
+      },
+      {
+        "id": "central_spend_la_vs_trust",
+        "use_when": "always",
+        "text": "Councils' central spending on the schools they run fell from £230 to £180 per pupil between 2016–17 and 2023–24, while academy trusts' rose from £240 to £510.",
+        "page": 56
+      },
+      {
+        "id": "largest_deficits",
+        "use_when": "la in (Hampshire, Norfolk, Bournemouth Christchurch and Poole)",
+        "text": "Hampshire, Norfolk, and Bournemouth, Christchurch and Poole have the largest high needs deficits in England.",
+        "page": 47
+      },
+      {
+        "id": "formula_tweaks",
+        "use_when": "always",
+        "text": "Councils can adjust the national funding formula for schools in their area, but cannot make big or complicated changes.",
+        "page": 46
+      },
+      {
+        "id": "london_falling_rolls",
+        "use_when": "London borough",
+        "text": "In London, rapid falls in primary pupil numbers over the last 10 years have come with fewer teachers but not much change in the number of schools.",
+        "page": 21
+      },
+      {
+        "id": "ehcp_share",
+        "use_when": "always",
+        "text": "About 5.3% of pupils in England now have an EHCP, up from just below 3% historically.",
+        "page": 58
+      },
+      {
+        "id": "independent_special",
+        "use_when": "always",
+        "text": "Independent special school places cost on average over £60,000 a year and take over £2 billion of high needs spending, for only 6% of pupils with EHCPs.",
+        "page": 59
+      }
+    ],
+    "national": [
+      {
+        "id": "core_budget",
+        "text": "The core schools budget for England is about £65 billion in 2025–26.",
+        "page": 46
+      },
+      {
+        "id": "per_pupil_back_to_2010",
+        "text": "Total school spending per pupil fell by 10% in real terms between 2010–11 and 2019–20 and is now back to its 2010–11 level.",
+        "page": 9
+      },
+      {
+        "id": "send_took_half",
+        "text": "Over half of the increase in school funding since 2019–20 can be explained by growth in spending on special educational needs.",
+        "page": 10
+      },
+      {
+        "id": "mainstream_flat",
+        "text": "Mainstream school spending per pupil is about the same as in 2015–16 in real terms.",
+        "page": 10
+      },
+      {
+        "id": "outlook_3pct",
+        "text": "The core schools budget is planned to be flat in real terms to 2028–29; with falling pupil numbers, that is about a 3% real-terms rise per pupil over three years.",
+        "page": 62
+      },
+      {
+        "id": "send_gap",
+        "text": "The OBR forecasts a £6 billion gap between SEND spending and funding in 2028–29, about 9% of the schools budget.",
+        "page": 10
+      },
+      {
+        "id": "costs_outlook",
+        "text": "If mainstream funding per pupil only keeps pace with inflation, school costs are projected to grow 0.5 to 1 percentage points a year faster than funding.",
+        "page": 11
+      },
+      {
+        "id": "secondary_primary_gap",
+        "text": "Secondary schools now spend only about 12% more per pupil than primaries, down from about 30% in the 2000s.",
+        "page": 10
+      },
+      {
+        "id": "pupil_premium_real",
+        "text": "Pupil premium rates are over 16% lower in real terms than in 2015–16.",
+        "page": 51
+      },
+      {
+        "id": "education_share_gdp",
+        "text": "UK public spending on education is about 4.1% of national income, down from about 5.6% in 2010–11.",
+        "page": 8
+      }
+    ]
+  },
+  "not_in_report": [
+    "PTA, PTFA or other voluntary and donated income to schools",
+    "School-level reserves, surpluses or deficits (only council high needs deficits and FE college deficits)",
+    "Self-generated income (lettings, catering, trading)",
+    "Per-school or per-council funding figures (all figures are national, except the three councils named for high needs deficits)",
+    "Absolute £ per pupil levels for the core schools budget (only real-terms % changes are stated in the text)"
+  ],
+  "discrepancies": [
+    {
+      "topic": "Real-terms rise in funding per pupil 2025–26 to 2028–29",
+      "detail": "4% on p.54 vs 3% on pp.62 and 66 (3% includes the £400m free school meals funding). Use 3%."
+    },
+    {
+      "topic": "Timing of £14 billion cumulative high needs deficits",
+      "detail": "'by 2027–28' on p.47 vs 'by 2028' (end of statutory override) on p.61."
+    },
+    {
+      "topic": "Trust central spending",
+      "detail": "£510 per pupil (pp.10, 56) vs 'about £500' (p.56)."
+    }
+  ]
+}

@@ -1,0 +1,2421 @@
+{
+  "pupils": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "No Pupils",
+      "excel_row": 3,
+      "col": 13
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "No Pupils",
+      "excel_row": 4,
+      "col": 13
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "No Pupils",
+      "excel_row": 3,
+      "col": 13
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Full time equivalent number of pupils in school",
+      "excel_row": 3,
+      "col": 13,
+      "note": "School-level FTE; the next column is the federation-wide FTE."
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Full time equivalent number of pupils in school",
+      "excel_row": 3,
+      "col": 13,
+      "note": "School-level FTE; the next column is the federation-wide FTE."
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "No pupils",
+      "excel_row": 1,
+      "col": 7
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "No pupils",
+      "excel_row": 1,
+      "col": 7
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "No pupils (including dual registrations)",
+      "excel_row": 1,
+      "col": 7,
+      "note": "Now includes dual registrations."
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "No Pupils",
+      "excel_row": 3,
+      "col": 16
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No Pupils",
+      "excel_row": 3,
+      "col": 16
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No Pupils",
+      "excel_row": 3,
+      "col": 16
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Number of pupils in academy (FTE)",
+      "excel_row": 3,
+      "col": 16
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Number of pupils in academy (FTE)",
+      "excel_row": 3,
+      "col": 16
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Number of pupils in academy (FTE)",
+      "excel_row": 2,
+      "col": 15
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Number of pupils in academy (FTE) plus dual subsidiary registrations",
+      "excel_row": 2,
+      "col": 15,
+      "note": "Now includes dual subsidiary registrations."
+    }
+  },
+  "fsm_pct": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 14
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 4,
+      "col": 14
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 14
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 15
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 15
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 1,
+      "col": 9
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 1,
+      "col": 9
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 1,
+      "col": 9
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 26
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 26
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 26
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 28
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 3,
+      "col": 28,
+      "note": "Suspect year: academy median 16.3 vs 20.3 (2021-22) and 22.1 (2023-24); values up to 646.2. Validate before use."
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 2,
+      "col": 27
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "% of pupils eligible for FSM",
+      "excel_row": 2,
+      "col": 27
+    }
+  },
+  "ehcp_pct": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "% of pupils with SEN Statement",
+      "excel_row": 3,
+      "col": 22,
+      "note": "Label still says 'SEN Statement' (statements were replaced by EHC plans); same measure as the later '% of pupils with EHCP'."
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "% of pupils with SEN Statement",
+      "excel_row": 4,
+      "col": 22,
+      "note": "Label still says 'SEN Statement' (statements were replaced by EHC plans); same measure as the later '% of pupils with EHCP'."
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "% of pupils with EHCP",
+      "excel_row": 3,
+      "col": 23
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "% of pupils with EHCP",
+      "excel_row": 3,
+      "col": 24
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "% of pupils with EHCP",
+      "excel_row": 3,
+      "col": 24
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils with EHCP",
+      "excel_row": 1,
+      "col": 11
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils with EHCP",
+      "excel_row": 1,
+      "col": 11
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "% of pupils with EHCP",
+      "excel_row": 1,
+      "col": 11
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "% of pupils with SEN Statement",
+      "excel_row": 3,
+      "col": 27,
+      "note": "Label still says 'SEN Statement' (statements were replaced by EHC plans); same measure as the later '% of pupils with EHCP'."
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils with SEN Statement",
+      "excel_row": 3,
+      "col": 27,
+      "note": "Label still says 'SEN Statement' (statements were replaced by EHC plans); same measure as the later '% of pupils with EHCP'."
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils with EHCP",
+      "excel_row": 3,
+      "col": 27
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils with an EHCP",
+      "excel_row": 3,
+      "col": 29
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "% of pupils with an EHCP",
+      "excel_row": 3,
+      "col": 29
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "% of pupils with EHCP",
+      "excel_row": 2,
+      "col": 28
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "% of pupils with EHCP",
+      "excel_row": 2,
+      "col": 28
+    }
+  },
+  "sixth_form_pupils": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 29
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "No of pupils in 6th form",
+      "excel_row": 4,
+      "col": 29
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 30
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 31
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 31
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Number of pupils in 6th form",
+      "excel_row": 1,
+      "col": 14
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Number of pupils in 6th form",
+      "excel_row": 1,
+      "col": 14,
+      "note": "Column is present but 0 for all 10,702 rows: treat as missing, not zero."
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Number of pupils in 6th form",
+      "excel_row": 1,
+      "col": 14
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 34
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 34
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 34
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 34
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "No of pupils in 6th form",
+      "excel_row": 3,
+      "col": 34
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "No of pupils in 6th form",
+      "excel_row": 2,
+      "col": 33
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "No of pupils in 6th form",
+      "excel_row": 2,
+      "col": 33
+    }
+  },
+  "grant_funding": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "Grant Funding",
+      "excel_row": 3,
+      "col": 105,
+      "note": "Formula note above the header reads '(I01:I07) + I15 + I16 + I17' but values equal I01:I07 + I15 + I16 + I18."
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "Grant Funding",
+      "excel_row": 4,
+      "col": 100,
+      "note": "Formula note above the header reads '(I01:I07) + I15 + I16 + I17' but values equal I01:I07 + I15 + I16 + I18."
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "excel_row": 3,
+      "col": 106
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "excel_row": 3,
+      "col": 108
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "excel_row": 3,
+      "col": 108
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "excel_row": 1,
+      "col": 97
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "excel_row": 1,
+      "col": 105
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Grant Funding: (I01:I07) + I15 + I16",
+      "excel_row": 1,
+      "col": 101,
+      "note": "I18 additional grants line removed; those grants now appear in I06 Other government grants (I06 total rose from GBP 142m in 2024-25 to GBP 662m)."
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Grant Funding",
+      "excel_row": 3,
+      "col": 84,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Grant Funding",
+      "excel_row": 3,
+      "col": 85,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Grant Funding",
+      "excel_row": 3,
+      "col": 85,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Grant Funding",
+      "excel_row": 3,
+      "col": 86,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Grant Funding",
+      "excel_row": 3,
+      "col": 86,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Grant Funding",
+      "excel_row": 2,
+      "col": 84,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Grant Funding",
+      "excel_row": 2,
+      "col": 88,
+      "note": "Includes Government source (non-grant), Academies and Non-Government income. For a government-only figure subtract non_government_grants and income_from_academies."
+    }
+  },
+  "sen_funding": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I03 SEN funding",
+      "excel_row": 3,
+      "col": 36
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I03 SEN funding",
+      "excel_row": 4,
+      "col": 32
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I03 SEN funding",
+      "excel_row": 3,
+      "col": 34
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I03 SEN funding",
+      "excel_row": 3,
+      "col": 35
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I03 SEN funding",
+      "excel_row": 3,
+      "col": 35
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I03 SEN funding",
+      "excel_row": 1,
+      "col": 24
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I03 SEN funding",
+      "excel_row": 1,
+      "col": 24
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I03 SEN funding",
+      "excel_row": 1,
+      "col": 23
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "SEN",
+      "excel_row": 3,
+      "col": 38
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "SEN",
+      "excel_row": 3,
+      "col": 38
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "SEN",
+      "excel_row": 3,
+      "col": 38
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "SEN funding",
+      "excel_row": 3,
+      "col": 40
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "SEN funding",
+      "excel_row": 3,
+      "col": 40
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "SEN funding",
+      "excel_row": 2,
+      "col": 38
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "SEN funding",
+      "excel_row": 2,
+      "col": 39
+    }
+  },
+  "pupil_premium": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I05 Pupil Premium",
+      "excel_row": 3,
+      "col": 38
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I05 Pupil Premium",
+      "excel_row": 4,
+      "col": 34
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I05 Pupil Premium",
+      "excel_row": 3,
+      "col": 36
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I05 Pupil Premium",
+      "excel_row": 3,
+      "col": 37
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I05 Pupil Premium",
+      "excel_row": 3,
+      "col": 37
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I05 Pupil premium",
+      "excel_row": 1,
+      "col": 26
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I05 Pupil premium",
+      "excel_row": 1,
+      "col": 26
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I05 Pupil premium",
+      "excel_row": 1,
+      "col": 25
+    },
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "self_generated_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "Self Generated Funding",
+      "excel_row": 3,
+      "col": 109
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "Self Generated Funding",
+      "excel_row": 4,
+      "col": 104
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 3,
+      "col": 110
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 3,
+      "col": 112
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 3,
+      "col": 112
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 1,
+      "col": 101
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 1,
+      "col": 109
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "excel_row": 1,
+      "col": 105
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Self Generated Funding",
+      "excel_row": 3,
+      "col": 88
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Self Generated Funding",
+      "excel_row": 3,
+      "col": 89
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Self Generated Funding",
+      "excel_row": 3,
+      "col": 89
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Self Generated Funding",
+      "excel_row": 3,
+      "col": 90
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Self Generated Funding",
+      "excel_row": 3,
+      "col": 90
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Self Generated Funding",
+      "excel_row": 2,
+      "col": 87
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Self Generated Funding",
+      "excel_row": 2,
+      "col": 92
+    }
+  },
+  "donations_revenue": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 3,
+      "col": 46
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 4,
+      "col": 42
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 3,
+      "col": 46
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 3,
+      "col": 47
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 3,
+      "col": 47
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 1,
+      "col": 36
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 1,
+      "col": 36
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I13 Donations and/or private funds",
+      "excel_row": 1,
+      "col": 35
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 3,
+      "col": 47,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 3,
+      "col": 48,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 3,
+      "col": 48,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 3,
+      "col": 49,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 3,
+      "col": 49,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 2,
+      "col": 47,
+      "note": "Revenue donations only; academies' capital donations are not in this download."
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Donations and/or voluntary funds",
+      "excel_row": 2,
+      "col": 51
+    }
+  },
+  "donations_capital": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 3,
+      "col": 92
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 4,
+      "col": 87
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 3,
+      "col": 93
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 3,
+      "col": 94
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 3,
+      "col": 94
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 1,
+      "col": 83
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 1,
+      "col": 87
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "CI03 Voluntary or private income",
+      "excel_row": 1,
+      "col": 83
+    },
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "facilities_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I08 Income from facilities and services",
+      "excel_row": 3,
+      "col": 41
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I08 Income from facilities and services",
+      "excel_row": 4,
+      "col": 37
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 3,
+      "col": 41
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 3,
+      "col": 42
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 3,
+      "col": 42
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 1,
+      "col": 31
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 1,
+      "col": 31
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a/b Total income from facilities and services",
+      "excel_row": 1,
+      "col": 30
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Income from facilities and services",
+      "excel_row": 3,
+      "col": 44
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from facilities and services",
+      "excel_row": 3,
+      "col": 45
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from facilities and services",
+      "excel_row": 3,
+      "col": 45
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "All income from facilities and services",
+      "excel_row": 3,
+      "col": 46
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "All income from facilities and services",
+      "excel_row": 3,
+      "col": 46
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "All income from facilities and services",
+      "excel_row": 2,
+      "col": 44
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": null,
+      "excel_row": 2,
+      "sum_of": [
+        "Income from rentals and lettings",
+        "Income from facilities and services - other"
+      ],
+      "cols": [
+        46,
+        47
+      ],
+      "note": "No total column this year: sum the two listed columns (BAI100 + BAI101)."
+    }
+  },
+  "lettings_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I08a Income from lettings",
+      "excel_row": 3,
+      "col": 39
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I08a Income from lettings",
+      "excel_row": 3,
+      "col": 40
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I08a Income from lettings",
+      "excel_row": 3,
+      "col": 40
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a Income from lettings",
+      "excel_row": 1,
+      "col": 29
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a Income from lettings",
+      "excel_row": 1,
+      "col": 29
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I08a Income from lettings",
+      "excel_row": 1,
+      "col": 28
+    },
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Income from rentals and lettings",
+      "excel_row": 2,
+      "col": 46,
+      "note": "First AAR year that splits lettings (BAI100) out of facilities income."
+    }
+  },
+  "community_facilities_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 3,
+      "col": 49
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 4,
+      "col": 45
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 3,
+      "col": 49
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 3,
+      "col": 50
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 3,
+      "col": 50
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 1,
+      "col": 39
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 1,
+      "col": 39
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I17 Community focused school facilities income",
+      "excel_row": 1,
+      "col": 38
+    },
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "catering_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I09 Income from catering",
+      "excel_row": 3,
+      "col": 42
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I09 Income from catering",
+      "excel_row": 4,
+      "col": 38
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I09 Income from catering",
+      "excel_row": 3,
+      "col": 42
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I09 Income from catering",
+      "excel_row": 3,
+      "col": 43
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I09 Income from catering",
+      "excel_row": 3,
+      "col": 43
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I09 Income from catering",
+      "excel_row": 1,
+      "col": 32
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I09 Income from catering",
+      "excel_row": 1,
+      "col": 32
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I09 Income from catering",
+      "excel_row": 1,
+      "col": 31
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Income from catering",
+      "excel_row": 3,
+      "col": 45
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from catering",
+      "excel_row": 3,
+      "col": 46
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from catering",
+      "excel_row": 3,
+      "col": 46
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from catering",
+      "excel_row": 3,
+      "col": 47
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Income from catering",
+      "excel_row": 3,
+      "col": 47
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Income from catering",
+      "excel_row": 2,
+      "col": 45
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Income from catering",
+      "excel_row": 2,
+      "col": 48
+    }
+  },
+  "teacher_pension_ni_grants": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "cfr_additional_grants_i18": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "I18 Additional grant for schools",
+      "excel_row": 3,
+      "col": 50
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "I18 Additional grant for schools",
+      "excel_row": 4,
+      "col": 46
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "I18 Total additional grant for schools",
+      "excel_row": 3,
+      "col": 54
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "I18 Total additional grant for schools",
+      "excel_row": 3,
+      "col": 55
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "I18 Total additional grant for schools",
+      "excel_row": 3,
+      "col": 55
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I18 Total additional grant for schools",
+      "excel_row": 1,
+      "col": 44
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "I18 Total additional grant for schools",
+      "excel_row": 1,
+      "col": 42
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": null,
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": null,
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "aar_other_dfe_revenue_grants": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Other DfE/EFA Revenue Grants",
+      "excel_row": 3,
+      "col": 39
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Other DfE/EFA Revenue Grants",
+      "excel_row": 3,
+      "col": 39
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Other DfE/EFA Revenue Grants",
+      "excel_row": 3,
+      "col": 39
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Other DfE/EFA Revenue Grants",
+      "excel_row": 3,
+      "col": 41
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Other DfE/EFA Revenue Grants",
+      "excel_row": 3,
+      "col": 41
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Other DfE/ESFA Revenue Grants",
+      "excel_row": 2,
+      "col": 39
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Other DfE Revenue Grants",
+      "excel_row": 2,
+      "col": 40
+    }
+  },
+  "non_government_grants": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Non- Government",
+      "excel_row": 3,
+      "col": 43
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Non-Government",
+      "excel_row": 3,
+      "col": 44
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Non- Government",
+      "excel_row": 3,
+      "col": 44
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Non-Government",
+      "excel_row": 3,
+      "col": 45
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Non-Government",
+      "excel_row": 3,
+      "col": 45
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Non-Government",
+      "excel_row": 2,
+      "col": 43
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Non-Government",
+      "excel_row": 2,
+      "col": 45
+    }
+  },
+  "income_from_academies": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Academies",
+      "excel_row": 3,
+      "col": 42
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Academies",
+      "excel_row": 3,
+      "col": 43
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Academies",
+      "excel_row": 3,
+      "col": 43
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Academies",
+      "excel_row": 3,
+      "col": 44
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Academies",
+      "excel_row": 3,
+      "col": 44
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Academies",
+      "excel_row": 2,
+      "col": 42
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Academies",
+      "excel_row": 2,
+      "col": 44
+    }
+  },
+  "total_income": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 110,
+      "note": "Sum of I01:I18; E30 is NOT subtracted (from 2020-21 the total is I01:I18 - E30)."
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "Total Income",
+      "excel_row": 4,
+      "col": 105,
+      "note": "Sum of I01:I18; E30 is NOT subtracted (from 2020-21 the total is I01:I18 - E30)."
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "Total Income: I01:I18 - E30",
+      "excel_row": 3,
+      "col": 111
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Total Income: I01:I18 - E30",
+      "excel_row": 3,
+      "col": 113
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Total Income: I01:I18 - E30",
+      "excel_row": 3,
+      "col": 113
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Income: I01:I18 - E30",
+      "excel_row": 1,
+      "col": 102
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Income: I01:I18 - E30",
+      "excel_row": 1,
+      "col": 110
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Income: I01:I17 - E30",
+      "excel_row": 1,
+      "col": 106
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 89
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 90
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 90
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 91
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Income",
+      "excel_row": 3,
+      "col": 91
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Income",
+      "excel_row": 2,
+      "col": 88
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Income",
+      "excel_row": 2,
+      "col": 93
+    }
+  },
+  "total_staff_costs": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "Staff Total",
+      "excel_row": 3,
+      "col": 113
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "Staff Total",
+      "excel_row": 4,
+      "col": 108
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 3,
+      "col": 116
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 3,
+      "col": 118
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 3,
+      "col": 118
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 1,
+      "col": 107
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 1,
+      "col": 115
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Staff Total: (E01:E03) + E05 + (E07: E11) + E26",
+      "excel_row": 1,
+      "col": 111
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Staff Total",
+      "excel_row": 3,
+      "col": 92
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Staff Total",
+      "excel_row": 3,
+      "col": 93
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Staff Total",
+      "excel_row": 3,
+      "col": 93
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Staff Costs",
+      "excel_row": 3,
+      "col": 94
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Staff Costs",
+      "excel_row": 3,
+      "col": 94
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Staff Costs",
+      "excel_row": 2,
+      "col": 91
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Staff Costs",
+      "excel_row": 2,
+      "col": 96
+    }
+  },
+  "teaching_staff_costs": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "E01 Teaching Staff",
+      "excel_row": 3,
+      "col": 53
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "E01 Teaching Staff",
+      "excel_row": 4,
+      "col": 49
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "E01 Teaching Staff",
+      "excel_row": 3,
+      "col": 55
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "E01 Teaching Staff",
+      "excel_row": 3,
+      "col": 56
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "E01 Teaching Staff",
+      "excel_row": 3,
+      "col": 56
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E01 Teaching staff",
+      "excel_row": 1,
+      "col": 45
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E01 Teaching staff",
+      "excel_row": 1,
+      "col": 43
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E01 Teaching staff",
+      "excel_row": 1,
+      "col": 39
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Teaching staff",
+      "excel_row": 3,
+      "col": 50
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Teaching staff",
+      "excel_row": 3,
+      "col": 51
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Teaching staff",
+      "excel_row": 3,
+      "col": 51
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Teaching staff",
+      "excel_row": 3,
+      "col": 52
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Teaching staff",
+      "excel_row": 3,
+      "col": 52
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Teaching staff",
+      "excel_row": 2,
+      "col": 50
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Teaching staff",
+      "excel_row": 2,
+      "col": 53
+    }
+  },
+  "education_support_staff_costs": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "E03 Education support staff",
+      "excel_row": 3,
+      "col": 55
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "E03 Education support staff",
+      "excel_row": 4,
+      "col": 51
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "E03 Education support staff",
+      "excel_row": 3,
+      "col": 57
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "E03 Education support staff",
+      "excel_row": 3,
+      "col": 58
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "E03 Education support staff",
+      "excel_row": 3,
+      "col": 58
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E03 Education support staff",
+      "excel_row": 1,
+      "col": 47
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E03 Education support staff",
+      "excel_row": 1,
+      "col": 45
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "E03 Education support staff",
+      "excel_row": 1,
+      "col": 41
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Education support staff",
+      "excel_row": 3,
+      "col": 52
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Education support staff",
+      "excel_row": 3,
+      "col": 53
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Education support staff",
+      "excel_row": 3,
+      "col": 53
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Education support staff",
+      "excel_row": 3,
+      "col": 54
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Education support staff",
+      "excel_row": 3,
+      "col": 54
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Education support staff",
+      "excel_row": 2,
+      "col": 52
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Education support staff",
+      "excel_row": 2,
+      "col": 55
+    }
+  },
+  "total_expenditure": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 123,
+      "note": "Sum of E01:E32 including E30 (from 2020-21 E30 is excluded)."
+    },
+    "CFR_2019-20_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 3,
+      "label": "Total Expenditure",
+      "excel_row": 4,
+      "col": 118,
+      "note": "Sum of E01:E32 including E30 (from 2020-21 E30 is excluded)."
+    },
+    "CFR_2020-21_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Output",
+      "header_row": 2,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 3,
+      "col": 125
+    },
+    "CFR_2021-22_Full_Data_Workbook.xlsx": {
+      "sheet": "CFRData",
+      "header_row": 2,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 3,
+      "col": 127
+    },
+    "CFR_2022-23_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR_Data",
+      "header_row": 1,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 3,
+      "col": 127
+    },
+    "CFR_2023-24_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 1,
+      "col": 116
+    },
+    "CFR_2024-25_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 1,
+      "col": 124
+    },
+    "CFR_2025-26_Full_Data_Workbook.xlsx": {
+      "sheet": "CFR Data",
+      "header_row": 0,
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "excel_row": 1,
+      "col": 120
+    },
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 101
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 102
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 101
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 102
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 102
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Expenditure",
+      "excel_row": 2,
+      "col": 99
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Total Expenditure",
+      "excel_row": 2,
+      "col": 104
+    }
+  },
+  "company_number": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Academies 2018 to 19",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 10
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 10
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 10
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 10
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 10
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Company Number",
+      "excel_row": 2,
+      "col": 9
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Academies",
+      "header_row": 1,
+      "label": "Company Number",
+      "excel_row": 2,
+      "col": 9
+    }
+  },
+  "trust_central_spend_per_pupil": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Central Services 2018 to 19",
+      "header_row": 2,
+      "label": "Trust Total Exp per pupil",
+      "excel_row": 3,
+      "col": 72,
+      "note": "Central services Total Expenditure / Total number of Pupils in the trust. Join to academies on Company Number. Other years: derive from trust_central_total_expenditure / trust_central_pupils."
+    },
+    "AAR_2019-20_download.xlsx": null,
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Trust Total Exp per pupil",
+      "excel_row": 3,
+      "col": 72,
+      "note": "Central services Total Expenditure / Total number of Pupils in the trust. Join to academies on Company Number. Other years: derive from trust_central_total_expenditure / trust_central_pupils."
+    },
+    "AAR_2021-22_download.xlsx": null,
+    "AAR_2022-23_download.xlsx": null,
+    "AAR_2023-24_download.xlsx": null,
+    "AAR_2024-25_download.xlsx": null
+  },
+  "trust_central_total_expenditure": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Central Services 2018 to 19",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 71
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 71
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 71
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 81
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total Expenditure",
+      "excel_row": 3,
+      "col": 80
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Total Expenditure",
+      "excel_row": 2,
+      "col": 77
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Total Expenditure",
+      "excel_row": 2,
+      "col": 79
+    }
+  },
+  "trust_central_pupils": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Central Services 2018 to 19",
+      "header_row": 2,
+      "label": "Total number of Pupils",
+      "excel_row": 3,
+      "col": 50
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total Pupils",
+      "excel_row": 3,
+      "col": 50
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total number of Pupils",
+      "excel_row": 3,
+      "col": 51
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total number of Pupils",
+      "excel_row": 3,
+      "col": 61
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Total number of Pupils",
+      "excel_row": 3,
+      "col": 60
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Total number of Pupils",
+      "excel_row": 2,
+      "col": 58
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Total number of Pupils",
+      "excel_row": 2,
+      "col": 59,
+      "note": "A second column, 'Number of pupils at end of period based on time in trust', sits next to this one."
+    }
+  },
+  "trust_central_company_number": {
+    "CFR_2018-19_Full_Data_Workbook.xlsx": null,
+    "CFR_2019-20_Full_Data_Workbook.xlsx": null,
+    "CFR_2020-21_Full_Data_Workbook.xlsx": null,
+    "CFR_2021-22_Full_Data_Workbook.xlsx": null,
+    "CFR_2022-23_Full_Data_Workbook.xlsx": null,
+    "CFR_2023-24_Full_Data_Workbook.xlsx": null,
+    "CFR_2024-25_Full_Data_Workbook.xlsx": null,
+    "CFR_2025-26_Full_Data_Workbook.xlsx": null,
+    "AAR_2018-19_download.xlsx": {
+      "sheet": "Central Services 2018 to 19",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 3
+    },
+    "AAR_2019-20_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 3
+    },
+    "AAR_2020-21_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 3
+    },
+    "AAR_2021-22_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 3
+    },
+    "AAR_2022-23_download.xlsx": {
+      "sheet": "CentralServices",
+      "header_row": 2,
+      "label": "Company Number",
+      "excel_row": 3,
+      "col": 3
+    },
+    "AAR_2023-24_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Company Number",
+      "excel_row": 2,
+      "col": 2
+    },
+    "AAR_2024-25_download.xlsx": {
+      "sheet": "Central Services",
+      "header_row": 1,
+      "label": "Company Number",
+      "excel_row": 2,
+      "col": 2
+    }
+  }
+}
