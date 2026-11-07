@@ -1,0 +1,2717 @@
+{
+ "E14001063": {
+  "name": "Aldershot",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001064": {
+  "name": "Aldridge-Brownhills",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001065": {
+  "name": "Altrincham and Sale West",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001066": {
+  "name": "Amber Valley",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001067": {
+  "name": "Arundel and South Downs",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001068": {
+  "name": "Ashfield",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001069": {
+  "name": "Ashford",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001070": {
+  "name": "Ashton-under-Lyne",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001071": {
+  "name": "Aylesbury",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001072": {
+  "name": "Banbury",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001073": {
+  "name": "Barking",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001074": {
+  "name": "Barnsley North",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001075": {
+  "name": "Barnsley South",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001076": {
+  "name": "Barrow and Furness",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001077": {
+  "name": "Basildon and Billericay",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001078": {
+  "name": "Basingstoke",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001079": {
+  "name": "Bassetlaw",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001080": {
+  "name": "Bath",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001081": {
+  "name": "Battersea",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001082": {
+  "name": "Beaconsfield",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001083": {
+  "name": "Beckenham and Penge",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001084": {
+  "name": "Bedford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001085": {
+  "name": "Bermondsey and Old Southwark",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001086": {
+  "name": "Bethnal Green and Stepney",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001087": {
+  "name": "Beverley and Holderness",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001088": {
+  "name": "Bexhill and Battle",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001089": {
+  "name": "Bexleyheath and Crayford",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001090": {
+  "name": "Bicester and Woodstock",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001091": {
+  "name": "Birkenhead",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001092": {
+  "name": "Birmingham Edgbaston",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001093": {
+  "name": "Birmingham Erdington",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001094": {
+  "name": "Birmingham Hall Green and Moseley",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001095": {
+  "name": "Birmingham Hodge Hill and Solihull North",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001096": {
+  "name": "Birmingham Ladywood",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001097": {
+  "name": "Birmingham Northfield",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001098": {
+  "name": "Birmingham Perry Barr",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001099": {
+  "name": "Birmingham Selly Oak",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001100": {
+  "name": "Birmingham Yardley",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001101": {
+  "name": "Bishop Auckland",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001102": {
+  "name": "Blackburn",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001103": {
+  "name": "Blackley and Middleton South",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001104": {
+  "name": "Blackpool North and Fleetwood",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001105": {
+  "name": "Blackpool South",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001106": {
+  "name": "Blaydon and Consett",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001107": {
+  "name": "Blyth and Ashington",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001108": {
+  "name": "Bognor Regis and Littlehampton",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001109": {
+  "name": "Bolsover",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001110": {
+  "name": "Bolton North East",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001111": {
+  "name": "Bolton South and Walkden",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001112": {
+  "name": "Bolton West",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001113": {
+  "name": "Bootle",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001114": {
+  "name": "Boston and Skegness",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001115": {
+  "name": "Bournemouth East",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001116": {
+  "name": "Bournemouth West",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001117": {
+  "name": "Bracknell",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001118": {
+  "name": "Bradford East",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001119": {
+  "name": "Bradford South",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001120": {
+  "name": "Bradford West",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001121": {
+  "name": "Braintree",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001122": {
+  "name": "Brent East",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001123": {
+  "name": "Brent West",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001124": {
+  "name": "Brentford and Isleworth",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001125": {
+  "name": "Brentwood and Ongar",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001126": {
+  "name": "Bridgwater",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001127": {
+  "name": "Bridlington and The Wolds",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001128": {
+  "name": "Brigg and Immingham",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001129": {
+  "name": "Brighton Kemptown and Peacehaven",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001130": {
+  "name": "Brighton Pavilion",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001131": {
+  "name": "Bristol Central",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001132": {
+  "name": "Bristol East",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001133": {
+  "name": "Bristol North East",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001134": {
+  "name": "Bristol North West",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001135": {
+  "name": "Bristol South",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001136": {
+  "name": "Broadland and Fakenham",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001137": {
+  "name": "Bromley and Biggin Hill",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001138": {
+  "name": "Bromsgrove",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001139": {
+  "name": "Broxbourne",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001140": {
+  "name": "Broxtowe",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001141": {
+  "name": "Buckingham and Bletchley",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001142": {
+  "name": "Burnley",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001143": {
+  "name": "Burton and Uttoxeter",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001144": {
+  "name": "Bury North",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001145": {
+  "name": "Bury South",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001146": {
+  "name": "Bury St Edmunds and Stowmarket",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001147": {
+  "name": "Calder Valley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001148": {
+  "name": "Camborne and Redruth",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001149": {
+  "name": "Cambridge",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001150": {
+  "name": "Cannock Chase",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001151": {
+  "name": "Canterbury",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001152": {
+  "name": "Carlisle",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001153": {
+  "name": "Carshalton and Wallington",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001154": {
+  "name": "Castle Point",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001155": {
+  "name": "Central Devon",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001156": {
+  "name": "Central Suffolk and North Ipswich",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001157": {
+  "name": "Chatham and Aylesford",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001158": {
+  "name": "Cheadle",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001159": {
+  "name": "Chelmsford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001160": {
+  "name": "Chelsea and Fulham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001161": {
+  "name": "Cheltenham",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001162": {
+  "name": "Chesham and Amersham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001163": {
+  "name": "Chester North and Neston",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001164": {
+  "name": "Chester South and Eddisbury",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001165": {
+  "name": "Chesterfield",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001166": {
+  "name": "Chichester",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001167": {
+  "name": "Chingford and Woodford Green",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001168": {
+  "name": "Chippenham",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001169": {
+  "name": "Chipping Barnet",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001170": {
+  "name": "Chorley",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001171": {
+  "name": "Christchurch",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001172": {
+  "name": "Cities of London and Westminster",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001173": {
+  "name": "City of Durham",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001174": {
+  "name": "Clacton",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001175": {
+  "name": "Clapham and Brixton Hill",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001176": {
+  "name": "Colchester",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001177": {
+  "name": "Colne Valley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001178": {
+  "name": "Congleton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001179": {
+  "name": "Corby and East Northamptonshire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001180": {
+  "name": "Coventry East",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001181": {
+  "name": "Coventry North West",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001182": {
+  "name": "Coventry South",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001183": {
+  "name": "Cramlington and Killingworth",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001184": {
+  "name": "Crawley",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001185": {
+  "name": "Crewe and Nantwich",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001186": {
+  "name": "Croydon East",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001187": {
+  "name": "Croydon South",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001188": {
+  "name": "Croydon West",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001189": {
+  "name": "Dagenham and Rainham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001190": {
+  "name": "Darlington",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001191": {
+  "name": "Dartford",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001192": {
+  "name": "Daventry",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001193": {
+  "name": "Derby North",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001194": {
+  "name": "Derby South",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001195": {
+  "name": "Derbyshire Dales",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001196": {
+  "name": "Dewsbury and Batley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001197": {
+  "name": "Didcot and Wantage",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001198": {
+  "name": "Doncaster Central",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001199": {
+  "name": "Doncaster East and the Isle of Axholme",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001200": {
+  "name": "Doncaster North",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001201": {
+  "name": "Dorking and Horley",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001202": {
+  "name": "Dover and Deal",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001203": {
+  "name": "Droitwich and Evesham",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001204": {
+  "name": "Dudley",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001205": {
+  "name": "Dulwich and West Norwood",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001206": {
+  "name": "Dunstable and Leighton Buzzard",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001207": {
+  "name": "Ealing Central and Acton",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001208": {
+  "name": "Ealing North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001209": {
+  "name": "Ealing Southall",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001210": {
+  "name": "Earley and Woodley",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001211": {
+  "name": "Easington",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001212": {
+  "name": "East Grinstead and Uckfield",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001213": {
+  "name": "East Ham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001214": {
+  "name": "East Hampshire",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001215": {
+  "name": "East Surrey",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001216": {
+  "name": "East Thanet",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001217": {
+  "name": "East Wiltshire",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001218": {
+  "name": "East Worthing and Shoreham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001219": {
+  "name": "Eastbourne",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001220": {
+  "name": "Eastleigh",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001221": {
+  "name": "Edmonton and Winchmore Hill",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001222": {
+  "name": "Ellesmere Port and Bromborough",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001223": {
+  "name": "Eltham and Chislehurst",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001224": {
+  "name": "Ely and East Cambridgeshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001225": {
+  "name": "Enfield North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001226": {
+  "name": "Epping Forest",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001227": {
+  "name": "Epsom and Ewell",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001228": {
+  "name": "Erewash",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001229": {
+  "name": "Erith and Thamesmead",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001230": {
+  "name": "Esher and Walton",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001231": {
+  "name": "Exeter",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001232": {
+  "name": "Exmouth and Exeter East",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001233": {
+  "name": "Fareham and Waterlooville",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001234": {
+  "name": "Farnham and Bordon",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001235": {
+  "name": "Faversham and Mid Kent",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001236": {
+  "name": "Feltham and Heston",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001237": {
+  "name": "Filton and Bradley Stoke",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001238": {
+  "name": "Finchley and Golders Green",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001239": {
+  "name": "Folkestone and Hythe",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001240": {
+  "name": "Forest of Dean",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001241": {
+  "name": "Frome and East Somerset",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001242": {
+  "name": "Fylde",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001243": {
+  "name": "Gainsborough",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001244": {
+  "name": "Gateshead Central and Whickham",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001245": {
+  "name": "Gedling",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001246": {
+  "name": "Gillingham and Rainham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001247": {
+  "name": "Glastonbury and Somerton",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001248": {
+  "name": "Gloucester",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001249": {
+  "name": "Godalming and Ash",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001250": {
+  "name": "Goole and Pocklington",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001251": {
+  "name": "Gorton and Denton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001252": {
+  "name": "Gosport",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001253": {
+  "name": "Grantham and Bourne",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001254": {
+  "name": "Gravesham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001255": {
+  "name": "Great Grimsby and Cleethorpes",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001256": {
+  "name": "Great Yarmouth",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001257": {
+  "name": "Greenwich and Woolwich",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001258": {
+  "name": "Guildford",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001259": {
+  "name": "Hackney North and Stoke Newington",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001260": {
+  "name": "Hackney South and Shoreditch",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001261": {
+  "name": "Halesowen",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001262": {
+  "name": "Halifax",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001263": {
+  "name": "Hamble Valley",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001264": {
+  "name": "Hammersmith and Chiswick",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001265": {
+  "name": "Hampstead and Highgate",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001266": {
+  "name": "Harborough, Oadby and Wigston",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001267": {
+  "name": "Harlow",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001268": {
+  "name": "Harpenden and Berkhamsted",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001269": {
+  "name": "Harrogate and Knaresborough",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001270": {
+  "name": "Harrow East",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001271": {
+  "name": "Harrow West",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001272": {
+  "name": "Hartlepool",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001273": {
+  "name": "Harwich and North Essex",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001274": {
+  "name": "Hastings and Rye",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001275": {
+  "name": "Havant",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001276": {
+  "name": "Hayes and Harlington",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001277": {
+  "name": "Hazel Grove",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001278": {
+  "name": "Hemel Hempstead",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001279": {
+  "name": "Hendon",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001280": {
+  "name": "Henley and Thame",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001281": {
+  "name": "Hereford and South Herefordshire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001282": {
+  "name": "Herne Bay and Sandwich",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001283": {
+  "name": "Hertford and Stortford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001284": {
+  "name": "Hertsmere",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001285": {
+  "name": "Hexham",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001286": {
+  "name": "Heywood and Middleton North",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001287": {
+  "name": "High Peak",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001288": {
+  "name": "Hinckley and Bosworth",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001289": {
+  "name": "Hitchin",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001290": {
+  "name": "Holborn and St Pancras",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001291": {
+  "name": "Honiton and Sidmouth",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001292": {
+  "name": "Hornchurch and Upminster",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001293": {
+  "name": "Hornsey and Friern Barnet",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001294": {
+  "name": "Horsham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001295": {
+  "name": "Houghton and Sunderland South",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001296": {
+  "name": "Hove and Portslade",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001297": {
+  "name": "Huddersfield",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001298": {
+  "name": "Huntingdon",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001299": {
+  "name": "Hyndburn",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001300": {
+  "name": "Ilford North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001301": {
+  "name": "Ilford South",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001302": {
+  "name": "Ipswich",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001303": {
+  "name": "Isle of Wight East",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001304": {
+  "name": "Isle of Wight West",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001305": {
+  "name": "Islington North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001306": {
+  "name": "Islington South and Finsbury",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001307": {
+  "name": "Jarrow and Gateshead East",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001308": {
+  "name": "Keighley and Ilkley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001309": {
+  "name": "Kenilworth and Southam",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001310": {
+  "name": "Kensington and Bayswater",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001311": {
+  "name": "Kettering",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001312": {
+  "name": "Kingston and Surbiton",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001313": {
+  "name": "Kingston upon Hull East",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001314": {
+  "name": "Kingston upon Hull North and Cottingham",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001315": {
+  "name": "Kingston upon Hull West and Haltemprice",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001316": {
+  "name": "Kingswinford and South Staffordshire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001317": {
+  "name": "Knowsley",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001318": {
+  "name": "Lancaster and Wyre",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001319": {
+  "name": "Leeds Central and Headingley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001320": {
+  "name": "Leeds East",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001321": {
+  "name": "Leeds North East",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001322": {
+  "name": "Leeds North West",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001323": {
+  "name": "Leeds South",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001324": {
+  "name": "Leeds South West and Morley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001325": {
+  "name": "Leeds West and Pudsey",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001326": {
+  "name": "Leicester East",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001327": {
+  "name": "Leicester South",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001328": {
+  "name": "Leicester West",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001329": {
+  "name": "Leigh and Atherton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001330": {
+  "name": "Lewes",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001331": {
+  "name": "Lewisham East",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001332": {
+  "name": "Lewisham North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001333": {
+  "name": "Lewisham West and East Dulwich",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001334": {
+  "name": "Leyton and Wanstead",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001335": {
+  "name": "Lichfield",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001336": {
+  "name": "Lincoln",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001337": {
+  "name": "Liverpool Garston",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001338": {
+  "name": "Liverpool Riverside",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001339": {
+  "name": "Liverpool Walton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001340": {
+  "name": "Liverpool Wavertree",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001341": {
+  "name": "Liverpool West Derby",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001342": {
+  "name": "Loughborough",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001343": {
+  "name": "Louth and Horncastle",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001344": {
+  "name": "Lowestoft",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001345": {
+  "name": "Luton North",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001346": {
+  "name": "Luton South and South Bedfordshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001347": {
+  "name": "Macclesfield",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001348": {
+  "name": "Maidenhead",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001349": {
+  "name": "Maidstone and Malling",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001350": {
+  "name": "Makerfield",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001351": {
+  "name": "Maldon",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001352": {
+  "name": "Manchester Central",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001353": {
+  "name": "Manchester Rusholme",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001354": {
+  "name": "Manchester Withington",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001355": {
+  "name": "Mansfield",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001356": {
+  "name": "Melksham and Devizes",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001357": {
+  "name": "Melton and Syston",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001358": {
+  "name": "Meriden and Solihull East",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001359": {
+  "name": "Mid Bedfordshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001360": {
+  "name": "Mid Buckinghamshire",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001361": {
+  "name": "Mid Cheshire",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001362": {
+  "name": "Mid Derbyshire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001363": {
+  "name": "Mid Dorset and North Poole",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001364": {
+  "name": "Mid Leicestershire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001365": {
+  "name": "Mid Norfolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001366": {
+  "name": "Mid Sussex",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001367": {
+  "name": "Middlesbrough and Thornaby East",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001368": {
+  "name": "Middlesbrough South and East Cleveland",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001369": {
+  "name": "Milton Keynes Central",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001370": {
+  "name": "Milton Keynes North",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001371": {
+  "name": "Mitcham and Morden",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001372": {
+  "name": "Morecambe and Lunesdale",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001373": {
+  "name": "New Forest East",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001374": {
+  "name": "New Forest West",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001375": {
+  "name": "Newark",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001376": {
+  "name": "Newbury",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001377": {
+  "name": "Newcastle upon Tyne Central and West",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001378": {
+  "name": "Newcastle upon Tyne East and Wallsend",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001379": {
+  "name": "Newcastle upon Tyne North",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001380": {
+  "name": "Newcastle-under-Lyme",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001381": {
+  "name": "Newton Abbot",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001382": {
+  "name": "Newton Aycliffe and Spennymoor",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001383": {
+  "name": "Normanton and Hemsworth",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001384": {
+  "name": "North Bedfordshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001385": {
+  "name": "North Cornwall",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001386": {
+  "name": "North Cotswolds",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001387": {
+  "name": "North Devon",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001388": {
+  "name": "North Dorset",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001389": {
+  "name": "North Durham",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001390": {
+  "name": "North East Cambridgeshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001391": {
+  "name": "North East Derbyshire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001392": {
+  "name": "North East Hampshire",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001393": {
+  "name": "North East Hertfordshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001394": {
+  "name": "North East Somerset and Hanham",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001395": {
+  "name": "North Herefordshire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001396": {
+  "name": "North Norfolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001397": {
+  "name": "North Northumberland",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001398": {
+  "name": "North Shropshire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001399": {
+  "name": "North Somerset",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001400": {
+  "name": "North Warwickshire and Bedworth",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001401": {
+  "name": "North West Cambridgeshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001402": {
+  "name": "North West Essex",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001403": {
+  "name": "North West Hampshire",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001404": {
+  "name": "North West Leicestershire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001405": {
+  "name": "North West Norfolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001406": {
+  "name": "Northampton North",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001407": {
+  "name": "Northampton South",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001408": {
+  "name": "Norwich North",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001409": {
+  "name": "Norwich South",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001410": {
+  "name": "Nottingham East",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001411": {
+  "name": "Nottingham North and Kimberley",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001412": {
+  "name": "Nottingham South",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001413": {
+  "name": "Nuneaton",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001414": {
+  "name": "Old Bexley and Sidcup",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001415": {
+  "name": "Oldham East and Saddleworth",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001416": {
+  "name": "Oldham West, Chadderton and Royton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001417": {
+  "name": "Orpington",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001418": {
+  "name": "Ossett and Denby Dale",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001419": {
+  "name": "Oxford East",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001420": {
+  "name": "Oxford West and Abingdon",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001421": {
+  "name": "Peckham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001422": {
+  "name": "Pendle and Clitheroe",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001423": {
+  "name": "Penistone and Stocksbridge",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001424": {
+  "name": "Penrith and Solway",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001425": {
+  "name": "Peterborough",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001426": {
+  "name": "Plymouth Moor View",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001427": {
+  "name": "Plymouth Sutton and Devonport",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001428": {
+  "name": "Pontefract, Castleford and Knottingley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001429": {
+  "name": "Poole",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001430": {
+  "name": "Poplar and Limehouse",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001431": {
+  "name": "Portsmouth North",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001432": {
+  "name": "Portsmouth South",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001433": {
+  "name": "Preston",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001434": {
+  "name": "Putney",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001435": {
+  "name": "Queen's Park and Maida Vale",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001436": {
+  "name": "Rawmarsh and Conisbrough",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001437": {
+  "name": "Rayleigh and Wickford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001438": {
+  "name": "Reading Central",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001439": {
+  "name": "Reading West and Mid Berkshire",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001440": {
+  "name": "Redcar",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001441": {
+  "name": "Redditch",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001442": {
+  "name": "Reigate",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001443": {
+  "name": "Ribble Valley",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001444": {
+  "name": "Richmond and Northallerton",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001445": {
+  "name": "Richmond Park",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001446": {
+  "name": "Rochdale",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001447": {
+  "name": "Rochester and Strood",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001448": {
+  "name": "Romford",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001449": {
+  "name": "Romsey and Southampton North",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001450": {
+  "name": "Rossendale and Darwen",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001451": {
+  "name": "Rother Valley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001452": {
+  "name": "Rotherham",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001453": {
+  "name": "Rugby",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001454": {
+  "name": "Ruislip, Northwood and Pinner",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001455": {
+  "name": "Runcorn and Helsby",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001456": {
+  "name": "Runnymede and Weybridge",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001457": {
+  "name": "Rushcliffe",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001458": {
+  "name": "Rutland and Stamford",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001459": {
+  "name": "Salford",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001460": {
+  "name": "Salisbury",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001461": {
+  "name": "Scarborough and Whitby",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001462": {
+  "name": "Scunthorpe",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001463": {
+  "name": "Sefton Central",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001464": {
+  "name": "Selby",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001465": {
+  "name": "Sevenoaks",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001466": {
+  "name": "Sheffield Brightside and Hillsborough",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001467": {
+  "name": "Sheffield Central",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001468": {
+  "name": "Sheffield Hallam",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001469": {
+  "name": "Sheffield Heeley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001470": {
+  "name": "Sheffield South East",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001471": {
+  "name": "Sherwood Forest",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001472": {
+  "name": "Shipley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001473": {
+  "name": "Shrewsbury",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001474": {
+  "name": "Sittingbourne and Sheppey",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001475": {
+  "name": "Skipton and Ripon",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001476": {
+  "name": "Sleaford and North Hykeham",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001477": {
+  "name": "Slough",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001478": {
+  "name": "Smethwick",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001479": {
+  "name": "Solihull West and Shirley",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001480": {
+  "name": "South Basildon and East Thurrock",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001481": {
+  "name": "South Cambridgeshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001482": {
+  "name": "South Cotswolds",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001483": {
+  "name": "South Derbyshire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001484": {
+  "name": "South Devon",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001485": {
+  "name": "South Dorset",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001486": {
+  "name": "South East Cornwall",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001487": {
+  "name": "South Holland and The Deepings",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001488": {
+  "name": "South Leicestershire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001489": {
+  "name": "South Norfolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001490": {
+  "name": "South Northamptonshire",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001491": {
+  "name": "South Ribble",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001492": {
+  "name": "South Shields",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001493": {
+  "name": "South Shropshire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001494": {
+  "name": "South Suffolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001495": {
+  "name": "South West Devon",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001496": {
+  "name": "South West Hertfordshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001497": {
+  "name": "South West Norfolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001498": {
+  "name": "South West Wiltshire",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001499": {
+  "name": "Southampton Itchen",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001500": {
+  "name": "Southampton Test",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001501": {
+  "name": "Southend East and Rochford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001502": {
+  "name": "Southend West and Leigh",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001503": {
+  "name": "Southgate and Wood Green",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001504": {
+  "name": "Southport",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001505": {
+  "name": "Spelthorne",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001506": {
+  "name": "Spen Valley",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001507": {
+  "name": "St Albans",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001508": {
+  "name": "St Austell and Newquay",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001509": {
+  "name": "St Helens North",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001510": {
+  "name": "St Helens South and Whiston",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001511": {
+  "name": "St Ives",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001512": {
+  "name": "St Neots and Mid Cambridgeshire",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001513": {
+  "name": "Stafford",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001514": {
+  "name": "Staffordshire Moorlands",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001515": {
+  "name": "Stalybridge and Hyde",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001516": {
+  "name": "Stevenage",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001517": {
+  "name": "Stockport",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001518": {
+  "name": "Stockton North",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001519": {
+  "name": "Stockton West",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001520": {
+  "name": "Stoke-on-Trent Central",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001521": {
+  "name": "Stoke-on-Trent North",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001522": {
+  "name": "Stoke-on-Trent South",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001523": {
+  "name": "Stone, Great Wyrley and Penkridge",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001524": {
+  "name": "Stourbridge",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001525": {
+  "name": "Stratford and Bow",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001526": {
+  "name": "Stratford-on-Avon",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001527": {
+  "name": "Streatham and Croydon North",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001528": {
+  "name": "Stretford and Urmston",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001529": {
+  "name": "Stroud",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001530": {
+  "name": "Suffolk Coastal",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001531": {
+  "name": "Sunderland Central",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001532": {
+  "name": "Surrey Heath",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001533": {
+  "name": "Sussex Weald",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001534": {
+  "name": "Sutton and Cheam",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001535": {
+  "name": "Sutton Coldfield",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001536": {
+  "name": "Swindon North",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001537": {
+  "name": "Swindon South",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001538": {
+  "name": "Tamworth",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001539": {
+  "name": "Tatton",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001540": {
+  "name": "Taunton and Wellington",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001541": {
+  "name": "Telford",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001542": {
+  "name": "Tewkesbury",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001543": {
+  "name": "The Wrekin",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001544": {
+  "name": "Thirsk and Malton",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001545": {
+  "name": "Thornbury and Yate",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001546": {
+  "name": "Thurrock",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001547": {
+  "name": "Tipton and Wednesbury",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001548": {
+  "name": "Tiverton and Minehead",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001549": {
+  "name": "Tonbridge",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001550": {
+  "name": "Tooting",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001551": {
+  "name": "Torbay",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001552": {
+  "name": "Torridge and Tavistock",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001553": {
+  "name": "Tottenham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001554": {
+  "name": "Truro and Falmouth",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001555": {
+  "name": "Tunbridge Wells",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001556": {
+  "name": "Twickenham",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001557": {
+  "name": "Tynemouth",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001558": {
+  "name": "Uxbridge and South Ruislip",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001559": {
+  "name": "Vauxhall and Camberwell Green",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001560": {
+  "name": "Wakefield and Rothwell",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001561": {
+  "name": "Wallasey",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001562": {
+  "name": "Walsall and Bloxwich",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001563": {
+  "name": "Walthamstow",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001564": {
+  "name": "Warrington North",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001565": {
+  "name": "Warrington South",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001566": {
+  "name": "Warwick and Leamington",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001567": {
+  "name": "Washington and Gateshead South",
+  "region": "North East",
+  "region_code": "E12000001"
+ },
+ "E14001568": {
+  "name": "Watford",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001569": {
+  "name": "Waveney Valley",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001570": {
+  "name": "Weald of Kent",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001571": {
+  "name": "Wellingborough and Rushden",
+  "region": "East Midlands",
+  "region_code": "E12000004"
+ },
+ "E14001572": {
+  "name": "Wells and Mendip Hills",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001573": {
+  "name": "Welwyn Hatfield",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001574": {
+  "name": "West Bromwich",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001575": {
+  "name": "West Dorset",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001576": {
+  "name": "West Ham and Beckton",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001577": {
+  "name": "West Lancashire",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001578": {
+  "name": "West Suffolk",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001579": {
+  "name": "West Worcestershire",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001580": {
+  "name": "Westmorland and Lonsdale",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001581": {
+  "name": "Weston-super-Mare",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001582": {
+  "name": "Wetherby and Easingwold",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001583": {
+  "name": "Whitehaven and Workington",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001584": {
+  "name": "Widnes and Halewood",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001585": {
+  "name": "Wigan",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001586": {
+  "name": "Wimbledon",
+  "region": "London",
+  "region_code": "E12000007"
+ },
+ "E14001587": {
+  "name": "Winchester",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001588": {
+  "name": "Windsor",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001589": {
+  "name": "Wirral West",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001590": {
+  "name": "Witham",
+  "region": "East of England",
+  "region_code": "E12000006"
+ },
+ "E14001591": {
+  "name": "Witney",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001592": {
+  "name": "Woking",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001593": {
+  "name": "Wokingham",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001594": {
+  "name": "Wolverhampton North East",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001595": {
+  "name": "Wolverhampton South East",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001596": {
+  "name": "Wolverhampton West",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001597": {
+  "name": "Worcester",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001598": {
+  "name": "Worsley and Eccles",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001599": {
+  "name": "Worthing West",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001600": {
+  "name": "Wycombe",
+  "region": "South East",
+  "region_code": "E12000008"
+ },
+ "E14001601": {
+  "name": "Wyre Forest",
+  "region": "West Midlands",
+  "region_code": "E12000005"
+ },
+ "E14001602": {
+  "name": "Wythenshawe and Sale East",
+  "region": "North West",
+  "region_code": "E12000002"
+ },
+ "E14001603": {
+  "name": "Yeovil",
+  "region": "South West",
+  "region_code": "E12000009"
+ },
+ "E14001604": {
+  "name": "York Central",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ },
+ "E14001605": {
+  "name": "York Outer",
+  "region": "Yorkshire and The Humber",
+  "region_code": "E12000003"
+ }
+}

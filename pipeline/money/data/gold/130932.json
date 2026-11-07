@@ -1,0 +1,4486 @@
+{
+ "urn": "130932",
+ "name": "William Patten Primary School",
+ "laestab": "2042897",
+ "la": {
+  "code": 204,
+  "name": "Hackney"
+ },
+ "type": "Community school",
+ "phase": "Primary",
+ "verified": "2026-11-07",
+ "scope": "CFR returns 2018-19 to 2025-26 (April to March); William Patten has been council-maintained throughout, so there are no academy (AAR) returns.",
+ "fbit_coverage": "FBIT (retrieved 2026-11-07) shows April 2025 to March 2026 as its current year and history for 2021-22 to 2025-26 only; 2018-19 to 2020-21 are checked against the workbooks alone.",
+ "fbit_headline_2025_26": {
+  "in_year_balance": -169785,
+  "revenue_reserve": -210901,
+  "teaching_and_teaching_support_per_pupil": 6822,
+  "catering_per_pupil": 504,
+  "educational_supplies_per_pupil": 302,
+  "source": "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/130932 and /spending-and-costs"
+ },
+ "how_to_read": {
+  "lines": "Every coded CFR line for the year with the label as printed in that year's workbook. 'subtotal_lines' holds the workbook's own subtotals (I01/2, I08a/b, I18 totals of I18a-d, E28a/b), which are not added again.",
+  "fbit_match": "true when every FBIT history-API figure for the year agrees with the workbook to within £1 (teacher FTE to within 0.05); fbit_exact says whether all were identical; fbit_differences lists each gap.",
+  "totals.reconciliation": "Line sums minus the workbook's own totals; small non-zero values are pence rounding."
+ },
+ "years": {
+  "2018-19": {
+   "period": "April 2018 to March 2019",
+   "source": {
+    "file": "CFR_2018-19_Full_Data_Workbook.xlsx",
+    "sheet": "CFR Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Region": "London",
+    "London Borough": "Inner",
+    "Phase": "Infant and junior",
+    "Overall Phase": "Primary",
+    "Lowest age of pupils": 3,
+    "Highest age of pupils": 11,
+    "Type": "Community school",
+    "No Pupils": 435,
+    "% of pupils eligible for FSM": 8.6,
+    "Period covered by return (months)": 12,
+    "Did Not Supply flag": 0,
+    "Federation Y/S/N": "N",
+    "No Teachers": 26.5,
+    "Gender": "Mixed",
+    "Urban /Rural": "Urban major conurbation",
+    "London Weighting": "Inner",
+    "% of pupils with SEN Statement": 1.4,
+    "% of SEN pupils without Statement": 12,
+    "% of pupils with EAL": 42.5,
+    "% of pupils who are Boarders": 0,
+    "Admissions policy": "Not applicable",
+    "PFI": "Not part of PFI",
+    "Has a 6th form": "Does not have a sixth form",
+    "No of pupils in 6th form": 0,
+    "% of teachers with QTS": 90.2,
+    "FTE of Teaching Assistants": 11.7,
+    "FTE of Support Staff": 4.6,
+    "FTE of Admin Staff": 7.9
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2467412
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 63891
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil Premium",
+     "value": 102423
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 0
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 64968
+    },
+    "I08": {
+     "label": "Income from facilities and services",
+     "value": 87904
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 60582
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 48055
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 22291
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 0
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 22429
+    },
+    "I18": {
+     "label": "Additional grant for schools",
+     "value": 95814
+    },
+    "E01": {
+     "label": "Teaching Staff",
+     "value": 1458815
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 11412
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 385994
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 126279
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 176523
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 103406
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 35611
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 23995
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 6697
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 0
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 0
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 44327
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 4231
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 5665
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 276
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 23407
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 30813
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 18055
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 109355
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 53480
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 17740
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 14023
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 0
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 59465
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 32385
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 44002
+    },
+    "E28a": {
+     "label": "Bought in professional services – other (except PFI)",
+     "value": 39641
+    },
+    "E28b": {
+     "label": "Bought in professional services – other (PFI)",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 16747
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 2577
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 326310
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": -6763
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 0
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 48557
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 34702
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 0
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": 514053
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 0
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 13855
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": -3658
+    }
+   },
+   "subtotal_lines": {},
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01 to I18",
+      "value": 3035769
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: E01 to E32",
+      "value": 2844921
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01 to I18) minus Total Expenditure (E01 to E32)",
+      "value": 190848
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 plus B02 plus B06",
+      "value": 510395
+     },
+     "grant_funding": {
+      "label": "Grant Funding [(I01:I07) + I15 + I16 + I17]",
+      "value": 2794508
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding [(I13:I19) + I17]",
+      "value": 241261
+     }
+    },
+    "workbook_derived_columns": {
+     "Total Income: I01 to I08, I11 to I15, I18": 2904703,
+     "Total Income: I01 to I18": 3035769,
+     "Total Expenditure: E01 to E29 and E31 to E32 minus I9, I10, I16 and I17": 2713855,
+     "Total Expenditure: E01 to E32": 2844921,
+     "Revenue Reserve: B01 plus B02 plus B06": 510395,
+     "In-year Balance: Total Income (I01 to I18) minus Total Expenditure (E01 to E32)": 190848,
+     "Grant Funding [(I01:I07) + I15 + I16 + I17]": 2794508,
+     "Direct Grant [I01:I02 + I06:I07]": 2532380,
+     "Community Grants [I16+I18]": 95814,
+     "Targeted Grants [I03:I05 + I15]": 166314,
+     "Self Generated Funding [(I13:I19) + I17]": 241261,
+     "Total Income [(I01:I018)]": 3035769,
+     "Supply Staff [E02 + E10 + E26]": 43797,
+     "Other Staff Costs [(E07:E9) + E11]": 66303,
+     "Staff Total [(E01:E03) + E05 + (E07: E11) + E26]": 2131432,
+     "Maintenance & Improvement [E12 + E13]": 48558,
+     "Premises [(E12:E14) + E04]": 180502,
+     "Catering Exp [E06 + E25]": 162871,
+     "Occupation [E06 + (E15:E18) + E23 + E25]": 249445,
+     "Supplies and Services [(E19:E22) + (E27:E28b)]": 264218,
+     "Educational Supplies [(E19:E21)]": 162835,
+     "Brought in Professional Sevices [(E27:E28b)]": 83643,
+     "Cost of Finance [E29 + E30]": 0,
+     "Community Exp [E31 + E32]": 19324,
+     "Total Expenditure [(E01:E32)]": 2844921
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3035769,
+     "expenditure_E_lines_excl_E30": 2844921,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": 190848,
+     "revenue_reserve_B01_B02_B06": 510395,
+     "opening_OB01_OB02": 319547,
+     "opening_plus_in_year": 510395
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 0,
+     "expenditure_lines_vs_workbook_total": 0,
+     "reserve_B_lines_vs_workbook": 0,
+     "opening_plus_in_year_vs_workbook_reserve": 0
+    },
+    "pipeline_finance_history": {
+     "total_income": 3035769,
+     "total_expenditure": 2844921,
+     "in_year_balance": 190848,
+     "revenue_reserve": 510395,
+     "grant_funding": 2794508,
+     "self_generated": 241261,
+     "sen_funding": 63891,
+     "pupil_premium": 102423,
+     "pupils": 435,
+     "teachers_fte": 26.5,
+     "fsm_pct": 8.6
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3035769,
+      "workbook": 3035769,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 2844921,
+      "workbook": 2844921,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": 190848,
+      "workbook": 190848,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": 510395,
+      "workbook": 510395,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 2794508,
+      "workbook": 2794508,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 241261,
+      "workbook": 241261,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 63891,
+      "workbook": 63891,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 102423,
+      "workbook": 102423,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": false,
+   "fbit_match": null,
+   "fbit_exact": null,
+   "fbit_differences": null,
+   "fbit_fields_compared": 0,
+   "notes": [
+    "The workbook's 'Grant Funding' column carries the note '(I01:I07) + I15 + I16 + I17', but its value 2,794,508 equals I01..I07 + I15 + I16 + I18 (I18 £95,814); I17 is counted in Self Generated Funding instead.",
+    "Totals in 2018-19 and 2019-20 include E30 in expenditure; E30 was 0 this year."
+   ]
+  },
+  "2019-20": {
+   "period": "April 2019 to March 2020",
+   "source": {
+    "file": "CFR_2019-20_Full_Data_Workbook.xlsx",
+    "sheet": "CFR Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Region": "London",
+    "London Borough": "Inner",
+    "Phase": "Infant and junior",
+    "Overall Phase": "Primary",
+    "Lowest age of pupils": 3,
+    "Highest age of pupils": 11,
+    "Type": "Community school",
+    "No Pupils": 443,
+    "% of pupils eligible for FSM": 7.2,
+    "Period covered by return (months)": 12,
+    "Did Not Supply flag": 0,
+    "Federated submission (Y/LAEstab/N)": "N",
+    "No Teachers": 25.6,
+    "Gender": "Mixed",
+    "Urban /Rural": "Urban major conurbation",
+    "London Weighting": "Inner",
+    "% of pupils with SEN Statement": 2.5,
+    "% of SEN pupils without Statement": 15.2,
+    "% of pupils with EAL": 42.3,
+    "% of pupils who are Boarders": 0,
+    "Admissions policy": "Not applicable",
+    "PFI": "Not part of PFI",
+    "Has a 6th form": "Does not have a sixth form",
+    "No of pupils in 6th form": 0
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2472301
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 86042
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil Premium",
+     "value": 88373
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 0
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 46875
+    },
+    "I08": {
+     "label": "Income from facilities and services",
+     "value": 110542
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 63400
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 42253
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 25053
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 500
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 19495
+    },
+    "I18": {
+     "label": "Additional grant for schools",
+     "value": 95419
+    },
+    "E01": {
+     "label": "Teaching Staff",
+     "value": 1501088
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 13502
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 463028
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 131564
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 187999
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 113428
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 31397
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 22075
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 4470
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 0
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 0
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 46034
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 1182
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 7923
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 992
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 24636
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 31500
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 16464
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 94055
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 44110
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 8489
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 8277
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 2670
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 46832
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 56415
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 84073
+    },
+    "E28": {
+     "label": "Bought in professional services – other",
+     "value": 36846
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (revenue contributions to capital)",
+     "value": 25163
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 9447
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 3082
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 514053.25
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": -3658.02
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 13855.24
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 8986
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 25163
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 34149
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 0
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": 540600.99
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 13855.24
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 0
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": 3306.67
+    }
+   },
+   "subtotal_lines": {},
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01 to I18",
+      "value": 3050253
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: E01 to E32",
+      "value": 3016741
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01 to I18) minus Total Expenditure (E01 to E32)",
+      "value": 33512
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 plus B02 plus B06",
+      "value": 543908
+     },
+     "grant_funding": {
+      "label": "Grant Funding [(I01:I07) + I15 + I16 + I17]",
+      "value": 2789010
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding [(I13:I19) + I17]",
+      "value": 261243
+     }
+    },
+    "workbook_derived_columns": {
+     "Total Income: I01 to I08, I11 to I15, I18": 2925105,
+     "Total Income: I01 to I18": 3050253,
+     "Total Expenditure: E01 to E29 and E31 to E32 minus I9, I10, I16 and I17": 2866430,
+     "Total Expenditure: E01 to E32": 3016741,
+     "Revenue Reserve: B01 plus B02 plus B06": 543908,
+     "In-year Balance: Total Income (I01 to I18) minus Total Expenditure (E01 to E32)": 33512,
+     "Grant Funding [(I01:I07) + I15 + I16 + I17]": 2789010,
+     "Direct Grant [I01:I02 + I06:I07]": 2519176,
+     "Community Grants [I16+I18]": 95419,
+     "Targeted Grants [I03:I05 + I15]": 174416,
+     "Self Generated Funding [(I13:I19) + I17]": 261243,
+     "Total Income [(I01:I018)]": 3050253,
+     "Supply Staff [E02 + E10 + E26]": 69916,
+     "Other Staff Costs [(E07:E9) + E11]": 57942,
+     "Staff Total [(E01:E03) + E05 + (E07: E11) + E26]": 2279973,
+     "Maintenance & Improvement [E12 + E13]": 47216,
+     "Premises [(E12:E14) + E04]": 186702,
+     "Catering Exp [E06 + E25]": 160260,
+     "Occupation [E06 + (E15:E18) + E23 + E25]": 242128,
+     "Supplies and Services [(E19:E22) + (E27:E28b)]": 267574,
+     "Educational Supplies [(E19:E21)]": 138165,
+     "Brought in Professional Sevices [(E27:E28b)]": 120920,
+     "Cost of Finance [E29 + E30]": 25163,
+     "Community Exp [E31 + E32]": 12530,
+     "Total Expenditure [(E01:E32)]": 3016741
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3050253,
+     "expenditure_E_lines_excl_E30": 2991578,
+     "E30_direct_revenue_financing": 25163,
+     "income_minus_expenditure": 58675,
+     "revenue_reserve_B01_B02_B06": 543907.66,
+     "opening_OB01_OB02": 510395.23,
+     "opening_plus_in_year": 569070.23
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 0,
+     "expenditure_lines_vs_workbook_total": 0,
+     "reserve_B_lines_vs_workbook": -0.34,
+     "opening_plus_in_year_vs_workbook_reserve": -0.77
+    },
+    "pipeline_finance_history": {
+     "total_income": 3025090,
+     "total_expenditure": 2991578,
+     "in_year_balance": 33512,
+     "revenue_reserve": 543908,
+     "grant_funding": 2789010,
+     "self_generated": 261243,
+     "sen_funding": 86042,
+     "pupil_premium": 88373,
+     "pupils": 443,
+     "teachers_fte": 25.6,
+     "fsm_pct": 7.2,
+     "derived": [
+      "total_income",
+      "total_expenditure"
+     ]
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3025090,
+      "workbook": 3050253,
+      "match": false
+     },
+     "total_expenditure": {
+      "pipeline": 2991578,
+      "workbook": 3016741,
+      "match": false
+     },
+     "in_year_balance": {
+      "pipeline": 33512,
+      "workbook": 33512,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": 543908,
+      "workbook": 543908,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 2789010,
+      "workbook": 2789010,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 261243,
+      "workbook": 261243,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 86042,
+      "workbook": 86042,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 88373,
+      "workbook": 88373,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": false,
+   "fbit_match": null,
+   "fbit_exact": null,
+   "fbit_differences": null,
+   "fbit_fields_compared": 0,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'reserve_B_lines_vs_workbook': -0.34, 'opening_plus_in_year_vs_workbook_reserve': -0.77}",
+    "E30 direct revenue financing £25,163 (a revenue contribution to capital, matched by CI04 £25,163) is inside the workbook's total income-and-expenditure definitions; our pipeline removes it from both (see discrepancies).",
+    "E28 is a single line this year ('Bought in professional services – other', £36,846); from 2020-21 it splits into E28a and E28b."
+   ]
+  },
+  "2020-21": {
+   "period": "April 2020 to March 2021",
+   "source": {
+    "file": "CFR_2020-21_Full_Data_Workbook.xlsx",
+    "sheet": "CFR_Output",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Region": "Inner London",
+    "London Borough": "Inner",
+    "Phase": "Infant and Junior",
+    "Overall Phase": "Primary",
+    "Lowest age of pupils": 3,
+    "Highest age of pupils": 11,
+    "Type": "Community school",
+    "No Pupils": 430.5,
+    "% of pupils eligible for FSM": 9.9,
+    "Period covered by return (months)": 12,
+    "Did Not Supply flag": 0,
+    "Federation": "No",
+    "Lead school in federation": 0,
+    "No Teachers": 25.4,
+    "Gender": "Mixed",
+    "Urban /Rural": "Urban major conurbation",
+    "London Weighting": "Inner",
+    "% of pupils with EHCP": 2.8,
+    "% of pupils with SEN support": 12.9,
+    "% of pupils with EAL": 42.1,
+    "% of pupils who are Boarders": 0,
+    "Admissions policy": "Not applicable",
+    "PFI": "Not part of PFI",
+    "Has a 6th form": "Does not have a sixth form",
+    "No of pupils in 6th form": 0
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2542442
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 99542
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil Premium",
+     "value": 73905
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 0
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 63316
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 30422
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 0
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 10775
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 33277
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 194
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 1060
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 4704
+    },
+    "I18a": {
+     "label": "Income from the Coronavirus Job Retention Scheme",
+     "value": 0
+    },
+    "I18b": {
+     "label": "Income from the DfE grant scheme for reimbursing exceptional costs associated with COVID-19",
+     "value": 29202
+    },
+    "I18c": {
+     "label": "Income from the £1bn COVID-19 catch-up package announced on 20 July 2020",
+     "value": 19320
+    },
+    "I18d": {
+     "label": "Income from other additional grants",
+     "value": 62913
+    },
+    "E01": {
+     "label": "Teaching Staff",
+     "value": 1608251
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 527621
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 139011
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 191126
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 111002
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 38232
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 1603
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 1248
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 0
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 0
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 55048
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 2795
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 32911
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 2844
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 23306
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 32000
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 12363
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 62122
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 35315
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 11174
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 8270
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 7381
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 31239
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 26193
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 44229
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 50887
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 16018
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 1182
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 540601
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": 3307
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 13855
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 8986
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 0
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 6304
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": 450797
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 13855
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 2682
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": -9189
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2542442
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 30422
+    },
+    "I18": {
+     "label": "Total additional grant for schools",
+     "value": 111435
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 50887
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I18 - E30",
+      "value": 2971071
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 3073370
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": -102299
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": 441609
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "value": 2890639
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 80432
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": 441609,
+     "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)": -102299,
+     "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d": 2890639,
+     "Direct Grants: I01:I02 + I06:I07": 2605757,
+     "Community Grants: I16+I18": 62913,
+     "Targeted Grants: I03:I05 + I15": 173447,
+     "Self Generated Funding: (I08a/b:I13) + I17": 80432,
+     "Total Income: I01:I18 - E30": 2971071,
+     "Teaching Staff: E01": 1608251,
+     "Supply Staff: E02 + E10 + E26": 26193,
+     "Education support staff: E03": 527621,
+     "Other Staff Costs: (E07:E09) + E11": 41083,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2394273,
+     "Maintenance & Improvement: E12 + E13": 57844,
+     "Premises: (E12:E14) + E04 + E28b": 229765,
+     "Catering Expenses: E06 + E25": 142241,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 221024,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 203728,
+     "Educational Supplies: (E19:E21)": 97438,
+     "Brought in Professional Sevices: (E27 + E28a)": 95116,
+     "Community Exp: E31 + E32": 17199,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 3073370
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 2971072,
+     "expenditure_E_lines_excl_E30": 3073371,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": -102299,
+     "revenue_reserve_B01_B02_B06": 441608,
+     "opening_OB01_OB02": 543908,
+     "opening_plus_in_year": 441609
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 1,
+     "expenditure_lines_vs_workbook_total": 1,
+     "reserve_B_lines_vs_workbook": -1,
+     "opening_plus_in_year_vs_workbook_reserve": 0
+    },
+    "pipeline_finance_history": {
+     "total_income": 2971071,
+     "total_expenditure": 3073370,
+     "in_year_balance": -102299,
+     "revenue_reserve": 441609,
+     "grant_funding": 2890639,
+     "self_generated": 80432,
+     "sen_funding": 99542,
+     "pupil_premium": 73905,
+     "pupils": 430.5,
+     "teachers_fte": 25.4,
+     "fsm_pct": 9.9
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 2971071,
+      "workbook": 2971071,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 3073370,
+      "workbook": 3073370,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": -102299,
+      "workbook": -102299,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": 441609,
+      "workbook": 441609,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 2890639,
+      "workbook": 2890639,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 80432,
+      "workbook": 80432,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 99542,
+      "workbook": 99542,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 73905,
+      "workbook": 73905,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": false,
+   "fbit_match": null,
+   "fbit_exact": null,
+   "fbit_differences": null,
+   "fbit_fields_compared": 0,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'income_lines_vs_workbook_total': 1, 'expenditure_lines_vs_workbook_total': 1, 'reserve_B_lines_vs_workbook': -1}",
+    "COVID year: I18b DfE exceptional-costs grant £29,202 and I18c catch-up £19,320; I09 catering income fell to £10,775 and I12 visit contributions to £194."
+   ]
+  },
+  "2021-22": {
+   "period": "April 2021 to March 2022",
+   "source": {
+    "file": "CFR_2021-22_Full_Data_Workbook.xlsx",
+    "sheet": "CFRData",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Region": "London",
+    "London Borough": "Inner",
+    "Phase": "Infant and junior",
+    "Overall Phase": "Primary",
+    "Lowest age of pupils": 3,
+    "Highest age of pupils": 11,
+    "Type": "Community school",
+    "Full time equivalent number of pupils in school": 429,
+    "Full time equivalent number of pupils in federation": 429,
+    "% of pupils eligible for FSM": 9.2,
+    "Period covered by return (months)": 12,
+    "Did Not Supply flag": 0,
+    "Federation": "No",
+    "Lead school in federation": 0,
+    "FTE Number of teachers": 24.4,
+    "Gender": "Mixed",
+    "Urban /Rural": "Urban major conurbation",
+    "London Weighting": "Inner",
+    "% of pupils with EHCP": 3.7,
+    "% of pupils with SEN support": 12.93,
+    "% of pupils with English as an additional language": 43.4,
+    "% of pupils who are Boarders": 0,
+    "Admissions policy": "Not applicable",
+    "PFI": "N",
+    "Has a 6th form": "Does not have a sixth form",
+    "No of pupils in 6th form": 0
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2527600
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 127008
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil Premium",
+     "value": 65525
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 3150
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 30567
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 49268
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 89681
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 52305
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 64495
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 11350
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 20982
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 4750
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 14763
+    },
+    "I18a": {
+     "label": "Income from the Coronavirus Job Retention Scheme",
+     "value": 0
+    },
+    "I18b": {
+     "label": "Income from the DfE grant scheme for reimbursing exceptional costs associated with COVID-19",
+     "value": 0
+    },
+    "I18c": {
+     "label": "Income from the £1bn COVID-19 catch-up package announced on 20 July 2020",
+     "value": 20134
+    },
+    "I18d": {
+     "label": "Income from other additional grants",
+     "value": 87802
+    },
+    "E01": {
+     "label": "Teaching Staff",
+     "value": 1634612
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 578229
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 150692
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 194901
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 125211
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 40516
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 6668
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 9207
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 16805
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 16780
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 29140
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 2183
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 8164
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 17508
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 23793
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 32000
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 13254
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 117339
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 49853
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 12816
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 8493
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 6727
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 61833
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 43082
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 83854
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 48827
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 7407
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 2143
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 450797
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": -9189
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 16537
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 8993
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 0
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 0
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": 272931
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 13855
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 11675
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": -3976
+    },
+    "B07": {
+     "label": "Outstanding balance on capital loans to school",
+     "value": 0
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2527600
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 138949
+    },
+    "I18": {
+     "label": "Total additional grant for schools",
+     "value": 107936
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 48827
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I18 - E30",
+      "value": 3169383
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 3342036
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": -172654
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": 268955
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "value": 2861787
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 307596
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": 268955,
+     "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)": -172654,
+     "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d": 2861787,
+     "Direct Grants: I01:I02 + I06:I07": 2561318,
+     "Community Grants: I16+I18": 107936,
+     "Targeted Grants: I03:I05 + I15": 192533,
+     "Self Generated Funding: (I08a/b:I13) + I17": 307596,
+     "Total Income: I01:I18 - E30": 3169383,
+     "Teaching Staff: E01": 1634612,
+     "Supply Staff: E02 + E10 + E26": 59887,
+     "Education support staff: E03": 578229,
+     "Other Staff Costs: (E07:E09) + E11": 73171,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2540800,
+     "Maintenance & Improvement: E12 + E13": 31323,
+     "Premises: (E12:E14) + E04 + E28b": 190179,
+     "Catering Expenses: E06 + E25": 187044,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 282093,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 312689,
+     "Educational Supplies: (E19:E21)": 167192,
+     "Brought in Professional Sevices: (E27 + E28a)": 132680,
+     "Community Exp: E31 + E32": 9550,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 3342036
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3169380,
+     "expenditure_E_lines_excl_E30": 3342037,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": -172657,
+     "revenue_reserve_B01_B02_B06": 268955,
+     "opening_OB01_OB02": 441608,
+     "opening_plus_in_year": 268951
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": -3,
+     "expenditure_lines_vs_workbook_total": 1,
+     "reserve_B_lines_vs_workbook": 0,
+     "opening_plus_in_year_vs_workbook_reserve": -1
+    },
+    "pipeline_finance_history": {
+     "total_income": 3169383,
+     "total_expenditure": 3342036,
+     "in_year_balance": -172654,
+     "revenue_reserve": 268955,
+     "grant_funding": 2861787,
+     "self_generated": 307596,
+     "sen_funding": 127008,
+     "pupil_premium": 65525,
+     "pupils": 429,
+     "teachers_fte": 24.4,
+     "fsm_pct": 9.2
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3169383,
+      "workbook": 3169383,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 3342036,
+      "workbook": 3342036,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": -172654,
+      "workbook": -172654,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": 268955,
+      "workbook": 268955,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 2861787,
+      "workbook": 2861787,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 307596,
+      "workbook": 307596,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 127008,
+      "workbook": 127008,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 65525,
+      "workbook": 65525,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": true,
+   "fbit_match": true,
+   "fbit_exact": false,
+   "fbit_differences": [
+    {
+     "field": "inYearBalance",
+     "fbit": -172653.0,
+     "workbook": -172654,
+     "difference": 1.0
+    }
+   ],
+   "fbit_fields_compared": 51,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'income_lines_vs_workbook_total': -3, 'expenditure_lines_vs_workbook_total': 1, 'opening_plus_in_year_vs_workbook_reserve': -1}"
+   ]
+  },
+  "2022-23": {
+   "period": "April 2022 to March 2023",
+   "source": {
+    "file": "CFR_2022-23_Full_Data_Workbook.xlsx",
+    "sheet": "CFR_Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Region": "London",
+    "London Borough": "Inner",
+    "Phase": "Infant and junior",
+    "Overall Phase": "Primary",
+    "Lowest age of pupils": 3,
+    "Highest age of pupils": 11,
+    "Type": "Community school",
+    "Full time equivalent number of pupils in school": 432,
+    "Full time equivalent number of pupils in federation": 432,
+    "% of pupils eligible for FSM": 11.8,
+    "Period covered by return (months)": 12,
+    "Did Not Supply flag": 0,
+    "Federation": "No",
+    "Lead school in federation": 0,
+    "FTE Number of teachers": 23.7,
+    "Gender": "Mixed",
+    "Urban /Rural": "Urban major conurbation",
+    "London Weighting": "Inner",
+    "% of pupils with EHCP": 3.92,
+    "% of pupils with SEN support": 12.44,
+    "% of pupils with English as an additional language": 44,
+    "% of pupils who are Boarders": 0,
+    "Admissions policy": "Not applicable",
+    "PFI": "N",
+    "Has a 6th form": "Does not have a sixth form",
+    "No of pupils in 6th form": 0
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2567629.27
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 134737.53
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil Premium",
+     "value": 73955
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 964.62
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 38014.47
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 46944.54
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 126360.89
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 68634.86
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 10110.8
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 6875.09
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 14416.2
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 4275.63
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 16854.7
+    },
+    "I18a": {
+     "label": "Income from the Coronavirus Job Retention Scheme",
+     "value": 0
+    },
+    "I18b": {
+     "label": "Income from the DfE grant scheme for reimbursing exceptional costs associated with COVID-19",
+     "value": 0
+    },
+    "I18c": {
+     "label": "Income from the £1bn COVID-19 catch-up package announced on 20 July 2020",
+     "value": 71505
+    },
+    "I18d": {
+     "label": "Income from other additional grants",
+     "value": 89639
+    },
+    "E01": {
+     "label": "Teaching Staff",
+     "value": 1561434.7
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 691236.36
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 176765.22
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 224425.15
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 121855.88
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 48622.21
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 7200.3
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 4936.16
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 0
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 0
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 65304.8
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 7454.96
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 8257.07
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 3773.96
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 34996.45
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 32000
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 19883.73
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 115520.32
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 68329.55
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 15678.04
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 9000
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 2619.02
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 73002.15
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 86403.58
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 105642.91
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 43237.7
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 0
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 1920.86
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 272930.45
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": -3975.69
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 25529.89
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 27482.09
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 45520.26
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 0
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": -586.91
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 7491.72
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 0
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": 10958.15
+    },
+    "B07": {
+     "label": "Outstanding balance on capital loans to school",
+     "value": 0
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2567629.27
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 173305.43
+    },
+    "I18": {
+     "label": "Total additional grant for schools",
+     "value": 161144
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 43237.7
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I18 - E30",
+      "value": 3270917.6
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 3529501.08
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": -258583.48
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": 10371.24
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "value": 2976444.89
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 294472.71
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": 10371.24,
+     "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)": -258583.48,
+     "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d": 2976444.89,
+     "Direct Grants: I01:I02 + I06:I07": 2606608.36,
+     "Community Grants: I16+I18": 161144,
+     "Targeted Grants: I03:I05 + I15": 208692.53,
+     "Self Generated Funding: (I08a/b:I13) + I17": 294472.71,
+     "Total Income: I01:I18 - E30": 3270917.6,
+     "Teaching Staff E01": 1561434.7,
+     "Supply Staff: E02 + E10 + E26": 86403.58,
+     "Education support staff: E03": 691236.36,
+     "Other Staff Costs: (E07:E09) + E11": 60758.67,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2624258.46,
+     "Maintenance & Improvement: E12 + E13": 72759.76,
+     "Premises: (E12:E14) + E04 + E28b": 257782.05,
+     "Catering Expenses: E06 + E25": 194858.03,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 294512.17,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 348408.52,
+     "Educational Supplies: (E19:E21)": 183849.87,
+     "Brought in Professional Sevices: (E27 + E28a)": 148880.61,
+     "Community Exp: E31 + E32": 1920.86,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 3529501.08
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3270917.6,
+     "expenditure_E_lines_excl_E30": 3529501.08,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": -258583.48,
+     "revenue_reserve_B01_B02_B06": 10371.24,
+     "opening_OB01_OB02": 268954.76,
+     "opening_plus_in_year": 10371.28
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 0.0,
+     "expenditure_lines_vs_workbook_total": 0.0,
+     "reserve_B_lines_vs_workbook": 0.0,
+     "opening_plus_in_year_vs_workbook_reserve": 0.04
+    },
+    "pipeline_finance_history": {
+     "total_income": 3270917.6,
+     "total_expenditure": 3529501.08,
+     "in_year_balance": -258583.48,
+     "revenue_reserve": 10371.24,
+     "grant_funding": 2976444.89,
+     "self_generated": 294472.71,
+     "sen_funding": 134737.53,
+     "pupil_premium": 73955,
+     "pupils": 432,
+     "teachers_fte": 23.7,
+     "fsm_pct": 11.8
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3270917.6,
+      "workbook": 3270917.6,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 3529501.08,
+      "workbook": 3529501.08,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": -258583.48,
+      "workbook": -258583.48,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": 10371.24,
+      "workbook": 10371.24,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 2976444.89,
+      "workbook": 2976444.89,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 294472.71,
+      "workbook": 294472.71,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 134737.53,
+      "workbook": 134737.53,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 73955,
+      "workbook": 73955,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": true,
+   "fbit_match": true,
+   "fbit_exact": true,
+   "fbit_differences": [],
+   "fbit_fields_compared": 51,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'opening_plus_in_year_vs_workbook_reserve': 0.04}"
+   ]
+  },
+  "2023-24": {
+   "period": "April 2023 to March 2024",
+   "source": {
+    "file": "CFR_2023-24_Full_Data_Workbook.xlsx",
+    "sheet": "CFR Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Did Not Supply flag": "N",
+    "Lead school in federation": 0,
+    "London Weighting": "Inner",
+    "No pupils": 427.5,
+    "Overall Phase": "Primary",
+    "% of pupils eligible for FSM": 11.8,
+    "% of pupils with SEN support": 17.3210161662818,
+    "% of pupils with EHCP": 5.08083140877598,
+    "FTE Number of teachers": 21.67,
+    "Number of pupils in 6th form": 0,
+    "Type": "Community school",
+    "Admissions policy": "Not applicable",
+    "Period covered by return": 12,
+    "Federated submission": "No"
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2799077
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 152627
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil premium",
+     "value": 83185
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 14099
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 38637
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 74633
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 118776
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 18212
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 9507
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 21941
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 27315
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 18280
+    },
+    "I18a": {
+     "label": "Income from the Coronavirus Job Retention Scheme",
+     "value": 0
+    },
+    "I18b": {
+     "label": "Income from the DfE grant scheme for reimbursing exceptional costs associated with COVID-19",
+     "value": 0
+    },
+    "I18c": {
+     "label": "Income from the £1bn COVID-19 catch-up package announced on 20 July 2020",
+     "value": 3821
+    },
+    "I18d": {
+     "label": "Income from other additional grants",
+     "value": 168880
+    },
+    "E01": {
+     "label": "Teaching staff",
+     "value": 1621272
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 643211
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 169099
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 221624
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 117983
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 44684
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 6964
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 7038
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 0
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 3643
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 18646
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 9735
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 9219
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 5072
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 85884
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 32640
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 13207
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 127060
+    },
+    "E20": {
+     "label": "ICT learning resources",
+     "value": 50330
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 7426
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 14174
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 4839
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 97185
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 84829
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 188874
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 32843
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (Revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 11241
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 2136
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": 2720
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": 7651
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 7492
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 8806
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 9608
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04": {
+     "label": "Information and communication technology",
+     "value": 6515
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": -84051
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 7492
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": -7316
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": 12555
+    },
+    "B07": {
+     "label": "Outstanding balance on capital loans to school",
+     "value": 0
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2799077
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 193408
+    },
+    "I18": {
+     "label": "Total additional grant for schools",
+     "value": 172702
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 32843
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I18 - E30",
+      "value": 3548990
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 3630857
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": -81867
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": -71496
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "value": 3260327
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 288663
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": -71496,
+     "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)": -81867,
+     "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d": 3260327,
+     "Direct Grants: I01:I02 + I06:I07": 2851813,
+     "Community Grants: I16+I18": 172702,
+     "Targetted Grants: I03:I05 + I15": 235812,
+     "Self Generated Funding: (I08a/b:I13) + I17": 288663,
+     "Total Income: I01:I18 - E30": 3548990,
+     "Teaching Staff E01": 1621272,
+     "Supply Staff: E02 + E10 + E26": 84829,
+     "Education support staff: E03": 643211,
+     "Other Staff Costs: (E07:E09) + E11": 62329,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2633264,
+     "Maintenance & Improvement: E12 + E13": 28381,
+     "Premises: (E12:E14) + E04 + E28b": 206700,
+     "Catering Expenses: E06 + E25": 215168,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 366145,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 406533,
+     "Educational Supplies: (E19:E21)": 177391,
+     "Brought in Professional Services: (E27 + E28a)": 221716,
+     "Community Exp: E31 + E32": 13376,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 3630857
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3548990,
+     "expenditure_E_lines_excl_E30": 3630858,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": -81868,
+     "revenue_reserve_B01_B02_B06": -71496,
+     "opening_OB01_OB02": 10371,
+     "opening_plus_in_year": -71497
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 0,
+     "expenditure_lines_vs_workbook_total": 1,
+     "reserve_B_lines_vs_workbook": 0,
+     "opening_plus_in_year_vs_workbook_reserve": 0
+    },
+    "pipeline_finance_history": {
+     "total_income": 3548990,
+     "total_expenditure": 3630857,
+     "in_year_balance": -81867,
+     "revenue_reserve": -71496,
+     "grant_funding": 3260327,
+     "self_generated": 288663,
+     "sen_funding": 152627,
+     "pupil_premium": 83185,
+     "pupils": 427.5,
+     "teachers_fte": 21.67,
+     "fsm_pct": 11.8
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3548990,
+      "workbook": 3548990,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 3630857,
+      "workbook": 3630857,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": -81867,
+      "workbook": -81867,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": -71496,
+      "workbook": -71496,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 3260327,
+      "workbook": 3260327,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 288663,
+      "workbook": 288663,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 152627,
+      "workbook": 152627,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 83185,
+      "workbook": 83185,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": true,
+   "fbit_match": true,
+   "fbit_exact": true,
+   "fbit_differences": [],
+   "fbit_fields_compared": 51,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'expenditure_lines_vs_workbook_total': 1}",
+    "The 2022-23 closing balances split as B02 -£586.91 and B06 £10,958.15, but the 2023-24 opening balances split as OB01 £2,720 and OB02 £7,651. The total (£10,371) agrees; only the split between pupil-focused and community-focused balances differs.",
+    "E16 energy £85,884 is more than double the year before (£34,996) and the year after (£33,354)."
+   ]
+  },
+  "2024-25": {
+   "period": "April 2024 to March 2025",
+   "source": {
+    "file": "CFR_2024-25_Full_Data_Workbook.xlsx",
+    "sheet": "CFR Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Did Not Supply flag": "N",
+    "Lead school in federation": 0,
+    "London Weighting": "Inner",
+    "No pupils": 437.5,
+    "Overall Phase": "Primary",
+    "% of pupils eligible for FSM": 13.4,
+    "% of pupils with SEN support": 16.6,
+    "% of pupils with EHCP": 4.3,
+    "FTE Number of teachers": 23.1,
+    "Number of pupils in 6th form": 0,
+    "Type": "Community school",
+    "Admissions policy": "Not applicable",
+    "Period covered by return": 12,
+    "Federated submission": "No"
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2910817
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 167176
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil premium",
+     "value": 79450
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 0
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 91521
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 86089
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 229274
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 2838
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 54929
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 22223
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 16894
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 0
+    },
+    "I18c": {
+     "label": "Income from the £1bn COVID-19 catch-up package announced on 20 July 2020",
+     "value": 3106
+    },
+    "I18d": {
+     "label": "Income from other additional grants",
+     "value": 197349
+    },
+    "E01": {
+     "label": "Teaching staff",
+     "value": 1849375
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 579786
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 166482
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 216750
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 110378
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 55112
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 3359
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 3095
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 41964
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 3634
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 25521
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 10489
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 8632
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 6736
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 33354
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 45312
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 15644
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 112121
+    },
+    "E20A": {
+     "label": "Connectivity",
+     "value": 6698
+    },
+    "E20B": {
+     "label": "Onsite servers",
+     "value": 0
+    },
+    "E20C": {
+     "label": "IT learning resources",
+     "value": 973
+    },
+    "E20D": {
+     "label": "Administration software and systems",
+     "value": 10211
+    },
+    "E20E": {
+     "label": "Laptops, desktops and tablets",
+     "value": 12008
+    },
+    "E20F": {
+     "label": "Other hardware",
+     "value": 3764
+    },
+    "E20G": {
+     "label": "IT support",
+     "value": 11761
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 7680
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 15764
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 8219
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 74824
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 83839
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 258110
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 47737
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (Revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 0
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 1955
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": -84051
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": 12555
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 176
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 8844
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 0
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04A": {
+     "label": "Connectivity",
+     "value": 0
+    },
+    "CE04B": {
+     "label": "Onsite servers",
+     "value": 0
+    },
+    "CE04C": {
+     "label": "Administration software and systems",
+     "value": 0
+    },
+    "CE04D": {
+     "label": "Laptops desktops and tablets",
+     "value": 0
+    },
+    "CE04E": {
+     "label": "Other hardware",
+     "value": 6109
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": -51716
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 2911
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 0
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": 10600
+    },
+    "B07": {
+     "label": "Outstanding balance on capital loans to school",
+     "value": 0
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2910817
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 315363
+    },
+    "I18": {
+     "label": "Total additional grant for schools",
+     "value": 200455
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 47737
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I18 - E30",
+      "value": 3861666
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 3831287
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": 30379
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": -41117
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d",
+      "value": 3449420
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 412247
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": -41117,
+     "In-year Balance: Total Income (I01:I18 - E30) - Total Expenditure (E01:E29 + E31 + E32)": 30379,
+     "Grant Funding: (I01:I07) + I15 + I16 + I18a/b/c/d": 3449420,
+     "Direct Grants: I01:I02 + I06:I07": 3002338,
+     "Community Grants: I16+I18": 200455,
+     "Targetted Grants: I03:I05 + I15": 246626,
+     "Self Generated Funding: (I08a/b:I13) + I17": 412247,
+     "Total Income: I01:I18 - E30": 3861666,
+     "Teaching Staff E01": 1849375,
+     "Supply Staff: E02 + E10 + E26": 125803,
+     "Education support staff: E03": 579786,
+     "Other Staff Costs: (E07:E09) + E11": 65200,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2836914,
+     "Maintenance & Improvement: E12 + E13": 36010,
+     "Premises: (E12:E14) + E04 + E28b": 211124,
+     "Catering Expenses: E06 + E25": 185202,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 302012,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 471063,
+     "Educational Supplies: (E19:E21)": 157536,
+     "Brought in Professional Services: (E27 + E28a)": 305846,
+     "Community Exp: E31 + E32": 1955,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 3831287
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3861666,
+     "expenditure_E_lines_excl_E30": 3831287,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": 30379,
+     "revenue_reserve_B01_B02_B06": -41116,
+     "opening_OB01_OB02": -71496,
+     "opening_plus_in_year": -41117
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": 0,
+     "expenditure_lines_vs_workbook_total": 0,
+     "reserve_B_lines_vs_workbook": 1,
+     "opening_plus_in_year_vs_workbook_reserve": 0
+    },
+    "pipeline_finance_history": {
+     "total_income": 3861666,
+     "total_expenditure": 3831287,
+     "in_year_balance": 30379,
+     "revenue_reserve": -41117,
+     "grant_funding": 3449420,
+     "self_generated": 412247,
+     "sen_funding": 167176,
+     "pupil_premium": 79450,
+     "pupils": 437.5,
+     "teachers_fte": 23.1,
+     "fsm_pct": 13.4
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3861666,
+      "workbook": 3861666,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 3831287,
+      "workbook": 3831287,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": 30379,
+      "workbook": 30379,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": -41117,
+      "workbook": -41117,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 3449420,
+      "workbook": 3449420,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 412247,
+      "workbook": 412247,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 167176,
+      "workbook": 167176,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 79450,
+      "workbook": 79450,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": true,
+   "fbit_match": true,
+   "fbit_exact": false,
+   "fbit_differences": [
+    {
+     "field": "totalGrantFunding",
+     "fbit": 3449419.0,
+     "workbook": 3449420,
+     "difference": -1.0
+    },
+    {
+     "field": "census.teachers",
+     "fbit": 23.08,
+     "workbook": 23.1,
+     "difference": -0.02
+    }
+   ],
+   "fbit_fields_compared": 51,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'reserve_B_lines_vs_workbook': 1}",
+    "The workbook still labels I18c 'Income from the £1bn COVID-19 catch-up package announced on 20 July 2020' (£3,106).",
+    "E20 is split into E20A–E20G for the first time. The workbook's Educational Supplies column includes E20D administration software (£10,211) this year only (see discrepancies)."
+   ]
+  },
+  "2025-26": {
+   "period": "April 2025 to March 2026",
+   "source": {
+    "file": "CFR_2025-26_Full_Data_Workbook.xlsx",
+    "sheet": "CFR Data",
+    "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
+   },
+   "context": {
+    "Did Not Supply flag": "N",
+    "Lead school in federation": 0,
+    "London Weighting": "Inner",
+    "No pupils (including dual registrations)": 432.5,
+    "Overall Phase": "Primary",
+    "% of pupils eligible for FSM": 15.7,
+    "% of pupils with SEN support": 14.1,
+    "% of pupils with EHCP": 5.5,
+    "FTE Number of teachers": 23.6,
+    "Number of pupils in 6th form": 0,
+    "Type": "Community school",
+    "Admissions policy": "N/A",
+    "Period covered by return": 12,
+    "Federated submission": "No"
+   },
+   "lines": {
+    "I01": {
+     "label": "Funds delegated by the LA",
+     "value": 2983328
+    },
+    "I02": {
+     "label": "Funding for 6th form students",
+     "value": 0
+    },
+    "I03": {
+     "label": "SEN funding",
+     "value": 255913
+    },
+    "I04": {
+     "label": "Funding for minority ethnic pupils",
+     "value": 0
+    },
+    "I05": {
+     "label": "Pupil premium",
+     "value": 91930
+    },
+    "I06": {
+     "label": "Other government grants",
+     "value": 96016
+    },
+    "I07": {
+     "label": "Other grants and payments",
+     "value": 161051
+    },
+    "I08a": {
+     "label": "Income from lettings",
+     "value": 83086
+    },
+    "I08b": {
+     "label": "Income from facilities and services",
+     "value": 212913
+    },
+    "I09": {
+     "label": "Income from catering",
+     "value": 4995
+    },
+    "I10": {
+     "label": "Receipts from supply teacher insurance claims",
+     "value": 19035
+    },
+    "I11": {
+     "label": "Receipts from other insurance claims",
+     "value": 0
+    },
+    "I12": {
+     "label": "Income from contributions to visits etc.",
+     "value": 16013
+    },
+    "I13": {
+     "label": "Donations and/or private funds",
+     "value": 3687
+    },
+    "I15": {
+     "label": "Pupil focussed extended school funding and / or grants",
+     "value": 0
+    },
+    "I16": {
+     "label": "Community focussed school funding and / or grants",
+     "value": 0
+    },
+    "I17": {
+     "label": "Community focused school facilities income",
+     "value": 0
+    },
+    "E01": {
+     "label": "Teaching staff",
+     "value": 1919901
+    },
+    "E02": {
+     "label": "Supply teaching staff",
+     "value": 0
+    },
+    "E03": {
+     "label": "Education support staff",
+     "value": 603656
+    },
+    "E04": {
+     "label": "Premises staff",
+     "value": 168511
+    },
+    "E05": {
+     "label": "Administrative and clerical staff",
+     "value": 228627
+    },
+    "E06": {
+     "label": "Catering staff",
+     "value": 4596
+    },
+    "E07": {
+     "label": "Cost of other staff",
+     "value": 50806
+    },
+    "E08": {
+     "label": "Indirect employee expenses",
+     "value": 2726
+    },
+    "E09": {
+     "label": "Development and training",
+     "value": 3100
+    },
+    "E10": {
+     "label": "Supply teacher insurance",
+     "value": 35831
+    },
+    "E11": {
+     "label": "Staff related insurance",
+     "value": 3608
+    },
+    "E12": {
+     "label": "Building maintenance and improvement",
+     "value": 31597
+    },
+    "E13": {
+     "label": "Grounds maintenance and improvement",
+     "value": 9315
+    },
+    "E14": {
+     "label": "Cleaning and caretaking",
+     "value": 8038
+    },
+    "E15": {
+     "label": "Water and sewerage",
+     "value": 7579
+    },
+    "E16": {
+     "label": "Energy",
+     "value": 39799
+    },
+    "E17": {
+     "label": "Rates",
+     "value": 50091
+    },
+    "E18": {
+     "label": "Other occupation costs",
+     "value": 14094
+    },
+    "E19": {
+     "label": "Learning resources (not ICT equipment)",
+     "value": 130783
+    },
+    "E20A": {
+     "label": "Connectivity",
+     "value": 6899
+    },
+    "E20B": {
+     "label": "Onsite servers",
+     "value": 0
+    },
+    "E20C": {
+     "label": "IT learning resources",
+     "value": 3707
+    },
+    "E20D": {
+     "label": "Administration software and systems",
+     "value": 16548
+    },
+    "E20E": {
+     "label": "Laptops, desktops and tablets",
+     "value": 9482
+    },
+    "E20F": {
+     "label": "Other hardware",
+     "value": 6212
+    },
+    "E20G": {
+     "label": "IT support",
+     "value": 8294
+    },
+    "E21": {
+     "label": "Exam fees",
+     "value": 0
+    },
+    "E22": {
+     "label": "Administrative supplies",
+     "value": 10638
+    },
+    "E23": {
+     "label": "Other insurance premiums",
+     "value": 16646
+    },
+    "E24": {
+     "label": "Special facilities",
+     "value": 6796
+    },
+    "E25": {
+     "label": "Catering supplies",
+     "value": 213559
+    },
+    "E26": {
+     "label": "Agency supply teaching staff",
+     "value": 82434
+    },
+    "E27": {
+     "label": "Bought in professional services – curriculum",
+     "value": 344493
+    },
+    "E28a": {
+     "label": "Bought in professional services, other, not PFI",
+     "value": 48785
+    },
+    "E28b": {
+     "label": "Bought in professional services, other, PFI",
+     "value": 0
+    },
+    "E29": {
+     "label": "Loan interest",
+     "value": 0
+    },
+    "E30": {
+     "label": "Direct revenue financing (Revenue contributions to capital)",
+     "value": 0
+    },
+    "E31": {
+     "label": "Community focused school staff",
+     "value": 0
+    },
+    "E32": {
+     "label": "Community focused school costs",
+     "value": 10600
+    },
+    "OB01": {
+     "label": "Opening pupil-focused revenue balance",
+     "value": -51716
+    },
+    "OB02": {
+     "label": "Opening community-focused revenue balance",
+     "value": 10600
+    },
+    "OB03": {
+     "label": "Opening capital balance",
+     "value": 2911
+    },
+    "CI01": {
+     "label": "Capital income",
+     "value": 14602
+    },
+    "CI03": {
+     "label": "Voluntary or private income",
+     "value": 0
+    },
+    "CI04": {
+     "label": "Direct revenue financing",
+     "value": 0
+    },
+    "CE01": {
+     "label": "Acquisition of land and existing buildings",
+     "value": 0
+    },
+    "CE02": {
+     "label": "New construction, conversion and renovation",
+     "value": 0
+    },
+    "CE03": {
+     "label": "Vehicles, plant, equipment and machinery",
+     "value": 0
+    },
+    "CE04A": {
+     "label": "Connectivity",
+     "value": 0
+    },
+    "CE04B": {
+     "label": "Onsite servers",
+     "value": 0
+    },
+    "CE04C": {
+     "label": "Administration software and systems",
+     "value": 0
+    },
+    "CE04D": {
+     "label": "Laptops desktops and tablets",
+     "value": 0
+    },
+    "CE04E": {
+     "label": "Other hardware",
+     "value": 6845
+    },
+    "B01": {
+     "label": "Committed revenue balances",
+     "value": 0
+    },
+    "B02": {
+     "label": "Uncommitted revenue balances",
+     "value": -210901
+    },
+    "B03": {
+     "label": "Devolved formula capital balance",
+     "value": 4879
+    },
+    "B05": {
+     "label": "Other capital balances",
+     "value": 5789
+    },
+    "B06": {
+     "label": "Community-focused school revenue balances",
+     "value": 0
+    },
+    "B07": {
+     "label": "Outstanding balance on capital loans to school",
+     "value": 0
+    }
+   },
+   "subtotal_lines": {
+    "I01/2": {
+     "label": "Total pre and Post-16 Funding",
+     "value": 2983328
+    },
+    "I08a/b": {
+     "label": "Total income from facilities and services",
+     "value": 296000
+    },
+    "E28a/b": {
+     "label": "Total bought in professional services",
+     "value": 48785
+    }
+   },
+   "totals": {
+    "workbook": {
+     "total_income": {
+      "label": "Total Income: I01:I17 - E30",
+      "value": 3927968
+     },
+     "total_expenditure": {
+      "label": "Total Expenditure: (E01:E29 + E31 + E32)",
+      "value": 4097753
+     },
+     "in_year_balance": {
+      "label": "In-year Balance: Total Income (I01:I17 - E30) - Total Expenditure (E01:E29 + E31 + E32)",
+      "value": -169784
+     },
+     "revenue_reserve": {
+      "label": "Revenue Reserve: B01 + B02 + B06",
+      "value": -210901
+     },
+     "grant_funding": {
+      "label": "Grant Funding: (I01:I07) + I15 + I16",
+      "value": 3588239
+     },
+     "self_generated_funding": {
+      "label": "Self Generated Funding: (I08a/b:I13) + I17",
+      "value": 339730
+     }
+    },
+    "workbook_derived_columns": {
+     "Revenue Reserve: B01 + B02 + B06": -210901,
+     "In-year Balance: Total Income (I01:I17 - E30) - Total Expenditure (E01:E29 + E31 + E32)": -169784,
+     "Grant Funding: (I01:I07) + I15 + I16": 3588239,
+     "Direct Grants: I01:I02 + I06:I07": 3240396,
+     "Community Grants: I16": 0,
+     "Targetted Grants: I03:I05 + I15": 347843,
+     "Self Generated Funding: (I08a/b:I13) + I17": 339730,
+     "Total Income: I01:I17 - E30": 3927968,
+     "Teaching Staff E01": 1919901,
+     "Supply Staff: E02 + E10 + E26": 118265,
+     "Education support staff: E03": 603656,
+     "Other Staff Costs: (E07:E09) + E11": 60240,
+     "Staff Total: (E01:E03) + E05 + (E07: E11) + E26": 2930689,
+     "Maintenance & Improvement: E12 + E13": 40912,
+     "Premises: (E12:E14) + E04 + E28b": 217462,
+     "Catering Expenses: E06 + E25": 218155,
+     "Occupation: E06 + (E15:E18) + E23 + E25": 346364,
+     "Supplies and Services: (E19:E22) + (E27:E28b)": 585841,
+     "Educational Supplies: (E19:E20C) + (E20E:E21)": 165378,
+     "Brought in Professional Services: (E27 + E28a)": 393278,
+     "Community Exp: E31 + E32": 10600,
+     "Total Expenditure: (E01:E29 + E31 + E32)": 4097753
+    },
+    "recomputed_from_lines": {
+     "income_I_lines": 3927967,
+     "expenditure_E_lines_excl_E30": 4097751,
+     "E30_direct_revenue_financing": 0,
+     "income_minus_expenditure": -169784,
+     "revenue_reserve_B01_B02_B06": -210901,
+     "opening_OB01_OB02": -41116,
+     "opening_plus_in_year": -210900
+    },
+    "reconciliation": {
+     "income_lines_vs_workbook_total": -1,
+     "expenditure_lines_vs_workbook_total": -2,
+     "reserve_B_lines_vs_workbook": 0,
+     "opening_plus_in_year_vs_workbook_reserve": 1
+    },
+    "pipeline_finance_history": {
+     "total_income": 3927968,
+     "total_expenditure": 4097753,
+     "in_year_balance": -169784,
+     "revenue_reserve": -210901,
+     "grant_funding": 3588239,
+     "self_generated": 339730,
+     "sen_funding": 255913,
+     "pupil_premium": 91930,
+     "pupils": 432.5,
+     "teachers_fte": 23.6,
+     "fsm_pct": 15.7
+    },
+    "pipeline_vs_workbook": {
+     "total_income": {
+      "pipeline": 3927968,
+      "workbook": 3927968,
+      "match": true
+     },
+     "total_expenditure": {
+      "pipeline": 4097753,
+      "workbook": 4097753,
+      "match": true
+     },
+     "in_year_balance": {
+      "pipeline": -169784,
+      "workbook": -169784,
+      "match": true
+     },
+     "revenue_reserve": {
+      "pipeline": -210901,
+      "workbook": -210901,
+      "match": true
+     },
+     "grant_funding": {
+      "pipeline": 3588239,
+      "workbook": 3588239,
+      "match": true
+     },
+     "self_generated": {
+      "pipeline": 339730,
+      "workbook": 339730,
+      "match": true
+     },
+     "sen_funding": {
+      "pipeline": 255913,
+      "workbook": 255913,
+      "match": true
+     },
+     "pupil_premium": {
+      "pipeline": 91930,
+      "workbook": 91930,
+      "match": true
+     }
+    }
+   },
+   "fbit_shown": true,
+   "fbit_match": true,
+   "fbit_exact": false,
+   "fbit_differences": [
+    {
+     "field": "inYearBalance",
+     "fbit": -169785.0,
+     "workbook": -169784,
+     "difference": -1.0
+    },
+    {
+     "field": "census.teachers",
+     "fbit": 23.65,
+     "workbook": 23.6,
+     "difference": 0.05
+    }
+   ],
+   "fbit_fields_compared": 51,
+   "notes": [
+    "Line items are whole pounds but the workbook's totals were computed from unrounded pence, so they differ by up to £3: {'income_lines_vs_workbook_total': -1, 'expenditure_lines_vs_workbook_total': -2, 'opening_plus_in_year_vs_workbook_reserve': 1}",
+    "Catering: E06 catering staff fell from £110,378 to £4,596 and I09 catering income was £4,995, while E25 catering supplies rose from £74,824 to £213,559. The CFR definition of E25 includes the 'full cost of service contract', so the figures are consistent with catering moving to a contract; the return does not say so directly.",
+    "I18 (additional grants) no longer exists; I06 other government grants rose to £96,016 and I07 to £161,051.",
+    "E27 bought-in professional services (curriculum) reached £344,493, up from £44,002 in 2018-19. The CFR definition covers curriculum consultancy, agency staff other than teachers covering absence, visiting specialists and music teachers. FBIT counts E27 within 'Teaching and teaching support staff' (£6,822 a pupil, higher than 96.7% of similar schools).",
+    "I03 SEN funding rose to £255,913 (£167,176 in 2024-25); EHCP pupils 5.5% (4.3% in 2024-25)."
+   ]
+  }
+ },
+ "ptfa": {
+  "charity_number": 1103834,
+  "name": "WILLIAM PATTEN PARENTS TEACHERS & FRIENDS ASSOCIATION",
+  "status": "Registered",
+  "registered": "2004-05-19",
+  "financial_year_end": "31 August",
+  "governing_document": "CONSTITUTION ADOPTED 24 FEBRUARY 2004",
+  "objects": "TO ADVANCE THE EDUCATION OF PUPILS IN THE SCHOOL IN PARTICULAR BY:    (1) DEVELOPING EFFECTIVE RELATIONSHIPS BETWEEN STAFF, PARENTS AND OTHERS ASSOCIATED WITH THE SCHOOL;    (2) ENGAGING IN ACTIVITIES OR PROVIDING FACILITIES OR EQUIPMENT WHICH SUPPORT THE SCHOOL AND ADVANCE THE EDUCATION OF THE PUPILS",
+  "area_of_benefit": "NOT DEFINED BUT IN PRACTICE THE CATCHMENT AREA OF WILLIAM PATTEN SCHOOL",
+  "activities_as_registered": "We raise funds for the school to spend on educational equipment, books, trips, sports and music activities and equipment, visits and additional onsite or offsite projects delivered in conjunction with the school and external  providers. We provide funding for additional staff outside normal class times as required.We also promote communication between the school, teachers and parents.",
+  "classification": [
+   "Education/training",
+   "Children/young People",
+   "Makes Grants To Organisations"
+  ],
+  "gift_aid": true,
+  "contact_postcode": "N16 0NX",
+  "latest": {
+   "period_end": "2025-08-31",
+   "income": 48547.0,
+   "expenditure": 50100.0
+  },
+  "years": {
+   "2020-21": {
+    "period": "2020-09-01 to 2021-08-31",
+    "income": 12602.0,
+    "expenditure": 21451.0,
+    "volunteers": 100,
+    "trustees": null,
+    "annual_return_received": "2022-07-20",
+    "accounts_received": null,
+    "grant_making_is_main_activity": false,
+    "government_grants": null,
+    "source": "Charity Commission register bulk extract (date_of_extract 2026-11-06), pipeline/.cache/charity/ charity_annual_return_history + charity_annual_return_parta, cycle AR21",
+    "notes": [
+     "Trustee count not available: no accounts were filed (income under £25,000) and the register's trustee pages could not be read (see discrepancies).",
+     "Treasurer's letters in the 2022-23 and 2023-24 accounts: 'the income in 2020-21 was inflated due to the reported £8k of income from the lottery account with no fairs/other fundraising in that year.'"
+    ]
+   },
+   "2021-22": {
+    "period": "2021-09-01 to 2022-08-31",
+    "income": 15951.0,
+    "expenditure": 9339.0,
+    "volunteers": 100,
+    "trustees": null,
+    "annual_return_received": "2023-03-21",
+    "accounts_received": null,
+    "grant_making_is_main_activity": false,
+    "government_grants": null,
+    "source": "Charity Commission register bulk extract (date_of_extract 2026-11-06), pipeline/.cache/charity/ charity_annual_return_history + charity_annual_return_parta, cycle AR22",
+    "notes": [
+     "Trustee count not available: no accounts were filed (income under £25,000) and the register's trustee pages could not be read (see discrepancies).",
+     "The 2022-23 accounts give 2021-22 comparatives of income £16,400 (all 'Fair') and spending £9,400 (all 'FFS'), funds £19,983 to £26,983; the annual return says £15,951 and £9,339. The annual-return figures are used; the comparatives look rounded to £100."
+    ]
+   },
+   "2022-23": {
+    "period": "2022-09-01 to 2023-08-31",
+    "income": 32339.0,
+    "expenditure": 23683.0,
+    "volunteers": 200,
+    "trustees": 5,
+    "annual_return_received": "2024-06-29",
+    "accounts_received": "2024-06-29",
+    "grant_making_is_main_activity": true,
+    "government_grants": 0,
+    "source": "Charity Commission register bulk extract (date_of_extract 2026-11-06), pipeline/.cache/charity/ charity_annual_return_history + charity_annual_return_parta, cycle AR23",
+    "notes": []
+   },
+   "2023-24": {
+    "period": "2023-09-01 to 2024-08-31",
+    "income": 32743.0,
+    "expenditure": 36767.0,
+    "volunteers": 200,
+    "trustees": 5,
+    "annual_return_received": "2025-06-28",
+    "accounts_received": "2025-06-28",
+    "grant_making_is_main_activity": false,
+    "government_grants": 0,
+    "source": "Charity Commission register bulk extract (date_of_extract 2026-11-06), pipeline/.cache/charity/ charity_annual_return_history + charity_annual_return_parta, cycle AR24",
+    "notes": []
+   },
+   "2024-25": {
+    "period": "2024-09-01 to 2025-08-31",
+    "income": 48547.0,
+    "expenditure": 50100.0,
+    "volunteers": 10,
+    "trustees": 6,
+    "annual_return_received": "2026-04-17",
+    "accounts_received": "2026-04-17",
+    "grant_making_is_main_activity": false,
+    "government_grants": 0,
+    "source": "Charity Commission register bulk extract (date_of_extract 2026-11-06), pipeline/.cache/charity/ charity_annual_return_history + charity_annual_return_parta, cycle AR25",
+    "notes": [
+     "Volunteers fell from 200 (2022-23, 2023-24) to 10 on the 2024-25 annual return. The filed figure is recorded as given; it may reflect a change in how the trustees counted."
+    ]
+   }
+  },
+  "years_not_available": "The register publishes five years of annual returns (2020-21 to 2024-25). Earlier years are not in the bulk extract; the treasurer's chart in the 2022-23 and 2023-24 accounts covers 2017-18 onwards but its OCR is unreadable, so no figures are taken from it.",
+  "breakdown": {
+   "2022-23": {
+    "income_lines": {
+     "Donations": 13363,
+     "Quiz": 1210,
+     "Fair": 15228,
+     "Just Giving": 1012,
+     "Auction": 1525
+    },
+    "income_total": 32339,
+    "income_lines_sum": 32338,
+    "expenditure_lines": {
+     "Quooker (staff-room drinking water)": 1700,
+     "FFS (Fit for Sport mealtime cover)": 14407,
+     "Fair costs": 1574,
+     "Noticeboard (electronic)": 2950,
+     "Year 6 activities": 2733,
+     "Operating costs": 320
+    },
+    "expenditure_total": 23683,
+    "expenditure_lines_sum": 23684,
+    "funds_brought_forward": 26983,
+    "funds_carried_forward": 35639,
+    "cash_at_bank_and_in_hand": 37903,
+    "cash_detail": {
+     "main account": 37389,
+     "CAF Bank": 495,
+     "Stripe payments": 19
+    },
+    "creditors": 2264,
+    "creditors_detail": {
+     "independent examiner fees": 500,
+     "other creditors": 1764
+    },
+    "trustees_named_in_accounts": 5,
+    "categories": {
+     "income": {
+      "events (Fair + Quiz + Auction)": 17963,
+      "donations (Donations + Just Giving)": 14375,
+      "grants": 0,
+      "other": 0
+     },
+     "spending": {
+      "support for the school (FFS + Quooker + Noticeboard + Year 6 activities)": 21790,
+      "event costs (Fair costs)": 1574,
+      "running costs (Operating costs)": 320
+     }
+    },
+    "sources": [
+     "PTFA trustees' report and accounts for the year ended 31 August 2023 (filed with the Charity Commission 2024-06-29), note 4 (incoming resources), note 5 (resources expended), balance sheet p.8, SoFA p.9; read from the transcription at https://opencharities.uk/ew/1103834/files/2023-08-31-accounts.md"
+    ],
+    "notes": [
+     "Note 4 lines sum to £32,338 and note 5 lines to £23,684 against stated totals of £32,339 and £23,683: £1 rounding in the filed accounts.",
+     "Treasurer's letter (dated 28 June 2024) names the items: £14.4k mealtime cover (Fit for Sport), £1.7k Quooker, £3k electronic noticeboard, £2.7k Year 6 activities, £1.5k fair costs, £0.3k other operating costs (insurance, lottery).",
+     "Treasurer's letter puts year-end funds at £37,389 'comprised of £35,639 in the bank account, and £1,750 cash float'; the balance sheet instead shows cash £37,903 and net assets £35,639. The letter's figures include a £1,750 cash float that the accounts do not, and exclude the separate lottery account."
+    ]
+   },
+   "2023-24": {
+    "income_lines": {
+     "Donations": 12117,
+     "Quiz": 1613,
+     "Fair": 19013
+    },
+    "income_total": 32743,
+    "income_lines_sum": 32743,
+    "expenditure_lines": {
+     "Lunch clubs support": 12226,
+     "Project activities": 14574,
+     "PTFA fees": 640,
+     "Fair costs": 4151,
+     "Year 6 activities": 4576,
+     "Independent examiner fees": 600
+    },
+    "expenditure_total": 36767,
+    "expenditure_lines_sum": 36767,
+    "funds_brought_forward": 35639,
+    "funds_carried_forward": 31615,
+    "cash_at_bank_and_in_hand": 32215,
+    "creditors": 600,
+    "trustees_named_in_accounts": 5,
+    "categories": {
+     "income": {
+      "events (Fair + Quiz)": 20626,
+      "donations (Donations)": 12117,
+      "grants": 0,
+      "other": 0
+     },
+     "spending": {
+      "support for the school (Lunch clubs support + Project activities + Year 6 activities)": 31376,
+      "event costs (Fair costs)": 4151,
+      "running costs (PTFA fees + Independent examiner fees)": 1240
+     }
+    },
+    "sources": [
+     "PTFA trustees' report and accounts for the year ended 31 August 2024 (filed with the Charity Commission 2025-06-28), note 4, note 5, balance sheet and SoFA; 2023/24 comparatives in the 2024-25 accounts note 4 and note 5 agree; read from the transcription at https://opencharities.uk/ew/1103834/files/2024-08-31-accounts.md"
+    ],
+    "notes": [
+     "The transcription's note-5 table is jumbled; values were assigned using the 2023/24 comparative column of the 2024-25 accounts (Lunch Clubs Support 12,226 [OCR shows '42,226' there], Project Activities 14,574, PTFA Fees 640, Fair Costs 4,151, Year 6 Activities 4,576, Independent Examiner Fees 600), which sum exactly to the stated total £36,767.",
+     "Treasurer's letter (dated 7 November 2024) names: £8.5k mealtime cover, £4.8k IT/server rebuild, £5.3k Place2Be termly contribution, £4.5k music tuition, plus smaller items (Mariachi band, Christmas trees, Djembe drumming, Roman Day, Safari Pete, outdoor painting, Springfield Park boating, gladiator combat/fencing, Hackney School of Food, Year 6 hoodies and yearbooks, Clayheads); £4.1k fair costs; £0.6k other operating costs.",
+     "The letter gives total spending as £37,030 in one place and £36.2k in another; the accounts say £36,767. The accounts figure is used.",
+     "Letter: lottery money is counted only when transferred to the main account, 'which did not occur this year'; year-end funds £33,965 = £32,215 bank + £1,750 cash float."
+    ]
+   },
+   "2024-25": {
+    "income_lines": {
+     "Donations": 23997,
+     "Bake sale": 2023,
+     "Fair": 22427,
+     "Other – football": 100
+    },
+    "income_total": 48547,
+    "income_lines_sum": 48547,
+    "expenditure_lines": {
+     "Gymnastics": 5000,
+     "Classroom iPads": 9200,
+     "Lunch clubs support": 14400,
+     "Fair costs": 4900,
+     "Place2Be": 9000,
+     "SEND": 1600,
+     "Year 6 activities": 3500,
+     "Independent examiner fees": 600,
+     "Other": 1900
+    },
+    "expenditure_total": 50100,
+    "expenditure_lines_sum": 50100,
+    "funds_brought_forward": 31615,
+    "funds_carried_forward": 30062,
+    "cash_at_bank_and_in_hand": 30712,
+    "creditors": 650,
+    "trustees_named_in_accounts": 6,
+    "categories": {
+     "income": {
+      "events (Fair + Bake sale)": 24450,
+      "donations (Donations)": 23997,
+      "grants": 0,
+      "other (Other – football)": 100
+     },
+     "spending": {
+      "support for the school (Gymnastics + Classroom iPads + Lunch clubs support + Place2Be + SEND + Year 6 activities)": 42700,
+      "event costs (Fair costs)": 4900,
+      "running costs (Independent examiner fees)": 600,
+      "other (unspecified in accounts)": 1900
+     }
+    },
+    "sources": [
+     "PTFA trustees' report and accounts for the year ended 31 August 2025 (filed with the Charity Commission 2026-04-17), note 4 and note 5 p.10, balance sheet p.6, SoFA p.7 (approved 17 April 2026); read from the transcription at https://opencharities.uk/ew/1103834/files/2025-08-31-accounts.md"
+    ],
+    "notes": [
+     "OCR of note 5 shows SEND as '4,600' in the unrestricted column and '1,600' in the total column; 1,600 is the only value that makes the lines sum to the stated total £50,100.",
+     "Treasurer's letter (dated 7 March 2026) says the £24k donations line includes 'the direct donation campaign and other parent led activities such as the auction and bingo nights', so some event income sits in Donations; the events/donations split above follows the accounts' own lines.",
+     "Letter: spending rose because 'the PTFA have been asked to support activities as previous funding has ceased': £14k mealtime cover, £9k classroom iPads, £9k Place2Be termly contribution, £5k gymnastics, plus smaller items (Mariachi band, Science Week, Christmas trees, Djembe drumming, Roman Day, SEND resources, Hackney School of Food, Year 6 hoodies and yearbooks); £5k fair costs.",
+     "Letter puts opening funds at £33,965 (includes the £1,750 cash float); the accounts' opening funds are £31,615.",
+     "The filed balance sheet labels both columns '2023/24'; the values (cash £30,712 vs £32,215) show the first column is 2024/25."
+    ]
+   }
+  },
+  "stated_plan": {
+   "school_website": {
+    "summary": "PTFA role: 'to support our amazing school with funds to facilitate a number of hugely important activities including fit for sport staff at breaks and large projects' and to bring the parent community together. Funds go towards 'music lessons, educational school trips and themed events throughout the year, such as arts, international and science days, a Christmas tree and decorations'. A 'longer-term fundraising initiative to update the Early Years playground' is being drafted. 100% volunteer-led; seeking a social media coordinator, fundraising coordinator (business donations, sponsorship for e.g. a playground refresh) and event helpers. Runs easyfundraising.",
+    "committee_size_listed": 5,
+    "source": "https://www.williampatten.hackney.sch.uk/ptfa-and-fundraising/ (page last modified 2026-09-03 per the site's WordPress API)"
+   },
+   "treasurer_2024_25": "'Sufficient funds are available to continue the funding of core activities the PTFA has historically supported, and to provide additional targeted support planned by the school.' (Treasurer's letter, 7 March 2026, in the 2024-25 accounts.)",
+   "ptfa_own_website": "williampattenptfa.org now serves a GoDaddy parking page (domain created 2023-11-18, expiry 2026-11-18 per WHOIS on 2026-11-07). The Internet Archive was 'Temporarily Offline' (HTTP 503) on every attempt on 2026-11-07, so no archived copy was read."
+  },
+  "relationship_to_school_accounts": "CFR line I13 'donations and/or voluntary funds' covers money 'paid into the main school budget', including 'income from fund-raising activities' and parents' contributions (DfE CFR framework 2025 to 2026, Income section). Any PTFA money paid to the school therefore appears in the school's own income. The PTFA's treasurer letters describe it 'combin[ing] with the school to fund annual activities' and 'mealtime cover reimbursement', but the accounts do not say which payments went to the school and which straight to suppliers, and the years differ (PTFA September-August, CFR April-March), so the overlap cannot be measured. School I13 by CFR year: 2022-23 £4,275.63, 2023-24 £27,315, 2024-25 £16,894, 2025-26 £3,687.",
+  "sources": [
+   {
+    "title": "Charity Commission register: charity 1103834",
+    "url": "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/1103834",
+    "retrieved": "2026-11-07",
+    "note": "Pages returned 'Sorry, there was an issue displaying this content' to a plain request; figures taken from the official bulk extract instead."
+   },
+   {
+    "title": "Charity Commission bulk extract (charity, annual return history, annual return part A, classification, governing document)",
+    "url": "https://register-of-charities.charitycommission.gov.uk/en/register/full-register-download",
+    "retrieved": "2026-11-06"
+   },
+   {
+    "title": "PTFA accounts y/e 31 Aug 2023 (transcription)",
+    "url": "https://opencharities.uk/ew/1103834/files/2023-08-31-accounts.md",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "PTFA accounts y/e 31 Aug 2024 (transcription)",
+    "url": "https://opencharities.uk/ew/1103834/files/2024-08-31-accounts.md",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "PTFA accounts y/e 31 Aug 2025 (transcription)",
+    "url": "https://opencharities.uk/ew/1103834/files/2025-08-31-accounts.md",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "William Patten Primary School: PTFA & Fundraising",
+    "url": "https://www.williampatten.hackney.sch.uk/ptfa-and-fundraising/",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "DfE CFR framework 2025 to 2026: Income (I13 definition)",
+    "url": "https://www.gov.uk/guidance/consistent-financial-reporting-framework-2025-to-2026/income",
+    "retrieved": "2026-11-07"
+   }
+  ]
+ },
+ "hackney": {
+  "licensed_deficit": {
+   "on_list": true,
+   "entry": {
+    "school": "WILLIAM PATTEN PRIMARY",
+    "phase": "Primary",
+    "outturn_2024_25": -41117,
+    "status_of_lda": "LDA Spring 26"
+   },
+   "matches_cfr": "The outturn -£41,117 equals the CFR 2024-25 revenue reserve (B01 + B02 + B06) of -£41,117.",
+   "list_context": "11 schools with deficits (2 special, 8 primary, 1 nursery) totalling -£4,727,224 at 2024-25 outturn. William Patten has the second-smallest deficit on the list (only Wentworth Nursery, -£29,533, is smaller). The paper says the £4.7m 'is expected to increase during the 2025/26 financial year' and that LDAs will be prepared 'to be implemented from the 2026/27 financial year'.",
+   "source": {
+    "title": "Licensed Deficit Agreement update (paper for Schools Forum 5 November 2025, item 3.3)",
+    "url": "https://docs.google.com/document/d/1DyLYB143g5_5BKKKTY4XLCx6TiwWAKnAjueXCfGM2pk",
+    "retrieved": "2026-11-07"
+   },
+   "after_2025_26": "The 2025-26 balances report to the 1 July 2026 Forum (item 4) is linked from the minutes but is not publicly readable (HTTP 401), so whether the school's 2025-26 deficit (-£210,901 in the CFR) is on a later list could not be checked."
+  },
+  "school_specific": [
+   {
+    "date": "2024-05-01",
+    "statement": "DfE gave Hackney £360k 'for Schools in Financial Difficulty' late in 2023/24; 'a methodology which targets schools who have deficit balances or are on the verge of falling into deficit' was applied and '8 schools received funding of just under £45k each': Grasmere, Holmleigh, Lauriston Primary, Our Lady and St Joseph, Queensbridge, William Patten, London Fields and Simon Marks.",
+    "source": "Schools Forum minutes 1 May 2024, item 4 (responses to member questions), p.5",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%201%20May%202024.pdf",
+    "cfr_note": "The CFR has no separate line for this grant; it cannot be traced to a single 2023-24 income line."
+   },
+   {
+    "date": "2025-10-20",
+    "statement": "Growth fund redistribution after the St Mary's CofE closure: William Patten Primary School took 1 displaced pupil and received £4,135 (of £186,075 in total).",
+    "source": "Growth Fund Redistribution, October 2025 (paper for Schools Forum 5 November 2025, item 5)",
+    "url": "https://docs.google.com/document/d/19c9ECWGVEoOldzZEfWPTepsYerMUFd8pzoOMlAdYlSY"
+   },
+   {
+    "date": "2026-02-04",
+    "statement": "Raising Achievement Grant report: a parent who built a Black and Global Majority Parents Group at Clapton Girls Academy 'has advised on the roll out of a similar model at William Patten primary school and the RAG was used to ensure payment for her services' (section 6.2.3). Not a payment to the school's budget.",
+    "source": "Raising Achievement Grant Report 2025-26 (paper for Schools Forum 4 February 2026)",
+    "url": "https://docs.google.com/document/d/1-T1zri6dPiZiuR3Ey-tL0efC-lhIoLjpvmwXpw4mYqs"
+   },
+   {
+    "date": "2025-11-05",
+    "statement": "Listed with an LDA due Spring 2026 (see licensed_deficit).",
+    "source": "LDA update paper, Schools Forum 5 November 2025",
+    "url": "https://docs.google.com/document/d/1DyLYB143g5_5BKKKTY4XLCx6TiwWAKnAjueXCfGM2pk"
+   }
+  ],
+  "forum_statements": [
+   {
+    "date": "2025-07-02",
+    "page": 4,
+    "statement": "Overall school balances 'remained in credit at the year-end, with approximately £4 million in revenue reserves'. 'The deficits of four schools that closed last year were written off by the council, and a similar process will occur for schools closing or merging this summer.' Concern 'that the overall school balances might go into deficit in the next year or two'.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2002%20July%202025.pdf"
+   },
+   {
+    "date": "2025-07-02",
+    "page": 5,
+    "statement": "'The budget deficit stems from a faster-than-anticipated decline in student enrollment, a trend expected to continue', together with the challenges of 'smaller, unfederated schools'. Item 4: a 'more robust process' for licensed deficit agreements and cash-flow loans; deficits licensed in the interim while schools work to a sustainable budget in the medium term.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2002%20July%202025.pdf"
+   },
+   {
+    "date": "2025-07-02",
+    "page": 6,
+    "statement": "Schools with deficits include 'some exceeding a million pounds and others under £100,000'. Action: a detailed report on schools with licensed deficits to come to the Forum.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2002%20July%202025.pdf"
+   },
+   {
+    "date": "2025-11-05",
+    "page": 3,
+    "statement": "Item 3.3: the 2024-25 outturn shows 'approximately 11 schools under review'; 'a large percentage of the current £4.7 million deficit is due to two special schools'; 'tighter, more intrusive deficit agreements are necessary'.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%205%20November%202025.pdf"
+   },
+   {
+    "date": "2025-11-05",
+    "page": 4,
+    "statement": "'The primary issue discussed frequently is falling pupil numbers, which is likely to diminish the School Block.' Growth funding supports reorganisation 'following the closure of four primary schools'.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%205%20November%202025.pdf"
+   },
+   {
+    "date": "2025-11-05",
+    "page": null,
+    "statement": "School reserves across Hackney maintained schools fell from £16,150,726 (2021-22) to £12,424,699 (2022-23), £7,446,624 (2023-24) and £4,301,534 (2024-25).",
+    "url": "https://docs.google.com/document/d/1DyLYB143g5_5BKKKTY4XLCx6TiwWAKnAjueXCfGM2pk"
+   },
+   {
+    "date": "2026-02-04",
+    "page": 7,
+    "statement": "Redundancy panel criteria changed to remove the 'falling rolls' requirement, so schools in financial difficulty qualify regardless of roll.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2004%20February%202026.pdf"
+   },
+   {
+    "date": "2026-07-01",
+    "page": 3,
+    "statement": "Item 4, Final End of Year Position for Schools – School Balances 2025-26, presented for noting.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2001%20July%202026.pdf"
+   },
+   {
+    "date": "2026-07-01",
+    "page": 4,
+    "statement": "Reserve limits described as 5% (secondary) and 8% (primary); 'schools with surplus balances exceeding approximately 12% are required to submit expenditure plans'. Councillors asked for a breakdown of 'the £6m deficit of closed schools' and raised the impact of partly funded pay awards on 'schools already operating under license deficit agreements'. Officers noted 'further school closures may be necessary in the future due to declining student enrollment numbers'.",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2001%20July%202026.pdf"
+   }
+  ],
+  "closures": {
+   "statement": "Hackney's Cabinet agreed on 22 April 2025 to close or merge six schools from September 2025: St Mary's CofE Primary and St Dominic's Catholic Primary closed; Oldhill Community School merged into Harrington Hill; Sir Thomas Abney merged into Holmleigh (which moved to the Sir Thomas Abney site). William Patten is not among them. Hackney snapshot: 2,400 fewer primary pupils in January 2024 than January 2017; 610 (23%) vacant reception places in October 2024.",
+   "url": "https://education.hackney.gov.uk/content/proposed-school-changes-2024",
+   "retrieved": "2026-11-07",
+   "searched": "All 33 Schools Forum documents on the HSFS extranet (18 sets of minutes and 15 agendas, June 2021 to July 2026) and the 24 publicly readable papers linked from the November 2025, February 2026 and July 2026 minutes (2 more returned HTTP 401) were searched for 'Patten'; the only mentions are the four in school_specific. None proposes closing or amalgamating William Patten."
+  },
+  "scheme_for_financing_schools": {
+   "version": "Hackney Scheme for Financing Schools, 'Effective from April 2021' (PDF dated 6 September 2021), the version on the HSFS extranet on 2026-11-07",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Scheme%20for%20Financing%20Schools.pdf",
+   "surplus_reporting": "Governing bodies must report their intended use of surplus balances above 5% (secondary) or 8% (primary, special and PRU), with a spending plan by 31 May; surpluses should be used within three years (s4.1.1, p.25).",
+   "surplus_clawback": "The LA claws back surplus 'where a school has had a combined revenue and capital surplus balance of 12% or more for three successive years (the excess above 12% being the amount clawed back)', automatic unless a dispensation is agreed (s4.2, p.26).",
+   "deficit_rules": [
+    "A deficit is carried forward and set against next year's budget share; schools in deficit at 31 March must plan to recover in the following year, and deficit recovery plans are required for all schools in deficit at year end (s4.4, p.26).",
+    "Deficit budgets need the express permission of the Director of Education and the Director of Finance, and only for closure, a fall in budget share of 5% or more, or other exceptional circumstances; a recovery plan is required when the revenue deficit is above 5% at 31 March; unavoidable deficits must operate under licence, with a recovery plan agreed before the budget is set (s4.5, p.26).",
+    "A recovery plan sets out measures, pupil and budget forecasts, and a timescale to balance of no more than 3 years; withdrawal of delegation may be considered if it is not followed (p.27).",
+    "Schools pay interest on deficit balances at their bank's rate (s4.6, p.27). 'The Council cannot write-off the deficit balance of any school' (s4.7, p.27).",
+    "Licensed deficits are unlikely for sums under 2% of the school's ISB share; repayment over no more than three years (s4.9, p.28). Annex E (p.64): licences are capped at 10% of the school's ISB share and at 20% of cumulative credit balances across schools, with repayment deducted from the ISB share."
+   ],
+   "differences_from_minutes": "The 1 July 2026 minutes (p.4) describe 12% as the level above which expenditure plans are required, while the 2021 Scheme makes 12% for three successive years the automatic clawback trigger and 8% (primary) the plan trigger. The 2 July 2025 minutes (p.4) say closed schools' deficits 'were written off by the council', while Scheme s4.7 says the Council cannot write off a school's deficit. A newer Scheme may exist but was not published on the extranet."
+  },
+  "school_published": {
+   "statement": "'William Patten has one employee that has a gross annual salary of over £100,000.'",
+   "url": "https://www.williampatten.hackney.sch.uk/our-school/financial-information/",
+   "retrieved": "2026-11-07",
+   "note": "Page last modified 2026-09-29 per the site's WordPress API."
+  },
+  "sources": [
+   {
+    "title": "HSFS extranet: Schools Forum meeting papers",
+    "url": "https://www.hackneyservicesforschools.co.uk/extranet/schools-forum-meeting-papers",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Schools Forum minutes 1 May 2024",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%201%20May%202024.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Schools Forum minutes 2 July 2025",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2002%20July%202025.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Schools Forum minutes 5 November 2025",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%205%20November%202025.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Schools Forum minutes 4 February 2026",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2004%20February%202026.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Schools Forum minutes 1 July 2026",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2001%20July%202026.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Licensed Deficit Agreement update (Schools Forum 5 Nov 2025)",
+    "url": "https://docs.google.com/document/d/1DyLYB143g5_5BKKKTY4XLCx6TiwWAKnAjueXCfGM2pk",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Growth Fund Redistribution, October 2025",
+    "url": "https://docs.google.com/document/d/19c9ECWGVEoOldzZEfWPTepsYerMUFd8pzoOMlAdYlSY",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Hackney Scheme for Financing Schools (effective April 2021)",
+    "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Scheme%20for%20Financing%20Schools.pdf",
+    "retrieved": "2026-11-07"
+   },
+   {
+    "title": "Hackney Education: School organisation changes 2025",
+    "url": "https://education.hackney.gov.uk/content/proposed-school-changes-2024",
+    "retrieved": "2026-11-07"
+   }
+  ]
+ },
+ "discrepancies": [
+  {
+   "id": "laestab",
+   "where": "brief",
+   "detail": "The brief suggested LAEstab 2042128; every CFR workbook (2018-19 to 2025-26) gives LA 204, Estab 2897, LAEstab 2042897.",
+   "impact": "none"
+  },
+  {
+   "id": "pipeline-2019-20-e30",
+   "where": "pipeline finance_history.jsonl 2019-20",
+   "detail": "Pipeline total_income 3,025,090 and total_expenditure 2,991,578 vs the workbook's 3,050,253 and 3,016,741. The pipeline subtracts E30 direct revenue financing (£25,163, a revenue contribution to capital, matched by CI04 £25,163) from both, to match the 2020-21+ definition (I01:I18 - E30; E01:E29 + E31 + E32). The in-year balance (33,512) and reserve (543,908) are unchanged.",
+   "impact": "Intentional and consistent with FBIT's current definitions; FBIT does not show 2019-20, so it cannot be checked there. Flagged as derived in the row."
+  },
+  {
+   "id": "fbit-in-year-rounding",
+   "where": "FBIT 2021-22 and 2025-26",
+   "detail": "FBIT in-year balance -172,653 (2021-22) and -169,785 (2025-26) vs the workbook's -172,654 and -169,784. FBIT subtracts the rounded total expenditure from the rounded total income; the workbook works from pence.",
+   "impact": "£1; invisible at the site's £k precision."
+  },
+  {
+   "id": "fbit-grant-rounding",
+   "where": "FBIT 2024-25 total grant funding",
+   "detail": "FBIT 3,449,419 vs workbook 3,449,420; FBIT's figure equals the sum of the whole-pound lines (I01 + I03 + I05 + I06 + I07 + I18).",
+   "impact": "£1"
+  },
+  {
+   "id": "fbit-teachers",
+   "where": "FBIT census vs CFR",
+   "detail": "Teachers FTE: FBIT 23.08 (2024-25) and 23.65 (2025-26) from the school workforce census; the CFR workbooks give 23.1 and 23.6 (rounded to 1 dp). Other years agree.",
+   "impact": "rounding"
+  },
+  {
+   "id": "workbook-line-rounding",
+   "where": "CFR workbooks",
+   "detail": "In 2020-21, 2021-22, 2023-24, 2024-25 and 2025-26 the whole-pound line items sum to within £3 of the workbook's own totals; the totals were computed from pence. Opening balance + in-year balance = closing reserve to within £1 in every year.",
+   "impact": "none"
+  },
+  {
+   "id": "balance-split-2022-23",
+   "where": "CFR 2022-23 closing vs 2023-24 opening",
+   "detail": "2022-23 closing B02 -£586.91 and B06 £10,958.15; 2023-24 opening OB01 £2,720 and OB02 £7,651. Both total £10,371.",
+   "impact": "None on the reserve; only the split between pupil-focused and community-focused balances differs."
+  },
+  {
+   "id": "supply-staff-definition",
+   "where": "pipeline supply_staff / site 'Supply staff' row",
+   "detail": "The pipeline uses the workbook's 'Supply Staff: E02 + E10 + E26', which includes E10 supply teacher insurance (premiums and de-delegated cover schemes): 2025-26 = 0 + 35,831 + 82,434 = 118,265 (£273 a pupil). FBIT counts supply staff as E02 + E26 = 82,434 (£191 a pupil) and puts E10 under other costs.",
+   "impact": "The site's 'Supply staff' figure for this school is 43% higher than what FBIT calls supply staff. Similar-school medians use the same definition, so the comparison is like-for-like, but the label misleads."
+  },
+  {
+   "id": "educational-supplies-2024-25-break",
+   "where": "pipeline educational_supplies 2024-25",
+   "detail": "The 2024-25 workbook's 'Educational Supplies: (E19:E21)' (157,536) includes E20D administration software (£10,211); the 2025-26 column '(E19:E20C) + (E20E:E21)' excludes it, as FBIT does in both years (FBIT moves E20D into administrative supplies). On a 2025-26 basis 2024-25 would be 147,325.",
+   "impact": "Breaks year-on-year comparison of 'Learning resources & ICT' for every school with E20D spend in 2024-25; the site's latest-year comparison (2025-26) is unaffected."
+  },
+  {
+   "id": "pta-money-claim",
+   "where": "site school page, 'Money raised by parents'",
+   "detail": "The page says 'Parent associations' money isn't in the school's accounts above.' CFR I13 includes fund-raising income and parents' contributions paid into the school budget, and the PTFA's own letters describe reimbursing the school for mealtime cover.",
+   "impact": "The statement is wrong for any PTA money paid to the school; it should say the two can overlap and must not be added together."
+  },
+  {
+   "id": "pupils-rounding",
+   "where": "site display",
+   "detail": "Pupils are formatted with Python's round-half-to-even: 432.5 shows as 432 and 430.5 as 430, but 427.5 shows as 428 and 437.5 as 438.",
+   "impact": "cosmetic"
+  },
+  {
+   "id": "ptfa-2021-22-comparatives",
+   "where": "PTFA accounts y/e Aug 2023 vs annual return AR22",
+   "detail": "Comparatives £16,400 income / £9,400 spending vs annual return £15,951 / £9,339.",
+   "impact": "Annual-return figures used."
+  },
+  {
+   "id": "ptfa-treasurer-letters",
+   "where": "PTFA accounts",
+   "detail": "Treasurer's letters quote funds including a £1,750 cash float (and exclude the lottery account), and the 2023-24 letter gives spending as £37,030 and £36.2k against £36,767 in the accounts.",
+   "impact": "Accounts figures used throughout."
+  },
+  {
+   "id": "ptfa-ocr",
+   "where": "opencharities.uk transcriptions",
+   "detail": "Two OCR misreads were corrected using the accounts' own totals: 2024-25 SEND 1,600 (not 4,600) and 2023-24 Lunch Clubs Support 12,226 (not 42,226).",
+   "impact": "Check both against the filed PDFs on the register."
+  },
+  {
+   "id": "charity-register-blocked",
+   "where": "Charity Commission register website",
+   "detail": "Every register page returned 'Sorry, there was an issue displaying this content' to a plain request. A retry with a browser-style cookie session was blocked by the agent's permission policy as bot-check circumvention and was not pursued. Income, spending, volunteers and filing dates come from the official bulk extract; trustee counts come from the filed accounts; the accounts' content comes from opencharities.uk's transcription of the filed PDFs.",
+   "impact": "Trustee counts for 2020-21 and 2021-22 (no accounts filed) are missing; the PDFs themselves were not downloaded."
+  }
+ ],
+ "sources": [
+  {
+   "title": "DfE CFR full data workbook 2018-19",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2018-19_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2019-20",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2019-20_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2020-21",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2020-21_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2021-22",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2021-22_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2022-23",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2022-23_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2023-24",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2023-24_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2024-25",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2024-25_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "DfE CFR full data workbook 2025-26",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources",
+   "file": "pipeline/.cache/dfe/fbit/CFR_2025-26_Full_Data_Workbook.xlsx",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "FBIT: William Patten Primary School",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/130932",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "FBIT: spending and costs",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/130932/spending-and-costs",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "FBIT history API (income, expenditure, balance; dimension Actuals)",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/api/income/history?type=school&id=130932&dimension=Actuals",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "FBIT census history API",
+   "url": "https://financial-benchmarking-and-insights-tool.education.gov.uk/api/census/history?id=130932&dimension=Total",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Our pipeline output",
+   "file": "pipeline/.cache/dfe/finance_history.jsonl",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "DfE CFR framework 2025 to 2026: Income and Expenditure definitions",
+   "url": "https://www.gov.uk/guidance/consistent-financial-reporting-framework-2025-to-2026",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Charity Commission register: charity 1103834",
+   "url": "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/1103834",
+   "retrieved": "2026-11-07",
+   "note": "Pages returned 'Sorry, there was an issue displaying this content' to a plain request; figures taken from the official bulk extract instead."
+  },
+  {
+   "title": "Charity Commission bulk extract (charity, annual return history, annual return part A, classification, governing document)",
+   "url": "https://register-of-charities.charitycommission.gov.uk/en/register/full-register-download",
+   "retrieved": "2026-11-06"
+  },
+  {
+   "title": "PTFA accounts y/e 31 Aug 2023 (transcription)",
+   "url": "https://opencharities.uk/ew/1103834/files/2023-08-31-accounts.md",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "PTFA accounts y/e 31 Aug 2024 (transcription)",
+   "url": "https://opencharities.uk/ew/1103834/files/2024-08-31-accounts.md",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "PTFA accounts y/e 31 Aug 2025 (transcription)",
+   "url": "https://opencharities.uk/ew/1103834/files/2025-08-31-accounts.md",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "William Patten Primary School: PTFA & Fundraising",
+   "url": "https://www.williampatten.hackney.sch.uk/ptfa-and-fundraising/",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "DfE CFR framework 2025 to 2026: Income (I13 definition)",
+   "url": "https://www.gov.uk/guidance/consistent-financial-reporting-framework-2025-to-2026/income",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "HSFS extranet: Schools Forum meeting papers",
+   "url": "https://www.hackneyservicesforschools.co.uk/extranet/schools-forum-meeting-papers",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Schools Forum minutes 1 May 2024",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%201%20May%202024.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Schools Forum minutes 2 July 2025",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2002%20July%202025.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Schools Forum minutes 5 November 2025",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%205%20November%202025.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Schools Forum minutes 4 February 2026",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2004%20February%202026.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Schools Forum minutes 1 July 2026",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Schools%20Forum%20Meeting%20Minutes%20-%2001%20July%202026.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Licensed Deficit Agreement update (Schools Forum 5 Nov 2025)",
+   "url": "https://docs.google.com/document/d/1DyLYB143g5_5BKKKTY4XLCx6TiwWAKnAjueXCfGM2pk",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Growth Fund Redistribution, October 2025",
+   "url": "https://docs.google.com/document/d/19c9ECWGVEoOldzZEfWPTepsYerMUFd8pzoOMlAdYlSY",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Hackney Scheme for Financing Schools (effective April 2021)",
+   "url": "https://www.hackneyservicesforschools.co.uk/system/files/extranet/Scheme%20for%20Financing%20Schools.pdf",
+   "retrieved": "2026-11-07"
+  },
+  {
+   "title": "Hackney Education: School organisation changes 2025",
+   "url": "https://education.hackney.gov.uk/content/proposed-school-changes-2024",
+   "retrieved": "2026-11-07"
+  }
+ ]
+}
