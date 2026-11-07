@@ -786,6 +786,34 @@ class GoldFixesTest(FixtureTest):
         self.assertEqual(rows[0]["supply_insurance"], 100)
         self.assertEqual(info["mapping"]["supply_insurance"], "= line bae100")
 
+    def test_aar_supply_lines_found_by_label_without_a_code_row(self):
+        # Arrange: an export with no code row keeps its detail lines under label slugs.
+        header = aar_header() + ["Supply teaching staff", "Agency supply teaching staff", "Supply teacher insurance"]
+        row = aar_row(140051) + [600, 300, 100]
+        _put(header, row, "Supply Staff Costs", 1000)
+        path = self.aar_file([header, row])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        self.assertEqual((rows[0]["supply_staff"], rows[0]["supply_insurance"]), (900, 100))
+        self.assertEqual(info["mapping"]["supply_insurance"], "= line supply_teacher_insurance")
+
+    def test_cfr_2024_25_educational_supplies_with_zero_or_suppressed_e20d(self):
+        # Arrange: E20D is 0 with no column value; E20D is suppressed but every other line is known.
+        header = cfr_header() + E19_E21
+        zero = cfr_row(100054) + [5000, 100, 0, 0, 0, 400, 0, 0, 500]
+        _put(header, zero, "Educational Supplies: (E19:E21)", None)
+        suppressed = cfr_row(100055) + [5000, 100, 0, 0, "SUPP", 400, 0, 0, 500]
+        _put(header, suppressed, "Educational Supplies: (E19:E21)", 7000)
+        path = self.cfr_file([header, zero, suppressed])
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert: E19 + the non-admin E20 parts + E21 in both.
+        by_urn = {r["urn"]: r for r in rows}
+        self.assertEqual(by_urn["100054"]["educational_supplies"], 6000)
+        self.assertEqual(by_urn["100055"]["educational_supplies"], 6000)
+        self.assertEqual(by_urn["100055"]["adjusted"], ["educational_supplies"])
+
     def test_cfr_2024_25_educational_supplies_leaves_out_e20d(self):
         # Arrange: William Patten's 2024-25 lines; the column (157,536) counts E20D admin software (10,211).
         header = cfr_header() + E19_E21

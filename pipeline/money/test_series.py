@@ -184,6 +184,16 @@ class FlagsTest(unittest.TestCase):
         self.assertIsNone(series.school_series(rows)["flags"]["falling_rolls"])
         self.assertIsNone(series.school_series(rows[:1])["flags"]["falling_rolls"])
 
+    def test_falling_rolls_needs_the_latest_count_and_back_to_back_years(self):
+        # Arrange: small falls across a missing year, a year with no count, and a drop with no latest count.
+        across_gap = [row(y, pupils=p) for y, p in (("2020-21", 400), ("2021-22", 396), ("2023-24", 392), ("2024-25", 388))]
+        unknown = [row(y, pupils=p) for y, p in (("2020-21", 400), ("2021-22", 396), ("2022-23", None),
+                                                 ("2023-24", 392), ("2024-25", 388))]
+        no_latest = [row("2020-21", pupils=400), row("2021-22", pupils=370), row("2024-25", pupils=None)]
+        # Act / Assert
+        for rows in (across_gap, unknown, no_latest):
+            self.assertIsNone(series.school_series(rows)["flags"]["falling_rolls"])
+
     def test_pass_through_fires_when_staff_costs_take_most_of_an_income_rise(self):
         # Arrange: income +60,000 (6%), staff +45,000 (at least 0.7 x 60,000).
         rows = [row("2022-23", total_income=1_000_000, total_staff=800_000),
@@ -240,6 +250,19 @@ class FlagsTest(unittest.TestCase):
         self.assertEqual(s["flags"]["not_reported"]["pupil_premium"], "not reported in academy accounts")
         self.assertEqual(sorted(s["m"]["pupil_premium"]), ["2022-23"])
         self.assertEqual(series.school_series(rows[:1])["flags"]["not_reported"], {})
+
+    def test_conversion_year_comes_whole_from_the_later_return(self):
+        # Arrange: a council return to March 2023 and an academy return to August 2023, both labelled 2022-23.
+        rows = [row("2022-23", pupils=100, pupil_premium=30_000, total_staff=700_000),
+                row("2022/23", pupils=200, total_staff=None)]
+        # Act
+        s = series.school_series(rows)
+        # Assert: one 2022-23, all of it from the academy return.
+        self.assertEqual((s["years"], s["source"], s["pupils"]), (["2022-23"], {"2022-23": "AAR"}, {"2022-23": 200.0}))
+        self.assertNotIn("pupil_premium", s["m"])
+        self.assertNotIn("total_staff", s["m"])
+        self.assertEqual(s["m"]["total_income"]["2022-23"]["pp"], 5_000)
+        self.assertEqual(s["m"]["total_income"]["2022-23"]["r"], series._pounds(deflator.to_real(1_000_000, "2022/23", "AAR")))
 
 
 class PtaYearTest(unittest.TestCase):
@@ -307,14 +330,15 @@ class PtaSeriesTest(unittest.TestCase):
         self.assertIsNone(pta["2005-06"]["income_pp"])
         self.assertEqual(pta["2023-24"]["income_pp"], 25)
 
-    def test_one_return_per_charity_per_school_year(self):
-        # Arrange: a change of year end puts two returns in one academy year; the later one is kept.
+    def test_returns_in_one_school_year_are_summed_and_a_repeat_counts_once(self):
+        # Arrange: a change of year end puts two distinct returns in one academy year; one is listed twice.
         rows = [row("2022/23", pupils=100)]
-        moved = charity(3, [("2023-03", 1_000, 1_000), ("2023-08", 2_500, 2_000)])
+        moved = charity(3, [("2023-03", 1_000, 1_000), ("2023-08", 2_500, 2_000), ("2023-08", 2_500, 2_000)])
         # Act
         pta = series.school_series(rows, [moved])["pta"]
         # Assert
-        self.assertEqual(pta["2022-23"]["income"], 2_500)
+        self.assertEqual((pta["2022-23"]["income"], pta["2022-23"]["spend"]), (3_500, 3_000))
+        self.assertEqual(pta["2022-23"]["income_pp"], 35)
 
     def test_converter_uses_its_own_row_else_the_nearest_years_source(self):
         # Arrange: council-run to March 2021, an academy from September 2021.

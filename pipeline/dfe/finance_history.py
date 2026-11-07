@@ -25,10 +25,11 @@ Besides the headline keys each row carries:
 
 Two keys are worked out from the lines so they mean what FBIT means in every year:
 - supply_staff is E02 + E26 (supply and agency supply teachers); the workbooks' column also adds E10
-  supply teacher insurance, which is written separately as supply_insurance (AAR: bae100, already
-  outside the academies' supply column).
+  supply teacher insurance, which is written separately as supply_insurance (AAR: bae020 + bae240,
+  with bae100 kept apart; an export with no code row is read by the lines' label slugs).
 - CFR 2024-25 educational_supplies is E19 + (E20 - E20D) + E21: that year's column alone counts E20D
-  administration software, which 2025-26 and FBIT leave out. Changed rows list it in adjusted.
+  administration software, which 2025-26 and FBIT leave out. It is worked out from the lines even when
+  E20D is 0 or suppressed. Changed rows list it in adjusted.
 
 Stdlib only; reuses pipeline/dfe/xlsx.py and pipeline/dfe/values.py.
 """
@@ -928,8 +929,8 @@ def read_workbook(path: Path) -> tuple[list[dict], dict]:
     if source == "CFR" and "lead_laestab" not in index:
         warnings.append("no 'Lead school in federation' column; lead_laestab only known where the federation column holds a LAEstab")
     staff_codes, insurance_code = SUPPLY_LINES[source]
-    if insurance_code in lines_index:
-        info["mapping"]["supply_insurance"] = f"= line {insurance_code}"
+    if line_key(lines_index, insurance_code):
+        info["mapping"]["supply_insurance"] = f"= line {line_key(lines_index, insurance_code)}"
     info["mapping"]["supply_staff"] = f"= lines {' + '.join(staff_codes)} (column {info['mapping'].get('supply_staff', 'absent')})"
     warnings.append(f"supply_staff is {' + '.join(staff_codes)} (FBIT's supply staff); the workbook column also includes "
                     f"{insurance_code} supply teacher insurance, written separately as supply_insurance")
@@ -957,6 +958,14 @@ def _sum_known(values: list):
 SUPPLY_LINES = {"CFR": (["E02", "E26"], "E10"), "AAR": (["bae020", "bae240"], "bae100")}
 
 
+def line_key(keys, code: str) -> str | None:
+    """The key a line is held under: its code, or (an AAR export with no code row) the slug of its label."""
+    if code in keys:
+        return code
+    slug = _slug(AAR_LINE_LABELS[code]) if code in AAR_LINE_LABELS else None
+    return slug if slug in keys else None
+
+
 def supply_split(column, lines: dict, source: str) -> tuple:
     """(supply_staff, supply_insurance) from the lines: CFR E02 + E26 and E10; AAR bae020 + bae240 and bae100.
 
@@ -964,8 +973,8 @@ def supply_split(column, lines: dict, source: str) -> tuple:
     insurance is used; when that is unknown too, supply_staff is None rather than a mixed figure.
     """
     staff_codes, insurance_code = SUPPLY_LINES[source]
-    insurance = lines.get(insurance_code)
-    staff = _sum_known([lines.get(code) for code in staff_codes])
+    insurance = lines.get(line_key(lines, insurance_code))
+    staff = _sum_known([lines.get(line_key(lines, code)) for code in staff_codes])
     if staff is None and column is not None and insurance is not None:
         staff = column - insurance
     return staff, insurance
@@ -974,13 +983,15 @@ def supply_split(column, lines: dict, source: str) -> tuple:
 def cfr_educational_supplies(lines: dict):
     """CFR learning resources on the 2025-26 and FBIT basis: E19 + (E20 - E20D) + E21, or None if a line is unknown.
 
-    E20 is the E20A-E20G total when the workbook only has the parts.
+    E20 - E20D is E20 less E20D when both are known, else the sum of the other E20 parts the workbook
+    has, so a zero or suppressed E20D does not stop the sum when every included line is known.
     """
-    e20 = lines.get("E20") if "E20" in lines else _sum_known([lines.get(c) for c in E20_CODES if c in lines])
-    parts = [lines.get("E19"), e20, lines.get("E20D"), lines.get("E21")]
-    if None in parts:
-        return None
-    return parts[0] + parts[1] - parts[2] + parts[3]
+    if lines.get("E20") is not None and lines.get("E20D") is not None:
+        ict = lines["E20"] - lines["E20D"]
+    else:
+        ict = _sum_known([lines.get(c) for c in E20_CODES if c != "E20D" and c in lines])
+    parts = [lines.get("E19"), ict, lines.get("E21")]
+    return None if None in parts else sum(parts)
 
 
 def other_dfe_grants(item: dict, lines: dict, i18_mapped: bool):
@@ -1006,11 +1017,13 @@ def _line_fixes(item: dict, lines: dict, derived: list, adjusted: list, *, i18_m
         counts["supply_unknown"] = counts.get("supply_unknown", 0) + 1
     item["supply_staff"], item["supply_insurance"] = staff, insurance
     item["other_dfe_grants"] = other_dfe_grants(item, lines, i18_mapped)
-    if fix_e20d and lines.get("E20D"):
+    column, admin = item["educational_supplies"], lines.get("E20D")
+    # A known column with E20D at 0 is already on this basis (the rounded lines can be £1 or £2 off it).
+    if fix_e20d and (column is None or admin != 0):
         fixed = cfr_educational_supplies(lines)
-        if fixed is None and item["educational_supplies"] is not None:
-            fixed = item["educational_supplies"] - lines["E20D"]
-        if fixed is not None:
+        if fixed is None and column is not None and admin is not None:
+            fixed = column - admin
+        if fixed is not None and fixed != column:
             item["educational_supplies"] = fixed
             derived.append("educational_supplies")
             adjusted.append("educational_supplies")

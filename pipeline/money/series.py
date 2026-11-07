@@ -12,7 +12,10 @@ Rules the pages rely on:
 - Missing values are left out, never written as 0. Values the source marks as
   suspect stay in, and are listed in flags['suspect'] so charts can draw them hollow.
 - A charity return goes in the school year that contains its period end
-  (pta_year), split equally between the schools it is shared with.
+  (pta_year), split equally between the schools it is shared with. Every
+  distinct return counts, so two returns ending in one school year are summed.
+- A conversion year can have a council (CFR) and an academy (AAR) return with
+  the same label; the one ending later supplies that whole year.
 
 The flags follow the site's own rules, not the IFS's. Stdlib only.
 """
@@ -129,21 +132,30 @@ def _cell(amount, row: dict, pupils):
     return cell
 
 
+def _previous_label(label: str) -> str:
+    start = int(label[:4]) - 1
+    return f"{start}-{str(start + 1)[2:]}"
+
+
 def _falling_rolls(years: list[str], pupils: dict):
+    """Down 5% from the first year with pupils to the latest year, or down in each of the last 3 years.
+
+    The latest year needs its own count, and the run needs 4 back-to-back years, each with a count.
+    """
+    if not years or not pupils.get(years[-1]):
+        return None
     counts = [pupils[y] for y in years if pupils.get(y)]
     if len(counts) < 2:
         return None
     change = counts[-1] / counts[0] - 1
-    recent = counts[-(FALLING_ROLLS_RUN + 1):]
+    run = [years[-1]]
+    while len(run) <= FALLING_ROLLS_RUN and pupils.get(_previous_label(run[0])):
+        run.insert(0, _previous_label(run[0]))
+    recent = [pupils[y] for y in run]
     falling_run = len(recent) == FALLING_ROLLS_RUN + 1 and all(b < a for a, b in zip(recent, recent[1:]))
     if change <= -FALLING_ROLLS_DROP + 1e-9 or falling_run:
         return {"from": counts[0], "to": counts[-1], "change": round(change, 4)}
     return None
-
-
-def _previous_label(label: str) -> str:
-    start = int(label[:4]) - 1
-    return f"{start}-{str(start + 1)[2:]}"
 
 
 def _pass_through(full: list[dict]):
@@ -187,7 +199,8 @@ def _confidence(record: dict):
 
 def _school_source(period_end: str, rows: list[dict]) -> str:
     """The school's sector for a charity return: its own row for that year, else its nearest year's row."""
-    dated = [r for r in rows if r.get("period_end") and r.get("source") in ("CFR", "AAR")]
+    dated = sorted((r for r in rows if r.get("period_end") and r.get("source") in ("CFR", "AAR")),
+                   key=lambda r: r["period_end"])
     if not dated:
         return "CFR"
     for r in dated:
@@ -209,18 +222,16 @@ def _pta(pta, rows: list[dict], pupils: dict) -> dict:
             continue
         share = 1 / (1 + len(record.get("shared_with") or []))
         confidence = _confidence(record)
-        latest_entry: dict[str, dict] = {}
+        returns: dict[str, dict] = {}
         for entry in record.get("history") or []:
             if not isinstance(entry, dict):
                 continue
-            label = pta_year(entry.get("period_end"), "CFR")
-            if label is None or (entry.get("income") is None and entry.get("expenditure") is None):
+            if pta_year(entry.get("period_end"), "CFR") is None or (
+                    entry.get("income") is None and entry.get("expenditure") is None):
                 continue
-            label = pta_year(entry["period_end"], _school_source(entry["period_end"], rows))
-            kept = latest_entry.get(label)
-            if kept is None or str(entry["period_end"]) > str(kept["period_end"]):
-                latest_entry[label] = entry  # one return per charity per school year
-        for label, entry in latest_entry.items():
+            returns[str(entry["period_end"])] = entry  # a return listed twice counts once
+        for end, entry in returns.items():
+            label = pta_year(end, _school_source(end, rows))
             slot = totals.setdefault(label, {"income": None, "spend": None, "by_charity": {}, "confidence": []})
             income = entry.get("income") * share if entry.get("income") is not None else None
             spend = entry.get("expenditure") * share if entry.get("expenditure") is not None else None
@@ -255,9 +266,16 @@ def _pupils_any_year(rows: list[dict]) -> dict:
     return out
 
 
+def _one_per_year(full: list[dict]) -> list[dict]:
+    """One return per year label, oldest first: where a CFR and an AAR return share a label (a conversion
+    year), the one ending later is the school's own for that year and supplies all of it."""
+    by_label = {year_label(r): r for r in full}  # full is oldest first, so the later return wins
+    return [by_label[label] for label in sorted(by_label)]
+
+
 def school_series(rows: list[dict], pta=None, *, sen_share_q3=None) -> dict:
     """The SERIES dict for one school: years, source, pupils, m, gap, pta, flags and trust_central_pp."""
-    full = status.full_years(rows)
+    full = _one_per_year(status.full_years(rows))
     years = [year_label(r) for r in full]
     source = {year_label(r): r["source"] for r in full}
     pupils = {year_label(r): float(r["pupils"]) for r in full if r.get("pupils")}
