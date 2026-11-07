@@ -2,8 +2,10 @@
 from collections import Counter
 from html.parser import HTMLParser
 import json
+import math
 from pathlib import Path
 import re
+import statistics
 import sys
 import tempfile
 import time
@@ -1373,6 +1375,370 @@ class AssetVersionTest(unittest.TestCase):
         self.assertIn(f'src="/assets/app.js?v={second["app.js"]}"', out)
         self.assertIn('href="/assets/app.css?v=c0ffee1234"', out)
         self.assertIn('href="/assets/other.pdf"', out)  # not one of ours: left alone
+
+
+DEG_PER_MI = 180 / (math.pi * 3958.8)  # degrees of latitude in a mile, on build_money._miles's sphere
+HOME = (51.56, -0.075)
+CFR4 = ("2023-03", "2024-03", "2025-03", "2026-03")   # 2022-23 .. 2025-26
+AAR2 = ("2024-08", "2025-08")                         # 2023-24, 2024-25
+
+
+def north(miles, **extra):
+    """A register school `miles` due north of HOME."""
+    return dict(lat=HOME[0] + miles * DEG_PER_MI, lon=HOME[1], **extra)
+
+
+def year_rows(urn, ends=CFR4, *, spend_pp=6000, pupils=300, reserve_pp=200, source="CFR", **extra):
+    """Full-year rows with the same per-pupil spending and reserve every year."""
+    return [row(urn, end, 2_000_000, spend_pp * pupils, reserve_pp * pupils, source=source, pupils=pupils,
+                total_staff=spend_pp * pupils * 0.8, grant_funding_government=1_900_000, **extra) for end in ends]
+
+
+def walk(value):
+    """Every leaf of a JSON-like value."""
+    if isinstance(value, dict):
+        for v in value.values():
+            yield from walk(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from walk(v)
+    else:
+        yield value
+
+
+class NearbyTest(unittest.TestCase):
+    """build_money.add_nearby through build_model on a register fixture: SHARED 'nearby' contract."""
+
+    def setUp(self):
+        without_other_units(self)
+        saved = build_money.areas
+        build_money.areas = None
+        self.addCleanup(setattr, build_money, "areas", saved)
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+
+    def model(self, schools, rows, pta=None):
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows, pta)
+        _, items, _ = build_money.build_model(site, history, links, pta_path)
+        return {i["urn"]: i for i in items}
+
+    def neighbourhood(self):
+        """Home Primary, nine primaries 0.2 to 1.8 miles north, and nearer schools that must never be listed."""
+        spend = {1: 6500, 2: 6000, 3: 7000, 4: 5500, 5: 6200, 6: 5800, 7: 6100, 8: 5900, 9: 9999}
+        schools = [school(100000, "Home Primary", lat=HOME[0], lon=HOME[1], fsm_pct=15.46)]
+        rows = year_rows("100000", pupils=320, spend_pp=6000, reserve_pp=300)
+        rows[-2]["pupils"] = 310  # 2024-25: a different roll from 2025-26
+        for k, pp in spend.items():
+            urn = str(100000 + k)
+            schools.append(school(int(urn), f"Neighbour {k}", **north(0.2 * k), fsm_pct=10 + k))
+            own = year_rows(urn, spend_pp=pp, reserve_pp=100 * k)
+            if k == 3:
+                own[-1]["suspect"] = ["total_expenditure"]  # Neighbour 3's 2025-26 spending is doubtful
+            rows += own
+        extras = [
+            school(100050, "Independent Next Door", type="Other independent school", type_group="Independent schools", **north(0.05)),
+            school(100051, "Secondary Next Door", phase="Secondary", **north(0.06)),
+            school(100052, "Federation Member", **north(0.07)),
+            school(100053, "Closed Next Door", status="Closed", **north(0.08)),
+            school(100054, "College Next Door", type="Further education", **north(0.09)),
+            school(100055, "Nowhere Primary"),
+            school(100056, "Part Year Primary", **north(0.1)),
+        ]
+        schools += extras
+        rows += year_rows("100050") + year_rows("100051", phase="secondary") + year_rows("100053") + year_rows("100054") + year_rows("100055")
+        rows += [row("100052", "2026-03", 0, 0, 0, did_not_supply=True, lead_laestab="2040000")]
+        rows += [row("100056", "2026-03", 1_000_000, 900_000, 50_000, period_months=7)]
+        pta = {"100000": [{"charity_number": 1, "name": "Friends of Home", "status": "Registered", "registered": "2001-01-01", "removed": None,
+                           "latest_income": 32_000, "history": [{"period_end": "2024-08", "income": 31_000}, {"period_end": "2025-08", "income": 32_000}],
+                           "match": {"method": "postcode", "evidence": "x", "confidence": "high"}}],
+               "100001": [{"charity_number": 2, "name": "Friends of One", "status": "Registered", "registered": "2001-01-01", "removed": None,
+                           "latest_income": 9_000, "history": [{"period_end": "2023-08", "income": 9_000}],
+                           "match": {"method": "llm", "evidence": "x", "confidence": "medium"}}],
+               "100002": [{"charity_number": 3, "name": "Friends of Two", "status": "Registered", "registered": "2001-01-01", "removed": None,
+                           "latest_income": 5_500, "history": [{"period_end": "2015-08", "income": 5_500}],
+                           "match": {"method": "postcode", "evidence": "x", "confidence": "high"}}]}
+        return schools, rows, pta, spend
+
+    def test_lists_the_eight_nearest_of_the_same_phase_nearest_first(self):
+        # Arrange
+        schools, rows, pta, _ = self.neighbourhood()
+
+        # Act
+        nb = self.model(schools, rows, pta)["100000"]["nearby"]
+
+        # Assert
+        self.assertEqual([r["urn"] for r in nb["schools"]], [str(100000 + k) for k in range(1, 9)])
+        self.assertEqual([r["mi"] for r in nb["schools"]], [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6])
+        self.assertEqual(nb["radius_mi"], 1.6)
+        self.assertEqual((nb["phase"], nb["year"]), ("Primary", "2025-26"))
+        self.assertEqual(nb["schools"][0]["name"], "Neighbour 1")
+        self.assertEqual(nb["schools"][0]["p"], "/school/100001-neighbour-1/")
+        self.assertEqual(nb["self"]["mi"], 0)
+        self.assertEqual(nb["self"]["urn"], "100000")
+        self.assertEqual(len(nb["schools"]), build_money.NEARBY_N)
+
+    def test_per_pupil_values_use_that_years_pupils_and_unknowns_are_omitted(self):
+        # Arrange
+        schools, rows, pta, spend = self.neighbourhood()
+
+        # Act
+        items = self.model(schools, rows, pta)
+        nb = items["100000"]["nearby"]
+        me, first, third = nb["self"], nb["schools"][0], nb["schools"][2]
+
+        # Assert
+        latest = items["100000"]["latest"]
+        self.assertEqual(me["pupils"], 320)
+        self.assertEqual(me["spend_pp"], round(latest["total_expenditure"] / latest["pupils"]))
+        self.assertEqual(me["income_pp"], round(2_000_000 / 320))
+        self.assertEqual(me["gov_pp"], round(1_900_000 / 320))
+        self.assertEqual(me["reserve_pp"], 300)
+        self.assertEqual(me["staff_pct"], 80.0)
+        self.assertEqual(me["fsm_pct"], 15.5)
+        self.assertEqual(me["status"], items["100000"]["status"]["status"])
+        self.assertNotIn("academy", me)
+        self.assertEqual(set(me["lines"]), {"teaching_staff", "education_support_staff", "premises", "energy"})
+        self.assertEqual(me["lines"]["teaching_staff"], round(1_000_000 / 320))
+        self.assertEqual(first["spend_pp"], spend[1])
+        self.assertNotIn("lines", first)
+        self.assertNotIn("spend_pp", third)  # flagged suspect
+        self.assertNotIn("staff_pct", third)  # its share needs the doubtful spending
+        self.assertEqual(third["reserve_pp"], 300)
+        for value in walk(nb):
+            self.assertIsNotNone(value)
+
+    def test_ranks_share_the_better_place_on_ties_and_leave_out_suspect_values(self):
+        # Arrange
+        schools, rows, pta, spend = self.neighbourhood()
+
+        # Act
+        nb = self.model(schools, rows, pta)["100000"]["nearby"]
+
+        # Assert: Neighbour 2 ties with Home Primary on £6,000; Neighbour 3's spending is suspect.
+        values = [6000] + [spend[k] for k in (1, 2, 4, 5, 6, 7, 8)]
+        self.assertEqual(nb["rank"]["spend_pp"], {"rank": 1 + sum(v > 6000 for v in values), "of": 8})
+        self.assertEqual(nb["rank"]["spend_pp"]["rank"], 4)
+        self.assertEqual(nb["medians"]["spend_pp"], round(statistics.median(values)))
+        reserves = [300] + [100 * k for k in range(1, 9)]
+        self.assertEqual(nb["rank"]["reserve_pp"], {"rank": 1 + sum(v > 300 for v in reserves), "of": 9})
+        self.assertEqual(nb["medians"]["reserve_pp"], round(statistics.median(reserves)))
+        self.assertEqual(set(nb["line_medians"]), {"teaching_staff", "education_support_staff", "premises", "energy"})
+
+    def test_pta_uses_the_nearest_charity_year_within_two_years_and_needs_three_for_a_median(self):
+        # Arrange
+        schools, rows, pta, _ = self.neighbourhood()
+
+        # Act
+        items = self.model(schools, rows, pta)
+        nb = items["100000"]["nearby"]
+        me, one, two = nb["self"], nb["schools"][0], nb["schools"][1]
+
+        # Assert: 2025-08 falls in the council-run year 2025-26 (April to March).
+        self.assertEqual((me["pta_year"], me["pta_pp"], me["pta_income"]), ("2025-26", round(32_000 / 320), 32_000))
+        self.assertNotIn("pta_confidence", me)
+        self.assertEqual((one["pta_year"], one["pta_pp"], one["pta_confidence"]), ("2023-24", round(9_000 / 300), "medium"))
+        self.assertNotIn("pta_pp", two)  # its only return is ten years from the comparison year
+        self.assertNotIn("pta_pp", nb["medians"])  # two values only
+        self.assertNotIn("pta_pp", nb["rank"])
+
+    def test_independents_colleges_closed_part_year_federation_and_other_phases_never_appear(self):
+        # Arrange
+        schools, rows, pta, _ = self.neighbourhood()
+
+        # Act
+        items = self.model(schools, rows, pta)
+
+        # Assert
+        listed = {r["urn"] for i in items.values() if i.get("nearby") for r in i["nearby"]["schools"]}
+        for urn in ("100050", "100051", "100052", "100053", "100054", "100055", "100056"):
+            self.assertNotIn(urn, listed)
+        self.assertIsNone(items["100052"]["nearby"])  # a federation member's money is in its lead's return
+        self.assertIsNone(items["100056"]["nearby"])  # no full-year return, no status
+        self.assertEqual(items["100055"]["nearby"]["schools"], [])  # no position: no neighbours, still a contract
+        self.assertNotIn("radius_mi", items["100055"]["nearby"])
+        self.assertEqual(items["100051"]["nearby"]["schools"], [])  # the only secondary
+        self.assertEqual(items["100055"]["nearby"]["self"]["spend_pp"], 6000)
+
+    def test_common_year_follows_the_neighbours(self):
+        for academies, expected in ((5, "2024-25"), (3, "2025-26")):
+            with self.subTest(academies=academies):
+                # Arrange: a council-run school (latest 2025-26) among academies (latest 2024-25) and council-run schools.
+                schools = [school(100000, "Home Primary", lat=HOME[0], lon=HOME[1])]
+                rows = year_rows("100000")
+                for k in range(1, 9):
+                    urn = str(100000 + k)
+                    academy = k <= academies
+                    schools.append(school(int(urn), f"Neighbour {k}", **north(0.1 * k), **({"type": "Academy converter"} if academy else {})))
+                    rows += year_rows(urn, AAR2, source="AAR") if academy else year_rows(urn)
+
+                # Act
+                nb = self.model(schools, rows)["100000"]["nearby"]
+
+                # Assert
+                self.assertEqual(nb["year"], expected)
+                self.assertEqual(sum(bool(r.get("academy")) for r in nb["schools"]), academies)
+                with_money = [r for r in nb["schools"] if "spend_pp" in r]
+                self.assertEqual(len(with_money), 8 if expected == "2024-25" else 8 - academies)
+                missing = [r for r in nb["schools"] if "spend_pp" not in r]
+                for r in missing:  # listed, with name and distance, money left out
+                    self.assertEqual(set(r) - {"fsm_pct"}, {"urn", "name", "p", "mi", "academy"})
+
+    def test_status_is_that_of_the_comparison_year(self):
+        # Arrange: Neighbour 1 was in deficit in 2024-25 and recovered in 2025-26.
+        schools = [school(100000, "Home Primary", lat=HOME[0], lon=HOME[1], type="Academy converter")]
+        rows = year_rows("100000", AAR2, source="AAR")
+        for k in range(1, 4):
+            schools.append(school(100000 + k, f"Neighbour {k}", **north(0.1 * k)))
+            rows += year_rows(str(100000 + k))
+        next(r for r in rows if r["urn"] == "100001" and r["year"] == "2024-25")["revenue_reserve"] = -50_000
+
+        # Act
+        items = self.model(schools, rows)
+        nb = items["100000"]["nearby"]
+
+        # Assert
+        self.assertEqual(nb["year"], "2024-25")
+        self.assertTrue(nb["self"]["academy"])
+        self.assertEqual(nb["schools"][0]["status"], "in_deficit")
+        self.assertEqual(items["100001"]["status"]["status"], "healthy")  # 3% of income in 2025-26
+        self.assertEqual(nb["schools"][0]["reserve_pp"], round(-50_000 / 300))
+
+    def test_contract_is_written_into_the_school_json_and_passed_to_the_page(self):
+        # Arrange
+        schools, rows, pta, _ = self.neighbourhood()
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows, pta)
+        fake = FakeSchoolPage()
+        for name, value in (("series", fake_series()), ("school_page", fake)):
+            saved = getattr(build_money, name)
+            setattr(build_money, name, value)
+            self.addCleanup(setattr, build_money, name, saved)
+        out = self.root / "site_money"
+
+        # Act
+        build_money.build(site, history, links, pta_path, out=out, dsg_path=self.root / "no-dsg.json")
+
+        # Assert
+        doc = json.loads((out / "data/s/100000.json").read_text(encoding="utf-8"))
+        self.assertEqual([r["urn"] for r in doc["nearby"]["schools"]], [str(100000 + k) for k in range(1, 9)])
+        self.assertEqual(set(doc["nearby"]) - {"line_medians"}, {"year", "phase", "radius_mi", "self", "schools", "medians", "rank"})
+        self.assertEqual(fake.ctxs["100000"]["nearby"], doc["nearby"])
+        self.assertEqual(set(fake.ctxs["100000"]), CTX_KEYS | {"nearby"})
+        self.assertEqual(json.loads((out / "data/s/100055.json").read_text(encoding="utf-8"))["nearby"]["schools"], [])
+        self.assertNotIn("nearby", fake.ctxs["100055"])  # nothing to show, so the page gets no key
+        self.assertFalse((out / "data/s/100052.json").exists())
+
+    def test_a_page_over_budget_takes_the_first_lighter_body_that_fits(self):
+        # Arrange
+        schools, rows, pta, _ = self.neighbourhood()
+        site, history, links, pta_path = make_site(self.root, [("204", "Hackney")], {"204": schools}, rows, pta)
+
+        class Lighter(FakeSchoolPage):
+            def render(self, item, ctx):
+                result = super().render(item, ctx)
+                head = f'<h1>{build_money.esc(item["name"])}: money</h1>'
+                return dict(result, body=head + "x" * build_money.SCHOOL_PAGE_BUDGET,
+                            lighter=[head + "y" * (build_money.SCHOOL_PAGE_BUDGET - 2_000), head + "<p>lighter enough</p>", head])
+
+        for name, value in (("series", fake_series()), ("school_page", Lighter())):
+            saved = getattr(build_money, name)
+            setattr(build_money, name, value)
+            self.addCleanup(setattr, build_money, name, saved)
+        out = self.root / "site_money"
+
+        # Act
+        summary = build_money.build(site, history, links, pta_path, out=out, dsg_path=self.root / "no-dsg.json")
+
+        # Assert
+        html = (out / "school/100000-home-primary/index.html").read_text(encoding="utf-8")
+        self.assertIn("<p>lighter enough</p>", html)
+        self.assertLess(summary["school_page_max"], build_money.SCHOOL_PAGE_BUDGET)
+
+    def test_page_bytes_counts_the_asset_versions_write_adds(self):
+        # Arrange
+        html = '<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js"></script>'
+
+        # Act / Assert
+        self.assertEqual(build_money.page_bytes(html), len(html) + 2 * len("?v=0123456789"))
+        self.assertEqual(build_money.page_bytes(html), len(build_money.versioned(html, {"app.css": "a" * 10, "app.js": "b" * 10})))
+
+    def test_phase_labels(self):
+        # Act / Assert
+        self.assertEqual([build_money.phase_label(p) for p in ("primary", "all_through", "All-through", "alternative_provision", "post16",
+                                                              "16 plus", "nursery", "special", "secondary", "middle deemed primary", None)],
+                         ["Primary", "All-through", "All-through", "Alternative provision", "Post-16", "Post-16", "Nursery", "Special",
+                          "Secondary", "Other", "Other"])
+
+
+REAL_LINKS = REAL / "pipeline/.cache/dfe/gias/links.csv"
+REAL_SITE = REAL / "site"
+
+
+@unittest.skipUnless(REAL_HISTORY.exists() and (REAL_SITE / "data/england/las.json").exists(), "real finance history or register missing")
+class RealNearbyTest(unittest.TestCase):
+    """add_nearby on the whole real register (area profiles left out to keep the model quick)."""
+
+    @classmethod
+    def setUpClass(cls):
+        saved = build_money.profile_of, build_money.add_nearby
+        build_money.profile_of, build_money.add_nearby = (lambda item, data_root: None), (lambda schools: None)
+        try:
+            _, cls.schools, _ = build_money.build_model(REAL_SITE, REAL_HISTORY, REAL_LINKS, REAL_PTA)
+        finally:
+            build_money.profile_of, build_money.add_nearby = saved
+        started = time.perf_counter()
+        build_money.add_nearby(cls.schools)
+        cls.elapsed = time.perf_counter() - started
+        cls.by_urn = {s["urn"]: s for s in cls.schools}
+
+    def test_add_nearby_runs_in_a_few_seconds(self):
+        self.assertLess(self.elapsed, 10, f"add_nearby took {self.elapsed:.1f}s")
+
+    def test_william_patten_has_its_real_primary_neighbours_nearest_first(self):
+        # Arrange
+        gold = json.loads((ROOT / "pipeline/money/data/gold/130932.json").read_text(encoding="utf-8"))
+
+        # Act
+        nb = self.by_urn["130932"]["nearby"]
+
+        # Assert
+        self.assertEqual(nb["phase"], "Primary")
+        self.assertEqual(len(nb["schools"]), build_money.NEARBY_N)
+        miles = [r["mi"] for r in nb["schools"]]
+        self.assertEqual(miles, sorted(miles))
+        self.assertLess(nb["radius_mi"], 2)
+        self.assertEqual(nb["radius_mi"], miles[-1])
+        for r in nb["schools"]:
+            other = self.by_urn[r["urn"]]
+            self.assertEqual(build_money.phase_label(other["phase"]), "Primary")
+            self.assertFalse(other["independent"])
+            self.assertIsNone(other["member_of"])
+            self.assertEqual(r["p"], other["path"])
+            self.assertAlmostEqual(r["mi"], build_money._miles(51.561803, -0.074951, other["lat"], other["lon"]), delta=0.05)
+        totals = gold["years"][nb["year"]]["totals"]["pipeline_finance_history"]
+        self.assertEqual(nb["self"]["pupils"], round(totals["pupils"], 1))
+        self.assertEqual(nb["self"]["spend_pp"], round(totals["total_expenditure"] / totals["pupils"]))
+        self.assertEqual(nb["self"]["income_pp"], round(totals["total_income"] / totals["pupils"]))
+        every = [nb["self"]] + nb["schools"]
+        for key, r in nb["rank"].items():
+            values = [x[key] for x in every if key in x]
+            self.assertEqual(r, {"rank": 1 + sum(v > nb["self"][key] for v in values), "of": len(values)}, key)
+            self.assertGreaterEqual(r["of"], build_money.NEARBY_MIN)
+        self.assertIn("spend_pp", nb["rank"])
+
+    def test_every_assessed_school_has_a_contract_and_no_listed_school_is_out_of_scope(self):
+        for s in self.schools:
+            nb = s.get("nearby")
+            if not s["status"] or s["member_of"]:
+                self.assertIsNone(nb, s["urn"])
+                continue
+            self.assertIsNotNone(nb, s["urn"])
+            self.assertLessEqual(len(nb["schools"]), build_money.NEARBY_N)
+            for r in nb["schools"]:
+                other = self.by_urn[r["urn"]]
+                self.assertTrue(other["status"] and not other["independent"] and not other["member_of"], r["urn"])
+                self.assertEqual(build_money.phase_label(other["phase"]), nb["phase"], r["urn"])
+                self.assertNotEqual(r["urn"], s["urn"])
 
 
 class PostcodeIndexTest(unittest.TestCase):

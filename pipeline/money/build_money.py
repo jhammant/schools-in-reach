@@ -10,7 +10,8 @@ Inputs are local and rebuilt by pipelines; no network:
 
 Writes site_money/, served at https://money.schoolsinreach.com: national, England, region, council,
 constituency, school, trust, debts, PTFA, compare, about and stub pages at clean paths;
-/data/{search,status}.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's multi-year SERIES) and
+/data/{search,status}.json, /data/s/<urn>.json (with 'nearby': the school beside its nearest schools of the
+same phase, see add_nearby), /data/sx/<urn>.json (a school's multi-year SERIES) and
 /data/a/<id>.json for the app; sitemap, robots and 404. Every open register school except colleges and
 universities gets a page. Long tables continue on /2/, /3/… pages sized against the page around them,
 so pages stay under AREA_PAGE_TARGET where they can and always under PAGE_BUDGET (SCHOOL_PAGE_BUDGET
@@ -652,6 +653,7 @@ def build_model(site, history_path, links_path, pta_path):
     for item in schools:
         item["constituency_path"] = constituency_path.get(item["constituency"])
     add_similar(schools)
+    add_nearby(schools)
     return councils, schools, by_urn
 
 
@@ -1558,6 +1560,8 @@ def school_json(item, data_root=None, profile=None, line=None):
         out.update({"tags": profile.get("tags"), "band": profile.get("band"), "area": profile.get("area")})
     if line:
         out["timeline"] = line
+    if item.get("nearby"):
+        out["nearby"] = item["nearby"]
     return out
 
 
@@ -1706,12 +1710,15 @@ def school_ctx(item, shared):
     """The SHARED 'CTX CONTRACT' for school_page.render."""
     similar, similar_series = similar_ctx(item)
     doc = shared.get("areas") or {}
-    return {"series": school_series(item, shared.get("sen_q3")), "profile": item.get("profile"), "timeline": timeline_of(item) or [],
-            "similar": similar, "similar_series": similar_series,
-            "council": (doc.get("councils") or {}).get(item["council"]["code"]) if doc else None,
-            "england": doc.get("england") if doc else None, "pta_national": doc.get("pta") if doc else None,
-            "ifs": shared.get("ifs") or {}, "real_label": real_label(), "check_url": fbit_school(item),
-            "sir_url": _shell().BASE_SIR + item["site_path"]}
+    ctx = {"series": school_series(item, shared.get("sen_q3")), "profile": item.get("profile"), "timeline": timeline_of(item) or [],
+           "similar": similar, "similar_series": similar_series,
+           "council": (doc.get("councils") or {}).get(item["council"]["code"]) if doc else None,
+           "england": doc.get("england") if doc else None, "pta_national": doc.get("pta") if doc else None,
+           "ifs": shared.get("ifs") or {}, "real_label": real_label(), "check_url": fbit_school(item),
+           "sir_url": _shell().BASE_SIR + item["site_path"]}
+    if (item.get("nearby") or {}).get("schools"):
+        ctx["nearby"] = item["nearby"]
+    return ctx
 
 
 def school_crumbs(item):
@@ -1719,15 +1726,25 @@ def school_crumbs(item):
     return [("School Money", "/"), (council["name"], council["path"]), (item["name"], item["path"])]
 
 
+def page_bytes(html):
+    """A page's size as write() will measure it, with every /assets/ link's ?v=<10 hex> counted."""
+    return len(html.encode("utf-8")) + len("?v=0123456789") * len(ASSET_REF.findall(html))
+
+
 def school_page_html(item, metadata, shared):
     """(html, indexable, SERIES or None) for one school: the school dashboard when school_page.py and
-    series.py import and the school has a status, else render_school."""
+    series.py import and the school has a status, else render_school. A page that would reach
+    SCHOOL_PAGE_BUDGET takes the render's first 'lighter' body that fits (a lighter nearby section,
+    then none); if none fits, write() reports it."""
     if school_page is not None and series is not None and item["status"]:
         ctx = school_ctx(item, shared)
         result = school_page.render(item, ctx)
         indexable = bool(result.get("indexable", True))
-        html = page(result["title"], result["description"], item["path"], result["body"], school_crumbs(item), metadata,
-                    indexable=indexable, extra_head=getattr(school_page, "EXTRA_HEAD", SCHOOL_HEAD))
+        for body in [result["body"]] + list(result.get("lighter") or []):
+            html = page(result["title"], result["description"], item["path"], body, school_crumbs(item), metadata,
+                        indexable=indexable, extra_head=getattr(school_page, "EXTRA_HEAD", SCHOOL_HEAD))
+            if page_bytes(html) < SCHOOL_PAGE_BUDGET:
+                break
         return html, indexable, ctx["series"]
     return render_school(item, metadata), bool(item["status"]), None
 
@@ -1929,6 +1946,257 @@ def postcode_index(schools, nearest=POSTCODE_NEAREST):
              "lat": round(i["lat"], 5), "lon": round(i["lon"], 5),
              "mi": round(_miles(lat, lon, i["lat"], i["lon"]), 2)} for i in ranked]}
     return out
+
+
+# ----------------------------------------------------------------- nearby schools
+
+NEARBY_N = 8           # neighbours listed in a school's 'nearby' block, nearest first
+NEARBY_MAX_MI = 30     # further than this is not "nearby", whatever the phase
+NEARBY_MIN = 3         # values needed before a nearby median or rank is given
+NEARBY_PTA_YEARS = 2   # a PTA return more school years than this from the comparison year is left out
+NEARBY_CELL = (0.02, 0.032)  # grid cell in degrees of latitude and longitude, about 1.4 by 1.4 miles in England
+NEARBY_PP = (("spend_pp", "total_expenditure"), ("income_pp", "total_income"), ("gov_pp", "grant_funding_government"))
+NEARBY_MEDIANS = ("spend_pp", "income_pp", "gov_pp", "reserve_pp", "pta_pp")
+NEARBY_RANKS = ("spend_pp", "reserve_pp", "pta_pp")
+PHASE_LABELS = {"primary": "Primary", "secondary": "Secondary", "special": "Special", "all_through": "All-through",
+                "nursery": "Nursery", "alternative_provision": "Alternative provision", "post16": "Post-16", "16_plus": "Post-16"}
+
+
+def phase_label(phase):
+    """The display label of a phase group ('all_through' -> 'All-through'); anything unlisted is 'Other'."""
+    return PHASE_LABELS.get(str(phase or "").lower().replace("-", "_").replace(" ", "_"), "Other")
+
+
+def _located(item):
+    return all(isinstance(item.get(k), (int, float)) and not isinstance(item.get(k), bool) for k in ("lat", "lon"))
+
+
+def _cell(lat, lon):
+    return int(math.floor(lat / NEARBY_CELL[0])), int(math.floor(lon / NEARBY_CELL[1]))
+
+
+def _bounds(grid):
+    ys, xs = [c[0] for c in grid], [c[1] for c in grid]
+    return min(ys), max(ys), min(xs), max(xs)
+
+
+def _nearest(grid, item, n=NEARBY_N, max_mi=NEARBY_MAX_MI, bounds=None):
+    """[(miles, other)] for the n nearest grid schools to item within max_mi, nearest first, item itself left out.
+    Rings of grid cells are searched outwards until the n-th distance is inside the searched block: anything beyond
+    ring r is at least r cells away, so nothing nearer can be missed. The search also stops once it covers the grid."""
+    lat, lon = item["lat"], item["lon"]
+    cy, cx = _cell(lat, lon)
+    y0, y1, x0, x1 = bounds or _bounds(grid)
+    cover = max(cy - y0, y1 - cy, cx - x0, x1 - cx)
+    found, r = [], 0
+    while True:
+        cells = [(cy, cx)] if r == 0 else ([(cy + dy, cx + d) for d in range(-r, r + 1) for dy in (-r, r)]
+                                           + [(cy + d, cx + dx) for d in range(-r + 1, r) for dx in (-r, r)])
+        for c in cells:
+            for o in grid.get(c, ()):
+                if o is not item and o["urn"] != item["urn"]:
+                    found.append((_miles(lat, lon, o["lat"], o["lon"]), o["name"], o["urn"], o))
+        lat_edge = min(89.0, abs(lat) + (r + 1) * NEARBY_CELL[0])
+        reach = r * 69.09 * min(NEARBY_CELL[0], NEARBY_CELL[1] * math.cos(math.radians(lat_edge)))
+        if len(found) >= n:
+            found.sort(key=lambda t: t[:3])
+            if found[n - 1][0] <= reach:
+                break
+        if reach > max_mi or r >= cover:
+            break
+        r += 1
+    found.sort(key=lambda t: t[:3])
+    return [(mi, o) for mi, _, _, o in found[:n] if mi <= max_mi]
+
+
+def nearby_year(item, neighbours, facts=None):
+    """SHARED YEAR RULE: the newest of this school's full-year labels that at least half (rounded up) of its listed
+    neighbours also have a full-year return for; else its latest full year."""
+    facts = facts or _NearbyFacts()
+    need = math.ceil(len(neighbours) / 2)
+    have = [facts.returns(o) for o in neighbours]
+    for label in sorted(facts.returns(item), reverse=True):
+        if sum(label in h for h in have) >= need:
+            return label
+    return year_label(item["latest"])
+
+
+def _value(row, key):
+    """A row's figure for key, or None when it is missing, not a number or flagged suspect."""
+    value = metric_value(row, key)
+    if suspect(row, key) or isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return value
+
+
+class _NearbyFacts:
+    """Each school's figures for a comparison year, worked out once however many neighbour lists it is in."""
+
+    def __init__(self):
+        self.values, self.statuses, self.ptas, self.by_label = {}, {}, {}, {}
+
+    def returns(self, item):
+        """{label: the school's full-year return for it (the later one if two share a label)}."""
+        if item["urn"] not in self.by_label:
+            self.by_label[item["urn"]] = {year_label(r): r for r in item["years"]}
+        return self.by_label[item["urn"]]
+
+    def row_for(self, item, label):
+        return self.returns(item).get(label)
+
+    def status(self, item, label):
+        """The school's status for label, judged as the timeline does: on the returns up to that year's end."""
+        key = (item["urn"], label)
+        if key not in self.statuses:
+            r = self.row_for(item, label)
+            if r is None:
+                verdict = None
+            elif r is item["latest"]:
+                verdict = item["status"]
+            else:
+                verdict = health.assess([x for x in item["rows"] if x.get("period_end") and x["period_end"] <= r["period_end"]])
+            self.statuses[key] = (verdict or {}).get("status")
+        return self.statuses[key]
+
+    def pta_years(self, item):
+        """{school year: (PTA income, lower confidence?)}: shared charities split equally, as local_series does."""
+        if item["urn"] not in self.ptas:
+            by_year = {}
+            for c in item.get("pta") or []:
+                share, medium = pta_share(c), (c.get("match") or {}).get("confidence") == "medium"
+                for h in c.get("history") or []:
+                    income = h.get("income")
+                    if isinstance(income, bool) or not isinstance(income, (int, float)) or not h.get("period_end"):
+                        continue
+                    label = pta_year_label(h["period_end"], item["rows"]) if item["rows"] else local_pta_year(h["period_end"], "CFR")
+                    total, low = by_year.get(label, (0, False))
+                    by_year[label] = (total + income * share, low or medium)
+            self.ptas[item["urn"]] = by_year
+        return self.ptas[item["urn"]]
+
+    def pta(self, item, label):
+        """(pta_pp, pta_year, lower confidence?, PTA income) for the PTA school year nearest label, or None."""
+        start = int(label[:4])
+        years = [(abs(int(y[:4]) - start), -int(y[:4]), y) for y in self.pta_years(item) if y[:4].isdigit()]
+        for gap, _, y in sorted(years):
+            if gap > NEARBY_PTA_YEARS:
+                break
+            pupils = year_pupils(item["rows"], y)
+            if pupils:
+                income, low = self.pta_years(item)[y]
+                return round(income / pupils), y, low, round(income)
+        return None
+
+    def facts(self, item, label):
+        """(row fields without urn, name, path and distance; lines per pupil) for item in label."""
+        key = (item["urn"], label)
+        if key in self.values:
+            return self.values[key]
+        r = self.row_for(item, label)
+        out, lines = {}, {}
+        if ((r or item["latest"] or {}).get("source")) == "AAR":
+            out["academy"] = True
+        status = self.status(item, label)
+        if status:
+            out["status"] = status
+        pupils = None if r is None or suspect(r, "pupils") else r.get("pupils")
+        if isinstance(pupils, (int, float)) and not isinstance(pupils, bool) and pupils > 0:
+            out["pupils"] = round(pupils, 1)
+            for field, k in NEARBY_PP:
+                v = _value(r, k)
+                if v is not None:
+                    out[field] = round(v / pupils)
+            reserve = reserve_of(r)
+            if not (suspect(r, "revenue_reserve") or suspect(r, "revenue_reserve_incl_trust_share")) and isinstance(reserve, (int, float)):
+                out["reserve_pp"] = round(reserve / pupils)
+            for k, _ in COMPARE_KEYS:
+                v = _value(r, k)
+                if v is not None:
+                    lines[k] = round(v / pupils)
+        staff, spend = (_value(r, "total_staff"), _value(r, "total_expenditure")) if r is not None else (None, None)
+        if staff is not None and spend and spend > 0:
+            out["staff_pct"] = round(staff / spend * 100, 1)
+        pta = self.pta(item, label)
+        if pta:
+            out["pta_pp"], out["pta_year"], out["pta_income"] = pta[0], pta[1], pta[3]
+            if pta[2]:
+                out["pta_confidence"] = "medium"
+        fsm = item.get("fsm")
+        if isinstance(fsm, (int, float)) and not isinstance(fsm, bool):
+            out["fsm_pct"] = round(fsm, 1)
+        self.values[key] = (out, lines)
+        return self.values[key]
+
+    def row(self, item, label, mi):
+        out, lines = self.facts(item, label)
+        return {"urn": str(item["urn"]), "name": item["name"], "p": item["path"], "mi": round(mi, 1), **out}, lines
+
+
+def _median(values):
+    return round(statistics.median(values)) if len(values) >= NEARBY_MIN else None
+
+
+def nearby_doc(item, neighbours, facts=None):
+    """The SHARED 'nearby' contract for one school with a status and its [(miles, neighbour)] nearest first."""
+    facts = facts or _NearbyFacts()
+    others = [o for _, o in neighbours]
+    year = nearby_year(item, others, facts)
+    me, my_lines = facts.row(item, year, 0)
+    rows, all_lines = [], [my_lines]
+    for mi, o in neighbours:
+        r, lines = facts.row(o, year, mi)
+        rows.append(r)
+        all_lines.append(lines)
+    if my_lines:
+        me["lines"] = dict(my_lines)
+    every = [me] + rows
+    doc = {"year": year, "phase": phase_label(item["phase"])}
+    if rows:
+        doc["radius_mi"] = max(r["mi"] for r in rows)
+    doc["self"], doc["schools"] = me, rows
+    medians = {k: _median([r[k] for r in every if k in r]) for k in NEARBY_MEDIANS}
+    doc["medians"] = {k: v for k, v in medians.items() if v is not None}
+    doc["rank"] = {}
+    for k in NEARBY_RANKS:
+        values = [r[k] for r in every if k in r]
+        if k in me and len(values) >= NEARBY_MIN:
+            doc["rank"][k] = {"rank": 1 + sum(v > me[k] for v in values), "of": len(values)}
+    line_medians = {k: _median([lines[k] for lines in all_lines if k in lines]) for k, _ in COMPARE_KEYS}
+    line_medians = {k: v for k, v in line_medians.items() if v is not None}
+    if line_medians:
+        doc["line_medians"] = line_medians
+    return doc
+
+
+def add_nearby(schools, n=NEARBY_N, max_mi=NEARBY_MAX_MI):
+    """item['nearby'] (the SHARED 'nearby' contract) for every school with a status, None for the rest.
+
+    Neighbours are open state-funded schools of the same phase group with a position and a full-year return of their
+    own (federation members, whose money is in a lead school's return, are left out), up to n of them within max_mi.
+    Each phase group is put on a grid of NEARBY_CELL cells and searched ring by ring, so a lookup touches a few dozen
+    schools rather than all of them; each school's figures for a year are worked out once.
+
+    The contract (written to /data/s/<urn>.json and passed to the school page as ctx['nearby']):
+    {'year', 'phase', 'radius_mi' (omitted with no neighbours), 'self': ROW, 'schools': [ROW, ...] nearest first,
+     'medians': {spend_pp, income_pp, gov_pp, reserve_pp, pta_pp} (NEARBY_MIN+ values), 'rank': {spend_pp, reserve_pp,
+     pta_pp: {'rank', 'of'}} (1 = highest, ties share the better rank), 'line_medians': {COMPARE_KEYS}}. A ROW has urn,
+    name, p, mi and, when known and not suspect, academy, status (for 'year'), pupils, spend_pp, income_pp, gov_pp,
+    reserve_pp, staff_pct, pta_pp with pta_year and pta_income (plus pta_confidence 'medium' for a lower-confidence
+    match), fsm_pct, and on self only 'lines'. Unknown or suspect values are left out, never 0 or null."""
+    assessed = [s for s in schools if s.get("status") and not s.get("member_of")]
+    grids = defaultdict(lambda: defaultdict(list))
+    for s in assessed:
+        if _located(s) and not s.get("independent") and is_school(s.get("school") or {}) and s.get("years"):
+            grids[phase_label(s["phase"])][_cell(s["lat"], s["lon"])].append(s)
+    bounds = {label: _bounds(grid) for label, grid in grids.items()}
+    facts = _NearbyFacts()
+    for s in schools:
+        s["nearby"] = None
+    for s in assessed:
+        label = phase_label(s["phase"])
+        grid = grids.get(label)
+        neighbours = _nearest(grid, s, n, max_mi, bounds[label]) if grid and _located(s) else []
+        s["nearby"] = nearby_doc(s, neighbours, facts)
 
 
 def write_urlset(path, entries, base=BASE_MONEY, index=False):

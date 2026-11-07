@@ -6,11 +6,15 @@ series module (B1) and the builder (B0) land. The William Patten test reads the 
 
 import json
 import re
+import tempfile
 import unittest
+import xml.etree.ElementTree as ET
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 
-from pipeline.money import deflator, school_page, site, status as health
+from pipeline.money import charts, deflator, school_page, site, status as health
+from pipeline.money.charts import badge
 
 try:
     from pipeline.money import series as series_module
@@ -19,6 +23,12 @@ except ImportError:  # B1's module, not present in every checkout
 
 ROOT = Path(__file__).resolve().parents[2]
 GOLD = ROOT / "pipeline/money/data/gold/130932.json"
+REAL = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea")  # real inputs, read in place and never copied
+REAL_HISTORY = REAL / "pipeline/.cache/dfe/finance_history.jsonl"
+REAL_LINKS = REAL / "pipeline/.cache/dfe/gias/links.csv"
+REAL_PTA = REAL / "pipeline/.cache/money/pta.json"
+REAL_SITE = REAL / "site"
+NORTH_EAST_LONDON = {"Hackney", "Islington", "Haringey", "Camden", "City of London", "Tower Hamlets", "Newham", "Waltham Forest", "Enfield"}
 IFS = json.loads((ROOT / "pipeline/money/data/ifs_context.json").read_text(encoding="utf-8"))
 FBIT = "https://financial-benchmarking-and-insights-tool.education.gov.uk"
 ADDED_KEYS = {"other_dfe_grants", "gov_funding_pp", "spend_pp", "gov_vs_spend_gap", "falling_rolls", "pass_through", "high_send",
@@ -163,6 +173,47 @@ def big_school():
     return item, ctx
 
 
+def nearby_contract(year="2024-25"):
+    """build_money's 'nearby' contract for cfr_school(): this school, 8 neighbours nearest first (one academy
+    with no return for the year, a tie on spending, two PTA years, one lower-confidence PTA) and its ranks."""
+    def nb_row(urn, name, mi, **values):
+        return {"urn": urn, "name": name, "p": f"/school/{urn}-{site.slug(name)}/", "mi": mi, **values}
+
+    me = nb_row("100001", "Example Primary", 0, status="healthy", pupils=424.0, spend_pp=7000, income_pp=7100, gov_pp=6400,
+                reserve_pp=350, staff_pct=80.1, pta_pp=70, pta_year=year, pta_income=29_680, fsm_pct=20.0,
+                lines={"teaching_staff": 3150, "energy": 140})
+    schools = [
+        nb_row("100011", "Alpha Primary", 0.2, status="healthy", pupils=300.0, spend_pp=7400, reserve_pp=500, staff_pct=78.0,
+               pta_pp=40, pta_year="2025-26", pta_income=12_400, fsm_pct=25.4),
+        nb_row("140012", "Beta Academy", 0.3, academy=True, status="large_reserves", pupils=410.5, spend_pp=8100, reserve_pp=900,
+               staff_pct=76.5, fsm_pct=31.0),
+        nb_row("100013", "Gamma Primary", 0.4, status="in_deficit", pupils=220.0, spend_pp=7000, reserve_pp=-150, staff_pct=82.0,
+               pta_pp=120, pta_year=year, pta_income=26_400, pta_confidence="medium", fsm_pct=12.3),
+        nb_row("100014", "Delta Primary", 0.5, status="tight", pupils=199.0, spend_pp=6500, reserve_pp=60, staff_pct=79.0, fsm_pct=44.0),
+        nb_row("140015", "Epsilon Academy", 0.6, academy=True, fsm_pct=18.0),
+        nb_row("100016", "Zeta & Eta Primary", 0.7, status="heading_for_deficit", pupils=260.0, spend_pp=6900, reserve_pp=210,
+               staff_pct=81.0, fsm_pct=22.2),
+        nb_row("100017", "Theta Primary", 0.8, status="healthy", pupils=330.0, spend_pp=6800, reserve_pp=300, fsm_pct=15.0),
+        nb_row("100018", "Iota Primary", 0.9, status="healthy", pupils=280.0, spend_pp=6700, reserve_pp=250, staff_pct=80.0, fsm_pct=19.9),
+    ]
+    return {"year": year, "phase": "Primary", "radius_mi": 0.9, "self": me, "schools": schools,
+            "medians": {"spend_pp": 6950, "reserve_pp": 275, "income_pp": 7100, "pta_pp": 70},
+            "rank": {"spend_pp": {"rank": 3, "of": 8}, "reserve_pp": {"rank": 3, "of": 8}, "pta_pp": {"rank": 2, "of": 3}},
+            "line_medians": {"teaching_staff": 3100}}
+
+
+def nearby_school(**contract_kw):
+    """cfr_school() (latest year 2025-26) with a nearby contract for 2024-25."""
+    item, ctx = cfr_school()
+    ctx["nearby"] = nearby_contract(**contract_kw)
+    return item, ctx
+
+
+def section(body, ident):
+    m = re.search(rf'<section\b[^>]*\bid="{re.escape(ident)}"[^>]*>(.*?)</section>', body, re.S)
+    return m.group(1) if m else None
+
+
 class Figures(HTMLParser):
     """Money-figure attributes, £ signs outside money figures (ignoring svg/script), and tag balance."""
 
@@ -229,7 +280,8 @@ def every_fixture():
            "shared": cfr_school(pta=[charity(history=returns(("2024-08", 30_000, 27_000)), shared_with=["100002", "100003"])]),
            "llm": cfr_school(pta=[charity(history=returns(("2024-08", 12_000, 11_000)),
                                           match={"method": "llm", "evidence": "model", "confidence": "medium"})]),
-           "secondary": cfr_school(phase="secondary", status="tight", reserve=20_000)}
+           "secondary": cfr_school(phase="secondary", status="tight", reserve=20_000),
+           "nearby": nearby_school()}
     return out
 
 
@@ -780,7 +832,8 @@ class ShareLinksTest(unittest.TestCase):
 
         # Assert
         self.assertIn("Present and share", body)
-        self.assertIn("view=school", body)
+        self.assertIn("/deck/?urn=", body)
+        self.assertIn("view=ptfa", body)
         self.assertIn("video/", body)
 
     def test_the_video_is_one_tap_from_the_top_of_the_page_and_the_ptfa_section(self):
@@ -794,6 +847,298 @@ class ShareLinksTest(unittest.TestCase):
         self.assertIn("Watch in 30 seconds", status_line)
         self.assertIn('class="watch"', status_line)
         self.assertIn("PTFA in 30 seconds", ptfa)
+
+
+class NearbySectionTest(unittest.TestCase):
+    def test_section_follows_spending_and_is_listed_after_it_in_the_toc(self):
+        # Act
+        body = school_page.render(*nearby_school())["body"]
+        page = Figures(body)
+
+        # Assert
+        self.assertEqual(page.ids.index("nearby"), page.ids.index("spending") + 1)
+        self.assertLess(page.ids.index("nearby"), page.ids.index("pupils"))
+        toc = body[body.index('<nav class="sp-toc"'):body.index("</nav>", body.index('<nav class="sp-toc"'))]
+        self.assertLess(toc.index('href="#spending"'), toc.index('href="#nearby">Nearby<'))
+        self.assertLess(toc.index('href="#nearby"'), toc.index('href="#pupils"'))
+        self.assertIn("<h2>Compared with schools nearby</h2>", body)
+        self.assertFalse(page.errors, page.errors)
+
+    def test_ordinals(self):
+        # Arrange
+        cases = {1: "1st", 2: "2nd", 3: "3rd", 4: "4th", 10: "10th", 11: "11th", 12: "12th", 13: "13th", 21: "21st", 22: "22nd",
+                 23: "23rd", 101: "101st", 111: "111th", 112: "112th"}
+
+        # Act / Assert
+        for n, text in cases.items():
+            self.assertEqual(school_page.ordinal(n), text)
+
+    def test_one_rank_sentence_per_rank_with_the_year_and_phase(self):
+        # Arrange
+        item, ctx = nearby_school()
+        ctx["nearby"]["rank"]["reserve_pp"] = {"rank": 1, "of": 8}
+
+        # Act
+        nearby = section(school_page.render(item, ctx)["body"], "nearby")
+
+        # Assert
+        ranks = re.findall(r"<li>(.*?)</li>", nearby[:nearby.index("</ul>")])
+        self.assertEqual(ranks, [
+            "3rd highest spending per pupil of 8 nearby primary schools in 2024-25.",
+            "Highest reserve per pupil of 8 nearby primary schools in 2024-25.",
+            "2nd highest parents&#x27; association income per pupil of 3 nearby primary schools with a registered parents&#x27; "
+            "association (charity years nearest 2024-25)."])
+
+    def test_this_school_is_highlighted_in_words_and_listed_first(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        rows = re.findall(r"<tr[^>]*>.*?</tr>", nearby[nearby.index("<tbody>"):])
+        self.assertEqual(len(rows), 9)
+        self.assertTrue(rows[0].startswith('<tr class="nb-self">'), rows[0])
+        self.assertIn('Example Primary <strong class="nb-you">This school</strong>', rows[0])
+        self.assertEqual(sum("nb-self" in r for r in rows), 1)
+        names = [re.search(r'<th scope="row">(?:<a [^>]*>)?([^<]*)', r).group(1).strip() for r in rows]
+        self.assertEqual(names, ["Example Primary"] + [site.esc(r["name"]) for r in nearby_contract()["schools"]])
+        self.assertIn('<a href="/school/100011-alpha-primary/">Alpha Primary</a>', rows[1])
+        self.assertIn("<td>0.2 mi</td>", rows[1])
+
+    def test_status_badges_carry_an_icon_and_a_word(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        for status in ("healthy", "large_reserves", "in_deficit", "tight", "heading_for_deficit"):
+            self.assertIn(badge(status, "small"), nearby)
+        badges = re.findall(r'<span class="badge s-([a-z_]+) small"><span aria-hidden="true">([^<]+)</span> ([^<]+)</span>', nearby)
+        self.assertEqual(len(badges), 8)  # Epsilon has no return for the year, so no status
+        for status, icon, word in badges:
+            self.assertEqual((icon, word), (charts.STATUS_ICONS[status], charts.STATUS_LABELS[status]))
+
+    def test_money_cells_are_figures_with_that_years_pupils_and_dashes_when_missing(self):
+        # Arrange
+        contract = nearby_contract()
+
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+        found = Figures(nearby).figures
+
+        # Assert
+        spend = [f for f in found if f["data-mf"] == "total_expenditure"]
+        self.assertEqual(len(spend), 8)
+        rows = [contract["self"]] + [r for r in contract["schools"] if "spend_pp" in r]
+        for f, r in zip(spend, rows):
+            self.assertEqual((f["data-pp"], f["data-year"]), (str(r["spend_pp"]), "2024-25"))
+            self.assertEqual(f["data-v"], str(round(r["spend_pp"] * r["pupils"])))
+        reserve = {f["data-pp"] for f in found if f["data-mf"] == "revenue_reserve"}
+        self.assertIn("-150", reserve)
+        pta = {(f["data-pp"], f["data-year"]) for f in found if f["data-mf"] == "pta_income"}
+        self.assertEqual(pta, {("70", "2024-25"), ("40", "2025-26"), ("120", "2024-25")})
+        epsilon = re.search(r"<tr><th scope=\"row\"><a [^>]*>Epsilon Academy</a></th>(.*?)</tr>", nearby).group(1)
+        self.assertEqual(epsilon, "<td>0.6 mi</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>18.0%</td>")
+        self.assertNotIn("£0", nearby)
+        self.assertIn("80.1%", nearby)
+        self.assertIn("A dash means no figure for that year", nearby)
+
+    def test_pta_cells_follow_the_wording_rules(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        gamma = re.search(r"Gamma Primary</a></th>(.*?)</tr>", nearby).group(1)
+        self.assertIn("matched with lower confidence", gamma)
+        alpha = re.search(r"Alpha Primary</a></th>(.*?)</tr>", nearby).group(1)
+        self.assertIn("<small>2025-26</small>", alpha)  # its PTA year differs from the comparison year
+        self.assertIn("No registered parents&#x27; association found (charities with income of", nearby)
+        self.assertIn('data-mf="pta_gap" data-v="5000">£5,000</span> or less need not register', nearby)
+        self.assertIn("never added", nearby)
+        self.assertNotIn("no pta", nearby.lower())
+
+    def test_bar_chart_labels_every_bar_with_school_and_value(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        svg = nearby[nearby.index('<svg class="nb-chart"'):nearby.index("</svg>") + 6]
+        root = ET.fromstring(svg)
+        self.assertEqual(root.get("role"), "img")
+        self.assertTrue(root.find("{*}title").text.startswith("Spending per pupil in 2024-25"))
+        bars = root.findall("{*}rect")
+        labels = [t.text for t in root.findall("{*}text") if t.get("class") != "med"]
+        self.assertEqual(len(bars), 8)
+        self.assertEqual(len(labels), 8)
+        self.assertEqual(labels[0], "Beta Academy: £8,100")  # highest first
+        self.assertIn("Example Primary (this school): £7,000", labels)
+        self.assertIn("Zeta & Eta Primary: £6,900", labels)
+        me = [b for b in bars if b.get("class") == "me"]
+        self.assertEqual(len(me), 1)
+        widths = [int(b.get("width")) for b in bars]
+        self.assertEqual(widths, sorted(widths, reverse=True))
+        self.assertEqual(root.find("{*}text[@class='med']").text, "median £6,950")
+
+    def test_compare_link_lists_this_school_then_the_nearest_up_to_six(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        link = re.search(r'<a class="button quiet" href="/compare/\?urns=([0-9,]+)">Compare these schools side by side</a>', nearby)
+        self.assertEqual(link.group(1).split(","), ["100001", "100011", "140012", "100013", "100014", "140015"])
+
+    def test_note_names_the_year_phase_both_calendars_doubtful_figures_and_intake(self):
+        # Act
+        nearby = unescape(section(school_page.render(*nearby_school())["body"], "nearby"))
+
+        # Assert
+        self.assertIn("Only primary schools are compared: the 8 nearest state-funded ones, all within 0.9 miles, in 2024-25", nearby)
+        self.assertIn("(the rest of this page uses 2025-26)", nearby)
+        self.assertIn("Council-run schools' years run April to March, academies' September to August.", nearby)
+        self.assertIn("doubtful figures are left out of ranks and medians", nearby)
+        self.assertIn("free school meals (FSM)", nearby)
+        self.assertIn("<th scope=\"col\">FSM</th>", nearby)
+
+    def test_one_calendar_only_needs_no_calendar_note_and_same_year_needs_no_year_note(self):
+        # Arrange
+        item, ctx = nearby_school(year="2025-26")
+        for r in ctx["nearby"]["schools"]:
+            r.pop("academy", None)
+
+        # Act
+        nearby = unescape(section(school_page.render(item, ctx)["body"], "nearby"))
+
+        # Assert
+        self.assertNotIn("April to March", nearby)
+        self.assertNotIn("the rest of this page uses", nearby)
+        self.assertIn("in 2025-26", nearby)
+
+    def test_no_section_or_toc_entry_without_nearby_schools(self):
+        for name, ctx_nearby in (("absent", None), ("empty", dict(nearby_contract(), schools=[])), ("not a dict", "x")):
+            with self.subTest(name):
+                # Arrange
+                item, ctx = cfr_school()
+                if ctx_nearby is not None:
+                    ctx["nearby"] = ctx_nearby
+
+                # Act
+                result = school_page.render(item, ctx)
+
+                # Assert
+                self.assertNotIn('id="nearby"', result["body"])
+                self.assertNotIn('href="#nearby"', result["body"])
+                self.assertEqual(result["lighter"], [])
+
+    def test_missing_fields_degrade_without_zeros(self):
+        # Arrange: rows with only a name, no ranks or medians, no radius.
+        item, ctx = cfr_school()
+        ctx["nearby"] = {"year": "2024-25", "self": {"urn": "100001"},
+                         "schools": [{"name": "Bare School"}, {"name": "Other School", "urn": "100009", "mi": 1.25}]}
+
+        # Act
+        result = school_page.render(item, ctx)
+        nearby = section(result["body"], "nearby")
+
+        # Assert
+        self.assertIn("Bare School", nearby)
+        self.assertIn("Example Primary", nearby)  # the self row falls back to the item's name
+        self.assertNotIn("£0", nearby)
+        self.assertNotIn("nb-ranks", nearby)
+        self.assertNotIn("nb-chart", nearby)  # one bar is not a chart
+        self.assertIn("schools of the same phase", nearby)
+        self.assertIn("<td>1.25 mi</td>", nearby)
+        self.assertFalse(Figures(result["body"]).errors)
+
+    def test_lighter_bodies_drop_the_chart_then_rows_then_the_table_then_the_section(self):
+        # Act
+        result = school_page.render(*nearby_school())
+        bodies = [result["body"]] + result["lighter"]
+        parts = [section(b, "nearby") for b in bodies]
+
+        # Assert
+        self.assertEqual(len(bodies), len(school_page.NEARBY_LEVELS) + 1)
+        sizes = [len(b.encode("utf-8")) for b in bodies]
+        self.assertEqual(sizes, sorted(sizes, reverse=True))
+        self.assertEqual(len(set(sizes)), len(sizes))
+        self.assertIn("nb-chart", parts[0])
+        self.assertNotIn("nb-chart", parts[1])
+        self.assertEqual(parts[1].count("<tr"), 10)
+        self.assertEqual(parts[2].count("<tr"), 2 + school_page.NEARBY_LITE_ROWS)
+        self.assertNotIn("Reserve per pupil", parts[2])
+        self.assertNotIn("<table", parts[3])
+        self.assertIn("/compare/?urns=", parts[3])
+        self.assertIn("3rd highest spending per pupil", parts[3])
+        self.assertIsNone(parts[4])
+        self.assertNotIn('href="#nearby"', bodies[4])
+        for b in bodies:
+            self.assertIn('id="pupils"', b)
+
+    def test_section_sizes_stay_compact(self):
+        # Act
+        result = school_page.render(*nearby_school())
+        sizes = [len((section(b, "nearby") or "").encode("utf-8")) for b in [result["body"]] + result["lighter"]]
+
+        # Assert: full, without the chart, lite, brief.
+        self.assertLess(sizes[0], 9_000, sizes)
+        self.assertLess(sizes[1], 7_800, sizes)
+        self.assertLess(sizes[2], 3_400, sizes)
+        self.assertLess(sizes[3], 1_000, sizes)
+
+
+@unittest.skipUnless(REAL_HISTORY.exists() and REAL_SITE.exists(), "real finance history or register missing")
+class WilliamPattenNearbyTest(unittest.TestCase):
+    """William Patten (URN 130932) rendered from real data: Hackney and the councils around it, built by build_money."""
+
+    @classmethod
+    def setUpClass(cls):
+        from pipeline.money import build_money
+        cls.build_money = build_money
+        cls.tmp = tempfile.TemporaryDirectory()
+        site_dir = Path(cls.tmp.name) / "site"
+        (site_dir / "data/england").mkdir(parents=True)
+        (site_dir / "data/la").mkdir()
+        las = json.loads((REAL_SITE / "data/england/las.json").read_text(encoding="utf-8"))
+        keep = [la for la in las["las"] if la["name"] in NORTH_EAST_LONDON]
+        (site_dir / "data/england/las.json").write_text(json.dumps(dict(las, las=keep)), encoding="utf-8")
+        for la in keep:
+            (site_dir / "data/la" / str(la["la_code"])).symlink_to(REAL_SITE / "data/la" / str(la["la_code"]))
+        councils, schools, _ = build_money.build_model(site_dir, REAL_HISTORY, REAL_LINKS, REAL_PTA)
+        built, _ = build_money.build_area_doc(schools, json.loads(REAL_PTA.read_text(encoding="utf-8")) if REAL_PTA.exists() else {},
+                                              build_money.load_dsg(build_money.ROOT / "pipeline/money/data/la_dsg.json"), site_dir / "data")
+        cls.shared = {"areas": built, "ifs": build_money.load_ifs(), "dsg": {}, "sen_q3": build_money.sen_share_q3(schools)}
+        cls.item = next(s for s in schools if s["urn"] == "130932")
+        cls.html, _, _ = build_money.school_page_html(cls.item, None, cls.shared)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_page_has_the_real_neighbours_and_ranks_under_the_budget(self):
+        # Arrange
+        nb = self.item["nearby"]
+        gold = json.loads(GOLD.read_text(encoding="utf-8"))
+        totals = gold["years"][nb["year"]]["totals"]["pipeline_finance_history"]
+
+        # Act
+        size = self.build_money.page_bytes(self.html)
+        nearby = section(self.html, "nearby")
+
+        # Assert
+        self.assertLess(size, self.build_money.SCHOOL_PAGE_BUDGET)
+        self.assertIsNotNone(nearby)
+        self.assertEqual(nb["phase"], "Primary")
+        self.assertGreaterEqual(len(nb["schools"]), 5)
+        self.assertLess(nb["radius_mi"], 2)
+        self.assertEqual(nb["self"]["spend_pp"], round(totals["total_expenditure"] / totals["pupils"]))
+        self.assertIn("William Patten Primary School <strong class=\"nb-you\">This school</strong>", nearby)
+        for row in nb["schools"][:school_page.NEARBY_LITE_ROWS]:
+            self.assertIn(site.esc(row["name"]), nearby)
+        rank = nb["rank"]["spend_pp"]
+        place = ("Highest" if rank["rank"] == 1 else "Lowest" if rank["rank"] == rank["of"]
+                 else f"{school_page.ordinal(rank['rank'])} highest")
+        self.assertIn(f"{place} spending per pupil of {rank['of']} nearby primary schools in {nb['year']}.", nearby)
+        self.assertNotIn("£0 ", unescape(nearby))
+        parsed = Figures(self.html[self.html.index("<main"):self.html.index("</main>") + 7])
+        self.assertFalse(parsed.stray, parsed.stray[:5])
+        self.assertFalse(parsed.errors, parsed.errors)
 
 
 def gold_series():
