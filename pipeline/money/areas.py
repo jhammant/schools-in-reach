@@ -8,10 +8,23 @@ Two jobs:
   Census 2021 figures for its LSOA, the same figures averaged over the LSOAs inside
   the last distance it offered a place to, and the ONS income estimate for its MSOA).
 
-* build_areas(...): for England, each region, each council and each constituency, the
-  yearly picture: how many schools, pupils, deficits, the median per-pupil figures,
-  split into all / council-run (CFR returns) / academy (AAR returns), plus the
-  council's high-needs (DSG) balance per pupil.
+* build_areas(...): for England, each region, each council, each constituency and each
+  academy trust, the yearly picture: how many schools, pupils, deficits, the median
+  per-pupil figures (cash and real terms), split into all / council-run (CFR returns) /
+  academy (AAR returns), plus the council's high-needs (DSG) balance per pupil, and a
+  national parents' association (PTA) summary.
+
+Combined series. CFR years run April to March and AAR years September to August, and
+academy accounts arrive a year later than council returns, so the latest CFR year has
+no academy figures yet. The "all" split therefore stops at the last year with academy
+returns (2024-25); later years keep only their council-run split, and "all" is None.
+
+PTA years. A charity return goes in the school year containing its period end: April to
+March for a council-run school, September to August for an academy, judged by the
+school's own return for that year (else its nearest year's). A charity shared by
+several schools is split equally between them. Review-flagged charities, and any with a
+year's income over HOLD_ABOVE (almost always a mismatch with an independent school's
+foundation), are held back from every total, median and ranking.
 
 Band. Every school with both a free-school-meals percentage and an IDACI decile is
 ranked twice nationally: once by FSM % (low to high) and once by IDACI decile after
@@ -46,6 +59,16 @@ from pathlib import Path
 
 from pipeline.money import status as health
 from pipeline.money.timeline import status_by_year
+
+try:
+    from pipeline.money import deflator
+except ImportError:  # pragma: no cover - deflator.py ships with the money package
+    deflator = None
+
+try:  # finance-series (series.py) owns the PTA year rule; pta_year() below keeps a copy
+    from pipeline.money.series import pta_year as series_pta_year
+except ImportError:
+    series_pta_year = None
 
 try:  # build_money owns these; keep a tiny fallback so this module imports on its own
     from pipeline.money.build_money import reserve_of, per_pupil
@@ -92,7 +115,10 @@ EVERYONE_OFFERED_MILES = 7   # beyond this the "last distance offered" means no 
 KM_PER_MILE = 1.609344
 SPLITS = {"all": None, "council-run": "CFR", "academy": "AAR"}
 S_KEYS = ["schools", "in_deficit", "in_deficit_pct", "heading", "deficit_total", "deficit_pp", "reserve_median_pp",
-          "income_pp_median", "spend_pp_median", "grant_pp_median", "pta_pp_median", "pta_schools", "donations_pp_median"]
+          "income_pp_median", "spend_pp_median", "grant_pp_median", "pta_pp_median", "pta_schools", "donations_pp_median",
+          "statuses", "gov_pp_median", "gov_rpp_median", "spend_rpp_median", "reserve_median_rpp", "fsm_pct", "pupils"]
+HOLD_ABOVE = 500_000         # a parents' association with a year's income above this is held for review
+TOP_PTA = 20                 # biggest fundraisers kept, by total and by per pupil
 
 
 # ----------------------------------------------------------------- loaders
@@ -282,8 +308,12 @@ def latest_distance(years):
 
 
 def median_or_none(values, minimum=1):
-    values = [v for v in values if v is not None]
-    return statistics.median(values) if len(values) >= minimum else None
+    values = sorted(v for v in values if v is not None)
+    n = len(values)
+    if n < max(minimum, 1):
+        return None
+    mid = n // 2
+    return values[mid] if n % 2 else (values[mid - 1] + values[mid]) / 2
 
 
 def average_rank(sorted_values, value):
@@ -525,7 +555,8 @@ def catchment(school, miles, lsoas):
 
 def pta_income_for(charities, end_year):
     """Combined income of a school's PTAs for the financial period ending in calendar
-    year end_year. Charities shared with other schools contribute an equal share."""
+    year end_year. Charities shared with other schools contribute an equal share.
+    Kept for older callers; build_areas uses the school-year rule in school_pta()."""
     total, found = 0.0, False
     for charity in charities or []:
         if charity.get("review"):
@@ -545,30 +576,115 @@ def end_year_of(label):
     return int(head[:2] + tail) if len(tail) == 2 else int(tail or head)
 
 
-def summarise(entries):
-    """S over a list of per-school-year entries (see school_years)."""
-    n = len(entries)
-    if n < MIN_SCHOOLS:
-        return {k: (n if k == "schools" else None) for k in S_KEYS}
-    deficits = [e for e in entries if e["reserve"] is not None and e["reserve"] < 0]
-    deficit_total = sum(e["reserve"] for e in deficits)
-    deficit_pupils = sum(e["pupils"] or 0 for e in deficits)
-    pta = [e["pta_pp"] for e in entries if e["pta_pp"] is not None]
-    return {
-        "schools": n,
-        "in_deficit": len(deficits),
-        "in_deficit_pct": round(100 * len(deficits) / n, 1),
-        "heading": sum(1 for e in entries if e["status"] == "heading_for_deficit"),
-        "deficit_total": deficit_total,
-        "deficit_pp": deficit_total / deficit_pupils if deficit_pupils else None,
-        "reserve_median_pp": median_or_none(e["reserve_pp"] for e in entries),
-        "income_pp_median": median_or_none(e["income_pp"] for e in entries),
-        "spend_pp_median": median_or_none(e["spend_pp"] for e in entries),
-        "grant_pp_median": median_or_none(e["grant_pp"] for e in entries),
-        "pta_pp_median": median_or_none(pta, MIN_SCHOOLS),
-        "pta_schools": len(pta),
-        "donations_pp_median": median_or_none(e["donations_pp"] for e in entries),
-    }
+def local_pta_year(period_end, source):
+    """School year label ("2022-23") holding a charity return that ended period_end ("YYYY-MM").
+    Council-run (CFR) years run April to March, academy (AAR) years September to August."""
+    text = str(period_end or "")
+    try:
+        year, month = int(text[:4]), int(text[5:7])
+    except ValueError:
+        return None
+    first_month = 9 if str(source).upper() == "AAR" else 4
+    start = year if month >= first_month else year - 1
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def pta_year(period_end, source):
+    """series.pta_year when finance-series is present, else the local copy (same contract)."""
+    if series_pta_year is not None:
+        try:
+            return series_pta_year(period_end, source)
+        except (TypeError, ValueError, KeyError):
+            pass
+    return local_pta_year(period_end, source)
+
+
+def _months(period_end):
+    text = str(period_end or "")
+    try:
+        return int(text[:4]) * 12 + int(text[5:7])
+    except ValueError:
+        return None
+
+
+def return_source(period_end, years):
+    """The source ("CFR"/"AAR") of the school's own return for the year holding period_end,
+    else of its nearest return in time; CFR when the school has no returns."""
+    for r in reversed(years):
+        if pta_year(period_end, r.get("source")) == label_of(r):
+            return r.get("source")
+    target = _months(period_end)
+    dated = [r for r in years if _months(r.get("period_end")) is not None]
+    if target is None or not dated:
+        return "CFR"
+    return min(dated, key=lambda r: (abs(_months(r["period_end"]) - target), -_months(r["period_end"])))["source"]
+
+
+def label_of(row):
+    return str(row.get("year") or "").replace("/", "-")
+
+
+def held_back(charity):
+    """Review-flagged charities, and any with a year's income over HOLD_ABOVE, are never counted."""
+    if charity.get("review"):
+        return True
+    return any((h.get("income") or 0) > HOLD_ABOVE for h in charity.get("history") or [])
+
+
+def school_pta(years, charities):
+    """{(year label, source): {"income", "spend", "by_charity": {number: income}, "names": {number: name},
+    "confidence"}} for one school's PTAs, by the school-year rule (module docstring). Shared
+    charities count 1 / (1 + len(shared_with)) here. Held-back charities are skipped."""
+    out = {}
+    for charity in charities or []:
+        if held_back(charity):
+            continue
+        share = 1 + len(charity.get("shared_with") or [])
+        number = charity.get("charity_number")
+        seen = set()
+        for h in charity.get("history") or []:
+            end = str(h.get("period_end") or "")[:7]
+            if h.get("income") is None or not end:
+                continue
+            source = return_source(end, years)
+            label = pta_year(end, source)
+            if not label or label in seen:  # two returns in one school year: keep the first listed (newest)
+                continue
+            seen.add(label)
+            slot = out.setdefault((label, source), {"income": 0.0, "spend": None, "by_charity": {}, "names": {},
+                                                    "confidence": "high"})
+            slot["income"] += h["income"] / share
+            if h.get("expenditure") is not None:
+                slot["spend"] = (slot["spend"] or 0.0) + h["expenditure"] / share
+            slot["by_charity"][number] = slot["by_charity"].get(number, 0.0) + h["income"] / share
+            slot["names"][number] = charity.get("name")
+            if ((charity.get("match") or {}).get("confidence") or "high") != "high":
+                slot["confidence"] = "medium"
+    return out
+
+
+def _usable(row, key, suspect):
+    value = row.get(key)
+    return None if key in suspect or not isinstance(value, (int, float)) or isinstance(value, bool) else value
+
+
+def _real(value, row):
+    """value in BASE_YEAR prices by the row's own source (CFR financial year, AAR academic year)."""
+    if value is None or deflator is None:
+        return None
+    try:
+        return deflator.to_real(value, row.get("year"), row.get("source") or "CFR")
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def government_funding(row, suspect=()):
+    """AAR grant_funding_government, CFR grant_funding (the row key grant_funding_government holds
+    the right one for both once finance-series has run; older CFR rows only carry grant_funding)."""
+    value = _usable(row, "grant_funding_government", suspect)
+    if value is None and row.get("source") == "CFR" and "grant_funding_government" not in suspect:
+        value = _usable(row, "grant_funding", suspect)
+    return value
 
 
 def school_years(rows, charities):
@@ -578,44 +694,283 @@ def school_years(rows, charities):
     full year (the year itself is in the rows it assesses), so the two lists are paired
     by position. Pairing by display label would be wrong: in a conversion year a March
     CFR return and an August AAR return both read "2024-25", and the academy's pupils
-    and spending would be stitched onto the council-run return's reserve and status."""
+    and spending would be stitched onto the council-run return's reserve and status.
+
+    Values the finance pipeline marked suspect (row["suspect"]) are left out of the
+    per-pupil inputs, so they never reach a median."""
     years = health.full_years(rows)
     points = status_by_year(rows)
     if len(points) != len(years):  # pragma: no cover - guards the invariant above
         raise ValueError(f"status_by_year gave {len(points)} points for {len(years)} full years")
+    pta = school_pta(years, charities)
     out = []
     for r, point in zip(years, points):
+        suspect = set(r.get("suspect") or [])
         pupils = r.get("pupils") or None
-        pta = pta_income_for(charities, end_year_of(point["year"]))
+        pp_pupils = None if "pupils" in suspect else pupils
+
+        def pp(value):
+            return value / pp_pupils if value is not None and pp_pupils else None
+
+        reserve_ok = not suspect & {"revenue_reserve", "revenue_reserve_incl_trust_share"}
+        reserve_pp = point["reserve_pp"] if reserve_ok and pp_pupils else None
+        gov = government_funding(r, suspect)
+        spend = _usable(r, "total_expenditure", suspect)
+        own_pta = pta.get((point["year"], r.get("source")))
         out.append({
             "year": point["year"], "source": r.get("source"), "status": point["status"],
-            "reserve": point["reserve"], "reserve_pp": point["reserve_pp"], "pupils": pupils,
-            "income_pp": per_pupil(r, "total_income"), "spend_pp": per_pupil(r, "total_expenditure"),
-            "grant_pp": per_pupil(r, "grant_funding"),
-            "pta_pp": pta / pupils if pta is not None and pupils else None,
-            "donations_pp": per_pupil(r, "donations_revenue"),
+            "reserve": point["reserve"], "reserve_pp": reserve_pp, "pupils": pupils, "pp_pupils": pp_pupils,
+            "income_pp": pp(_usable(r, "total_income", suspect)), "spend_pp": pp(spend),
+            "grant_pp": pp(_usable(r, "grant_funding", suspect)),
+            "gov_pp": pp(gov), "gov_rpp": pp(_real(gov, r)), "spend_rpp": pp(_real(spend, r)),
+            "reserve_rpp": pp(_real(point["reserve"], r)) if reserve_pp is not None else None,
+            "pta_pp": pp(own_pta["income"]) if own_pta else None,
+            "donations_pp": pp(_usable(r, "donations_revenue", suspect)),
+            "fsm_pct": _usable(r, "fsm_pct", suspect),
+            "trust": (r.get("trust") or "").strip() or None, "company_number": r.get("company_number"),
+            "central_pp": _usable(r, "trust_central_spend_per_pupil", suspect) or None,  # 0 = not reported
+            "period_end": r.get("period_end"), "phase": r.get("phase"),
         })
     return out
 
 
+def summarise(entries):
+    """S over a list of per-school-year entries (see school_years)."""
+    n = len(entries)
+    if n < MIN_SCHOOLS:
+        return {k: (n if k == "schools" else None) for k in S_KEYS}
+    deficits = [e for e in entries if e["reserve"] is not None and e["reserve"] < 0]
+    deficit_total = sum(e["reserve"] for e in deficits)
+    deficit_pupils = sum(e["pupils"] or 0 for e in deficits)
+    pta = [e["pta_pp"] for e in entries if e.get("pta_pp") is not None]
+
+    def med(key):
+        return median_or_none([e.get(key) for e in entries])
+
+    return {
+        "schools": n,
+        "in_deficit": len(deficits),
+        "in_deficit_pct": round(100 * len(deficits) / n, 1),
+        "heading": sum(1 for e in entries if e["status"] == "heading_for_deficit"),
+        "deficit_total": deficit_total,
+        "deficit_pp": deficit_total / deficit_pupils if deficit_pupils else None,
+        "reserve_median_pp": med("reserve_pp"),
+        "income_pp_median": med("income_pp"),
+        "spend_pp_median": med("spend_pp"),
+        "grant_pp_median": med("grant_pp"),
+        "pta_pp_median": median_or_none(pta, MIN_SCHOOLS),
+        "pta_schools": len(pta),
+        "donations_pp_median": med("donations_pp"),
+        "statuses": dict(Counter(e["status"] for e in entries if e.get("status"))),
+        "gov_pp_median": med("gov_pp"),
+        "gov_rpp_median": med("gov_rpp"),
+        "spend_rpp_median": med("spend_rpp"),
+        "reserve_median_rpp": med("reserve_rpp"),
+        "fsm_pct": med("fsm_pct"),
+        "pupils": sum(e["pupils"] or 0 for e in entries),
+    }
+
+
 def new_area(name):
-    return {"name": name, "pupils_by_year": {}, "schools_by_year": {}, "by_year": {}, "dsg": {}, "statuses_latest": {}}
+    return {"name": name, "pupils_by_year": {}, "schools_by_year": {}, "by_year": {}, "dsg": {}, "statuses_latest": {},
+            "combined_last_year": None, "dsg_pupils_by_year": {}}
+
+
+def carried_pupils(per_school_years):
+    """Pupils per year where a school without a return that year counts its previous year's
+    roll (one year only), so the newest DSG year still divides by every school's pupils."""
+    years = sorted({y for own in per_school_years for y in own})
+    totals = {}
+    for n, year in enumerate(years):
+        previous = years[n - 1] if n else None
+        total = 0
+        for own in per_school_years:
+            value = own.get(year)
+            if value is None and previous is not None:
+                value = own.get(previous)
+            total += value or 0
+        totals[year] = total
+    return totals
+
+
+def fill_area(area, items, combined_last):
+    """by_year, pupils, schools and statuses for one area from [(entries, latest status)]."""
+    per_year = defaultdict(list)          # every return ending in the year (feeds the source splits)
+    per_year_schools = defaultdict(list)  # one entry per school per year, its latest return
+    rolls = []
+    for entries, latest in items:
+        if latest:
+            area["statuses_latest"][latest] = area["statuses_latest"].get(latest, 0) + 1
+        last_by_year = {}
+        for e in entries:
+            per_year[e["year"]].append(e)
+            last_by_year[e["year"]] = e  # entries are oldest first
+        for year, e in last_by_year.items():
+            per_year_schools[year].append(e)
+        rolls.append({y: e["pupils"] for y, e in last_by_year.items() if e["pupils"]})
+    area["combined_last_year"] = combined_last
+    for year in sorted(per_year):
+        entries, per_school = per_year[year], per_year_schools[year]
+        combined = combined_last is None or year <= combined_last
+        if combined:
+            area["pupils_by_year"][year] = sum(e["pupils"] or 0 for e in per_school)
+            area["schools_by_year"][year] = len(per_school)
+        area["by_year"][year] = {split: (summarise(per_school) if combined else None) if source is None
+                                 else summarise([e for e in entries if e["source"] == source])
+                                 for split, source in SPLITS.items()}
+    area["dsg_pupils_by_year"] = carried_pupils(rolls)
+
+
+def fill_dsg(area, values):
+    pupils = area["dsg_pupils_by_year"]
+    for year, balance in sorted((values or {}).items()):
+        roll = pupils.get(year)
+        area["dsg"][year] = {"balance": balance, "per_pupil": balance / roll if balance is not None and roll else None}
+
+
+def trust_key(entry, register_trust):
+    """(group id, name) of the trust an academy return belongs to: company number when known."""
+    name = entry["trust"] or register_trust
+    number = entry["company_number"]
+    if number not in (None, ""):
+        return f"company:{number}", name
+    return (f"name:{name.casefold()}", name) if name else (None, None)
+
+
+def build_trusts(trust_items, trust_names, central):
+    """{slug: A + company_number, central_pp, path} for every trust with an academy return."""
+    out = {}
+    for group, items in sorted(trust_items.items(), key=lambda kv: str(trust_names.get(kv[0]) or kv[0])):
+        name = trust_names.get(group) or group.partition(":")[2]
+        number = group.partition(":")[2] if group.startswith("company:") else None
+        key = slug(name)
+        if key in out:  # two trusts with one slug: tell them apart by company number
+            key = f"{key}-{slug(number or len(out))}"
+        area = new_area(name)
+        fill_area(area, items, None)
+        area["company_number"] = number
+        area["central_pp"] = {y: round(statistics.median(v)) for y, v in sorted(central.get(group, {}).items()) if v}
+        area["path"] = f"/trust/{key}/"
+        out[key] = area
+    return out
+
+
+def school_band(ctx, school, code):
+    """The school's intake band (1-5): the register's own when given, else areas' national ranking."""
+    band = school.get("band")
+    if isinstance(band, int) and 1 <= band <= 5:
+        return band
+    if ctx is None or not code:
+        return None
+    try:
+        feature = ctx.lsoas(code).get(str(school.get("lsoa") or "")) or {}
+        return ctx.band(ctx.fsm_of(school, code), feature.get("idaci_decile"))
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def phase_tag(row_phase, school):
+    text = str(row_phase or school.get("phase") or "").strip().lower().replace("-", " ")
+    return {"primary": "primary", "secondary": "secondary", "special": "special", "all through": "all-through",
+            "nursery": "nursery"}.get(text, "other" if text else None)
+
+
+def pta_window(by_year):
+    """(first, newest) school years whose returns count as a school's "latest": the newest year
+    with at least 60% as many schools as the best-covered year, and the year before it. Charity
+    returns are filed up to ten months after their year ends, so the newest year is always
+    partial, and a council-run school's July return lands a school year later than an
+    academy's (April-March against September-August), so one year alone would skew the mix."""
+    if not by_year:
+        return None, None
+    best = max(v["schools"] for v in by_year.values())
+    newest = max(y for y, v in by_year.items() if v["schools"] >= 0.6 * best)
+    start = int(newest[:4]) - 1
+    return f"{start}-{(start + 1) % 100:02d}", newest
+
+
+def build_pta(records):
+    """The national 'pta' block from one record per school: {"urn", "name", "council", "band",
+    "tags", "years": {label: {"income", "spend", "pupils", "by_charity", "names"}}}."""
+    by_year = {}
+    charities_by_year = defaultdict(set)
+    for rec in records:
+        for label, slot in rec["years"].items():
+            charities_by_year[label].update(slot["by_charity"])
+    for label in sorted(charities_by_year):
+        slots = [rec["years"][label] for rec in records if label in rec["years"]]
+        pps = [s["income"] / s["pupils"] for s in slots if s["pupils"]]
+        spends = [s["spend"] for s in slots if s["spend"] is not None]
+        by_year[label] = {"ptas": len(charities_by_year[label]), "schools": len(slots),
+                          "income": round(sum(s["income"] for s in slots)),
+                          "spend": round(sum(spends)) if spends else None,
+                          "median_pp": median_or_none(pps, MIN_SCHOOLS)}
+    first, newest = pta_window(by_year)
+    latest = []  # (record, its latest year in the window; returns after it are still being filed)
+    for rec in records:
+        recent = [y for y in rec["years"] if first and first <= y <= newest]
+        if recent:
+            latest.append((rec, max(recent)))
+    with_pupils = [(rec, y) for rec, y in latest if rec["years"][y]["pupils"]]
+
+    def group(pairs):
+        pps = [rec["years"][y]["income"] / rec["years"][y]["pupils"] for rec, y in pairs]
+        if len(pps) < MIN_SCHOOLS:
+            return {"schools": len(pps), "median_pp": None, "mean_pp": None}
+        return {"schools": len(pps), "median_pp": statistics.median(pps), "mean_pp": sum(pps) / len(pps)}
+
+    by_band = {str(band): group([(r, y) for r, y in with_pupils if r["band"] == band]) for band in range(1, 6)}
+    by_tag = defaultdict(dict)
+    for tag in ("governance", "admissions", "phase", "faith"):
+        for value in sorted({r["tags"][y].get(tag) for r, y in with_pupils if r["tags"][y].get(tag)}):
+            by_tag[tag][value] = group([(r, y) for r, y in with_pupils if r["tags"][y].get(tag) == value])
+    top = []
+    for rec, label in latest:
+        slot = rec["years"][label]
+        number = max(slot["by_charity"], key=lambda k: slot["by_charity"][k])
+        top.append({"urn": rec["urn"], "name": rec["name"], "council": rec["council"], "council_name": rec["council_name"],
+                    "charity_number": number, "charity_name": slot["names"].get(number), "year_end": label,
+                    "income": round(slot["income"]), "spend": round(slot["spend"]) if slot["spend"] is not None else None,
+                    "pupils": slot["pupils"], "pp": round(slot["income"] / slot["pupils"]) if slot["pupils"] else None,
+                    "confidence": slot["confidence"]})
+    by_total = sorted(top, key=lambda t: (-t["income"], t["urn"]))[:TOP_PTA]
+    by_pp = sorted((t for t in top if t["pp"] is not None), key=lambda t: (-t["pp"], t["urn"]))[:TOP_PTA]
+    keep = {t["urn"] for t in by_total} | {t["urn"] for t in by_pp}
+    return {"year": newest, "window": [first, newest] if newest else None, "latest_schools": len(latest),
+            "by_year": by_year, "by_band": by_band, "by_tag": dict(by_tag),
+            "top": sorted((t for t in top if t["urn"] in keep), key=lambda t: (-t["income"], t["urn"]))}
+
+
+def held_charities(pta):
+    """Unflagged charities over HOLD_ABOVE, by charity only (no school named): never ranked."""
+    out = {}
+    for charities in pta.values():
+        for charity in charities or []:
+            if charity.get("review") or not held_back(charity):
+                continue
+            number = charity.get("charity_number")
+            income = max((h.get("income") or 0) for h in charity.get("history") or [])
+            out[number] = {"charity_number": number, "name": charity.get("name"), "income": round(income)}
+    return sorted(out.values(), key=lambda c: -c["income"])
 
 
 def build_areas(history_rows_by_urn, schools, pta, dsg, data_root, constituencies_path=CONSTITUENCIES_PATH):
-    """Yearly aggregates for England, regions, councils and constituencies.
-    history_rows_by_urn: {urn: rows (with predecessors)}; schools: register entries
-    (council known from la_code / laestab / the rows); pta: pta.json or its "schools"
-    dict; dsg: la_dsg.json dict; data_root: site/data (for las.json);
-    constituencies_path: optional {name: code} map, missing is fine."""
+    """Yearly aggregates for England, regions, councils, constituencies and academy trusts, plus
+    the national PTA block. history_rows_by_urn: {urn: rows (with predecessors)}; schools:
+    register entries (council known from la_code / laestab / the rows); pta: pta.json or its
+    "schools" dict; dsg: la_dsg.json dict; data_root: site/data (for las.json, and the LSOA
+    files the PTA bands need); constituencies_path: optional {name: code} map, missing is fine."""
     las = load_las(data_root)
     if isinstance(pta, dict) and isinstance(pta.get("schools"), dict):
         pta = pta["schools"]
     pta = pta or {}
     dsg = dsg or {}
     codes = load_constituency_codes(constituencies_path)
+    band_ctx = Context(data_root, list(schools)) if (Path(data_root) / "la").is_dir() else None
     buckets = defaultdict(list)       # (type, id) -> [(entries, latest status)]
     names = {}
+    trust_items, trust_names, central = defaultdict(list), {}, defaultdict(lambda: defaultdict(list))
+    pta_records = []
     for school in schools:
         urn = str(school.get("urn"))
         rows = history_rows_by_urn.get(urn) or []
@@ -640,42 +995,70 @@ def build_areas(history_rows_by_urn, schools, pta, dsg, data_root, constituencie
             buckets[(kind, key)].append((entries, latest))
             names.setdefault((kind, key), {"england": "England", "region": key, "council": la.get("name") or code,
                                            "constituency": constituency}[kind])
+        by_trust = defaultdict(list)
+        for e in entries:
+            if e["source"] != "AAR":
+                continue
+            group, name = trust_key(e, trust_name(school))
+            if group:
+                by_trust[group].append(e)
+                trust_names[group] = name or trust_names.get(group)
+                if e["central_pp"] is not None:
+                    central[group][e["year"]].append(e["central_pp"])
+        latest_group = trust_key(entries[-1], trust_name(school))[0] if entries[-1]["source"] == "AAR" else None
+        for group, own in by_trust.items():
+            trust_items[group].append((own, latest if group == latest_group else None))
+        pta_records.append(pta_record(school, code, la, rows, entries, pta.get(urn), band_ctx))
+    combined_last = max((e["year"] for items in buckets.values() for entries, _ in items for e in entries
+                         if e["source"] == "AAR"), default=None)
     out = {"england": None, "regions": {}, "councils": {}, "constituencies": {}}
     for (kind, key), items in buckets.items():
         area = new_area(names[(kind, key)])
-        per_year = defaultdict(list)       # every return ending in the year (feeds the source splits)
-        per_year_schools = defaultdict(list)  # one entry per school per year, its latest return
-        for entries, latest in items:
-            if latest:
-                area["statuses_latest"][latest] = area["statuses_latest"].get(latest, 0) + 1
-            last_by_year = {}
-            for e in entries:
-                per_year[e["year"]].append(e)
-                last_by_year[e["year"]] = e  # entries are oldest first
-            for year, e in last_by_year.items():
-                per_year_schools[year].append(e)
-        for year in sorted(per_year):
-            entries, per_school = per_year[year], per_year_schools[year]
-            area["pupils_by_year"][year] = sum(e["pupils"] or 0 for e in per_school)
-            area["schools_by_year"][year] = len(per_school)
-            area["by_year"][year] = {split: summarise(per_school if source is None
-                                                      else [e for e in entries if e["source"] == source])
-                                     for split, source in SPLITS.items()}
+        fill_area(area, items, combined_last)
         values = None
         if kind == "council":
             values = ((dsg.get("las") or {}).get(key) or {}).get("values")
         elif kind == "england":
             values = dsg.get("england")
-        for year, balance in sorted((values or {}).items()):
-            pupils = area["pupils_by_year"].get(year)
-            area["dsg"][year] = {"balance": balance, "per_pupil": balance / pupils if balance is not None and pupils else None}
+        fill_dsg(area, values)
         if kind == "england":
             out["england"] = area
         else:
             out[{"region": "regions", "council": "councils", "constituency": "constituencies"}[kind]][key] = area
     if out["england"] is None:
         out["england"] = new_area("England")
+    out["trusts"] = build_trusts(trust_items, trust_names, central)
+    out["pta"] = build_pta([r for r in pta_records if r["years"]])
+    out["pta"]["held"] = held_charities(pta)
     return out
+
+
+def pta_record(school, code, la, rows, entries, charities, band_ctx):
+    """One school's PTA years for build_pta, each with that year's pupils (None when the school
+    has no return for it, so no per-pupil figure is made up)."""
+    by_key = {(e["year"], e["source"]): e for e in entries}
+    years, tags = {}, {}
+    for (label, source), slot in sorted(school_pta(health.full_years(rows), charities).items()):
+        entry = by_key.get((label, source))
+        own = years.setdefault(label, {"income": 0.0, "spend": None, "by_charity": {}, "names": {},
+                                       "confidence": "high", "pupils": None})
+        own["income"] += slot["income"]
+        if slot["spend"] is not None:
+            own["spend"] = (own["spend"] or 0.0) + slot["spend"]
+        for number, income in slot["by_charity"].items():
+            own["by_charity"][number] = own["by_charity"].get(number, 0.0) + income
+        own["names"].update(slot["names"])
+        if slot["confidence"] != "high":
+            own["confidence"] = "medium"
+        if entry and entry["pp_pupils"]:
+            own["pupils"] = entry["pp_pupils"]
+        tags[label] = {"governance": "academy" if source == "AAR" else "council-run",
+                       "admissions": admissions_tag(school),
+                       "phase": phase_tag(entry["phase"] if entry else None, school),
+                       "faith": "faith" if faith_tag(school) else "no faith"}
+    return {"urn": str(school.get("urn")), "name": school.get("name"), "council": code,
+            "council_name": la.get("name") or code, "band": school_band(band_ctx, school, code) if years else None,
+            "tags": tags, "years": years}
 
 
 # ----------------------------------------------------------------- command line
