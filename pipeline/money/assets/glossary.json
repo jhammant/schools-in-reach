@@ -1,0 +1,367 @@
+{
+  "_about": "Plain-English definitions for every money figure on School Money. label: short heading; plain: one sentence a parent can read; how: how the number is worked out; source: where it comes from (CFR = council-run schools' Consistent Financial Reporting return, AAR = academies' Accounts Return); ifs: optional key path into pipeline/money/data/ifs_context.json for wider context.",
+  "total_income": {
+    "label": "Total income",
+    "plain": "All the money the school received in the year, mostly government funding plus anything it raised itself.",
+    "how": "Government grants plus self-generated income (lettings, catering, donations and the like) for the school's financial year. Early CFR years are adjusted so that money moved into capital projects (E30) is not counted twice.",
+    "source": "CFR total income (I01 to I18 less E30) / AAR Total Income",
+    "ifs": "framings.funding_vs_spending_per_pupil"
+  },
+  "grant_funding": {
+    "label": "Grant funding",
+    "plain": "Money that arrives as grants, nearly all of it from the government through the council or the Department for Education.",
+    "how": "The sum of the grant lines in the school's return. For academies this can include a small amount of non-government grants; see 'Government grants' for the government-only figure.",
+    "source": "CFR lines I01 to I07, I15, I16 and I18 / AAR Total Grant Funding",
+    "ifs": "framings.pass_through_grants"
+  },
+  "grant_funding_government": {
+    "label": "Government grants",
+    "plain": "Grant money from the government only, with charitable and other grants and payments from other academies taken out.",
+    "how": "For council-run schools this is the same as grant funding. For academies it is total grant funding less non-government grants and income received from other academies.",
+    "source": "CFR grant funding / AAR Total Grant Funding less Non-Government and Academies lines"
+  },
+  "sen_funding": {
+    "label": "Special needs funding",
+    "plain": "Extra money the school gets to support pupils with special educational needs.",
+    "how": "Top-up and other SEN funding received from the council's high-needs budget, as reported by the school.",
+    "source": "CFR line I03 SEN funding / AAR SEN funding",
+    "ifs": "framings.send_pressure"
+  },
+  "pupil_premium": {
+    "label": "Pupil premium",
+    "plain": "Extra funding for pupils from lower-income families, children in care and service families.",
+    "how": "The pupil premium grant received in the year. Academies do not break this out in their accounts return, so it only shows for council-run schools.",
+    "source": "CFR line I05 Pupil premium / AAR pupil premium is not broken out",
+    "ifs": "framings.pupil_premium"
+  },
+  "self_generated_income": {
+    "label": "Money the school raised itself",
+    "plain": "Income the school earned or was given rather than granted, such as lettings, catering, trips and donations.",
+    "how": "The sum of the self-generated income lines: facilities and services, catering, insurance receipts, contributions to visits, donations and community facilities.",
+    "source": "CFR lines I08 to I13 and I17 / AAR Total Self Generated Funding"
+  },
+  "donations": {
+    "label": "Donations",
+    "plain": "Gifts of money to the school from parents, the PTA, charities and local businesses.",
+    "how": "Donations and private funds reported as revenue income, plus (for council-run schools) voluntary income given for buildings and equipment.",
+    "source": "CFR lines I13 and CI03 / AAR Donations and/or voluntary funds"
+  },
+  "donations_revenue": {
+    "label": "Donations (day-to-day)",
+    "plain": "Gifts of money the school can spend on day-to-day running, such as PTA contributions.",
+    "how": "Donations and private funds reported in the school's revenue income for the year.",
+    "source": "CFR line I13 Donations and/or private funds / AAR Donations and/or voluntary funds"
+  },
+  "donations_capital": {
+    "label": "Donations (buildings and equipment)",
+    "plain": "Gifts given specifically for buildings, grounds or equipment rather than day-to-day costs.",
+    "how": "Voluntary or private capital income reported by council-run schools. Academies report capital donations differently, so this is CFR only.",
+    "source": "CFR line CI03 Voluntary or private income / not in the AAR"
+  },
+  "lettings_income": {
+    "label": "Lettings",
+    "plain": "Money from hiring out the hall, pitches, rooms or car park outside school hours.",
+    "how": "Income from rentals and lettings as reported by the school.",
+    "source": "CFR line I08a Income from lettings / AAR Income from rentals and lettings"
+  },
+  "facilities_income": {
+    "label": "Facilities and services",
+    "plain": "Money from things the school provides for a fee, such as lettings, breakfast clubs, music tuition or uniform sales.",
+    "how": "All income from facilities and services, which includes lettings.",
+    "source": "CFR line I08 Income from facilities and services / AAR Income from facilities and services"
+  },
+  "catering_income": {
+    "label": "Catering income",
+    "plain": "Money paid for school meals and other food the school sells.",
+    "how": "Income from catering as reported by the school. Compare it with catering costs to see whether meals break even.",
+    "source": "CFR line I09 Income from catering / AAR Income from catering"
+  },
+  "teacher_pension_ni_grants": {
+    "label": "Pension and National Insurance grants",
+    "plain": "Grants that cover rises in what the school must pay towards teachers' pensions and staff National Insurance.",
+    "how": "Government grants that pass straight through to pay and pension costs, so they add to income and spending by the same amount without adding spending power.",
+    "source": "CFR line I18 additional grants / AAR other DfE revenue grants, where the workbook separates them",
+    "ifs": "framings.pass_through_grants"
+  },
+  "non_government_grants": {
+    "label": "Non-government grants",
+    "plain": "Grants from charities, trusts and businesses rather than the government.",
+    "how": "Non-government grant income as reported by academies. Council-run schools include it within other grants.",
+    "source": "AAR Non-Government grants / not separated in the CFR"
+  },
+  "total_expenditure": {
+    "label": "Total spending",
+    "plain": "Everything the school spent in the year on staff, buildings, energy, learning resources and services.",
+    "how": "The sum of all revenue expenditure lines in the school's return for the year.",
+    "source": "CFR total expenditure (E01 to E29, E31 and E32) / AAR Total Expenditure",
+    "ifs": "framings.funding_vs_spending_per_pupil"
+  },
+  "teaching_staff": {
+    "label": "Teachers",
+    "plain": "Pay, pension and National Insurance for the school's teachers.",
+    "how": "Teaching staff costs including on-costs, as reported by the school.",
+    "source": "CFR line E01 Teaching staff / AAR Teaching staff",
+    "ifs": "framings.why_schools_go_into_deficit"
+  },
+  "supply_staff": {
+    "label": "Supply teachers",
+    "plain": "What the school paid for cover when teachers were absent or posts were empty.",
+    "how": "Supply teaching staff plus agency supply costs.",
+    "source": "CFR lines E02 and E26 / AAR Supply teaching staff"
+  },
+  "education_support_staff": {
+    "label": "Support staff",
+    "plain": "Pay for teaching assistants, learning mentors, librarians and other staff who support learning directly.",
+    "how": "Education support staff costs including on-costs.",
+    "source": "CFR line E03 Education support staff / AAR Education support staff"
+  },
+  "admin_clerical_staff": {
+    "label": "Office staff",
+    "plain": "Pay for the school office, finance and administrative staff.",
+    "how": "Administrative and clerical staff costs including on-costs.",
+    "source": "CFR line E05 Administrative and clerical staff / AAR Administrative and clerical staff"
+  },
+  "premises_staff": {
+    "label": "Site staff",
+    "plain": "Pay for caretakers, cleaners and other staff who look after the buildings.",
+    "how": "Premises staff costs including on-costs.",
+    "source": "CFR line E04 Premises staff / AAR Premises staff"
+  },
+  "catering_staff": {
+    "label": "Catering staff",
+    "plain": "Pay for kitchen and dining staff employed by the school.",
+    "how": "Catering staff costs including on-costs. Schools that buy in catering show those costs under bought-in services instead.",
+    "source": "CFR line E06 Catering staff / AAR Catering staff"
+  },
+  "other_staff_costs": {
+    "label": "Other staff costs",
+    "plain": "Other people costs such as training, recruitment, staff insurance and other staff not listed above.",
+    "how": "Other staff, indirect employee expenses, staff development and staff-related insurance lines added together.",
+    "source": "CFR lines E07 to E11 / AAR other staff cost lines"
+  },
+  "total_staff": {
+    "label": "All staff costs",
+    "plain": "Everything the school spent on people, which is usually about four pounds in every five.",
+    "how": "The sum of every staff cost line, including supply and agency staff.",
+    "source": "CFR Staff total (E01 to E03, E05, E07 to E11 and E26) / AAR Total Staff Costs",
+    "ifs": "national.costs.staff_share_of_costs"
+  },
+  "premises": {
+    "label": "Buildings and grounds",
+    "plain": "Keeping the buildings and grounds maintained, cleaned and safe.",
+    "how": "Building maintenance and improvement, grounds maintenance, cleaning and caretaking added together.",
+    "source": "CFR lines E12 to E14 / AAR premises lines"
+  },
+  "energy": {
+    "label": "Energy",
+    "plain": "Gas, electricity and other fuel for heating, lighting and running the school.",
+    "how": "Energy costs as reported by the school.",
+    "source": "CFR line E16 Energy / AAR Energy"
+  },
+  "occupation": {
+    "label": "Rates, water and other building costs",
+    "plain": "Business rates, water, insurance and other costs of occupying the buildings.",
+    "how": "Water and sewerage, rates and other occupation costs added together.",
+    "source": "CFR lines E15, E17 and E18 / AAR occupation lines"
+  },
+  "catering": {
+    "label": "Catering supplies",
+    "plain": "Food and other supplies for school meals, and bought-in catering contracts.",
+    "how": "Catering supplies as reported by the school.",
+    "source": "CFR line E25 Catering supplies / AAR Catering supplies"
+  },
+  "educational_supplies": {
+    "label": "Learning resources",
+    "plain": "Books, equipment, software and computers used for teaching, plus exam fees.",
+    "how": "Learning resources (not ICT), ICT learning resources and examination fees added together.",
+    "source": "CFR lines E19 to E21 / AAR learning resources and exam fees"
+  },
+  "supplies_services": {
+    "label": "Supplies and services",
+    "plain": "Everyday running costs such as office supplies, insurance and special facilities.",
+    "how": "Administrative supplies, other insurance premiums and special facilities added together.",
+    "source": "CFR lines E22 to E24 / AAR supplies and services lines"
+  },
+  "bought_in_services": {
+    "label": "Bought-in services",
+    "plain": "Professional services the school pays other organisations for, such as HR, legal, IT support or therapy.",
+    "how": "Bought-in professional services for the curriculum and for other purposes added together.",
+    "source": "CFR lines E27 and E28 / AAR Bought in professional services"
+  },
+  "revenue_reserve": {
+    "label": "Reserve",
+    "plain": "The school's savings: money carried over from previous years that it can still spend.",
+    "how": "The revenue balance at the end of the year, committed and uncommitted together. Below zero means the school owes money to the council or trust.",
+    "source": "CFR lines B01 and B02 / AAR Revenue reserve",
+    "ifs": "framings.one_deficit_year"
+  },
+  "revenue_reserve_incl_trust_share": {
+    "label": "Reserve including trust share",
+    "plain": "The academy's own reserve plus its share of money held centrally by its trust.",
+    "how": "Only academies report this. The trust's central reserve is shared out among its schools in proportion to pupils.",
+    "source": "AAR Revenue reserve including trust share / not in the CFR",
+    "ifs": "framings.academy_central_top_slice"
+  },
+  "reserve_committed": {
+    "label": "Committed reserve",
+    "plain": "Savings the school has already earmarked for something, such as a building project.",
+    "how": "The committed revenue balance reported at the year end.",
+    "source": "CFR line B01 Committed revenue balances / not broken out in the AAR"
+  },
+  "reserve_uncommitted": {
+    "label": "Uncommitted reserve",
+    "plain": "Savings the school has not yet earmarked, so it could use them for anything.",
+    "how": "The uncommitted revenue balance reported at the year end.",
+    "source": "CFR line B02 Uncommitted revenue balances / not broken out in the AAR"
+  },
+  "reserve_share": {
+    "label": "Reserve as a share of income",
+    "plain": "How many weeks of running costs the savings would cover: 8% is roughly a month.",
+    "how": "Revenue reserve divided by total income for the same year, shown as a percentage.",
+    "source": "Worked out from the reserve and total income lines",
+    "ifs": "framings.one_deficit_year"
+  },
+  "in_year_balance": {
+    "label": "In-year balance",
+    "plain": "Whether the school spent more or less than it received this year.",
+    "how": "Total income less total expenditure for the year. One year below zero is common; it matters when it happens year after year.",
+    "source": "Worked out from the total income and total expenditure lines",
+    "ifs": "framings.one_deficit_year"
+  },
+  "per_pupil": {
+    "label": "Per pupil",
+    "plain": "The figure divided by the number of pupils, so schools of different sizes can be compared.",
+    "how": "Every total divided by the same year's pupil count from the same return, which can differ from the census count.",
+    "source": "Worked out from the pupil numbers reported alongside each return",
+    "ifs": "framings.funding_vs_spending_per_pupil"
+  },
+  "real_terms": {
+    "label": "Real terms",
+    "plain": "Figures adjusted for inflation so that different years can be compared fairly.",
+    "how": "Each year's cash figure is scaled to 2025-26 prices using the HM Treasury GDP deflator for that financial or academic year.",
+    "source": "HM Treasury GDP deflators (October 2026), OGL v3",
+    "ifs": "framings.real_terms"
+  },
+  "pupils": {
+    "label": "Pupils",
+    "plain": "How many pupils the school had in the year, used to work out the per-pupil figures.",
+    "how": "The full-time-equivalent pupil number reported with the finance return.",
+    "source": "CFR No Pupils / AAR Number of pupils in academy (FTE)",
+    "ifs": "framings.falling_rolls"
+  },
+  "fsm_pct": {
+    "label": "Free school meals",
+    "plain": "The share of pupils eligible for free school meals, a common measure of family income.",
+    "how": "Percentage of pupils eligible for free school meals as reported with the return.",
+    "source": "CFR and AAR % of pupils eligible for FSM"
+  },
+  "ehcp_pct": {
+    "label": "Pupils with an EHC plan",
+    "plain": "The share of pupils with an Education, Health and Care plan setting out extra support they need.",
+    "how": "Percentage of pupils with an EHC plan as reported with the return (older returns call this a SEN statement).",
+    "source": "CFR and AAR % of pupils with EHCP",
+    "ifs": "framings.send_pressure"
+  },
+  "dsg_balance": {
+    "label": "Council schools budget balance",
+    "plain": "Whether the council's overall schools budget (the Dedicated Schools Grant) is in surplus or deficit.",
+    "how": "The council's cumulative DSG balance at the end of the year, in cash terms. Below zero means a deficit, usually driven by special needs costs.",
+    "source": "DfE DSG balances published with the Section 251 outturn / pipeline/money/data/la_dsg.json",
+    "ifs": "framings.send_pressure"
+  },
+  "dsg_per_pupil": {
+    "label": "Council schools budget balance per pupil",
+    "plain": "The council's schools budget balance spread across every pupil in its schools.",
+    "how": "DSG balance divided by the number of pupils in the council's schools for the same year.",
+    "source": "Worked out from the DSG balance and pupil numbers in the finance returns"
+  },
+  "deficit_total": {
+    "label": "Total deficits",
+    "plain": "The combined size of the deficits of schools in this area that are below zero.",
+    "how": "The sum of negative revenue reserves across schools in the area for the year; schools in surplus are not netted off.",
+    "source": "Worked out from each school's revenue reserve line"
+  },
+  "in_deficit_pct": {
+    "label": "Share of schools in deficit",
+    "plain": "The percentage of schools in this area whose savings are below zero.",
+    "how": "Schools with a negative revenue reserve divided by schools with a full-year return, for the same year.",
+    "source": "Worked out from each school's revenue reserve line",
+    "ifs": "framings.why_schools_go_into_deficit"
+  },
+  "pta_income": {
+    "label": "PTA income",
+    "plain": "Money raised by the school's parent-teacher association in its latest reported year.",
+    "how": "The latest income reported to the Charity Commission by the registered PTA charities matched to this school. Smaller PTAs are not registered, so many schools show nothing.",
+    "source": "Charity Commission register of charities, OGL v3"
+  },
+  "pta_spending": {
+    "label": "PTA spending",
+    "plain": "What the parent-teacher association spent in its latest reported year.",
+    "how": "The latest expenditure reported to the Charity Commission by the PTA charities matched to this school.",
+    "source": "Charity Commission register of charities, OGL v3"
+  },
+  "pta_per_pupil": {
+    "label": "PTA income per pupil",
+    "plain": "How much the parent-teacher association raised for each pupil in the school.",
+    "how": "PTA income divided by the school's pupil number for the nearest finance year.",
+    "source": "Charity Commission register and the school's finance return"
+  },
+  "trust_central_spend": {
+    "label": "Trust central spending",
+    "plain": "Money the academy trust spends centrally on things shared across its schools, such as finance, HR and IT.",
+    "how": "The trust's central expenditure per pupil as reported in its accounts return; it is paid for partly by keeping back some of each school's funding.",
+    "source": "AAR Trust Total Exp per pupil / not applicable to council-run schools",
+    "ifs": "framings.academy_central_top_slice"
+  },
+  "cfr_line": {
+    "label": "CFR line",
+    "plain": "One line from the standard return that every council-run school in England files each year.",
+    "how": "Reported as filed, in cash terms. Income lines start with I, spending with E and balances with B.",
+    "source": "DfE Consistent Financial Reporting return via the Financial Benchmarking and Insights Tool"
+  },
+  "aar_line": {
+    "label": "Accounts return line",
+    "plain": "One line from the annual accounts return that every academy in England files each year.",
+    "how": "Reported as filed, in cash terms, for the academic year ending 31 August.",
+    "source": "DfE Academies Accounts Return via the Financial Benchmarking and Insights Tool"
+  },
+  "status_in_deficit": {
+    "label": "In deficit",
+    "plain": "The school's savings are below zero, so it owes money to its council or trust and will have a recovery plan.",
+    "how": "Revenue reserve below zero in the latest full year.",
+    "source": "pipeline/money/status.py",
+    "ifs": "framings.why_schools_go_into_deficit"
+  },
+  "status_heading_for_deficit": {
+    "label": "Heading for deficit",
+    "plain": "The school still has savings, but has spent more than it received for several years and will use them up soon unless something changes.",
+    "how": "Reserve above zero, in-year balance below zero in each of the last three years, and the reserve would run out within about three years at that rate.",
+    "source": "pipeline/money/status.py",
+    "ifs": "framings.one_deficit_year"
+  },
+  "status_tight": {
+    "label": "Tight",
+    "plain": "The school has very little in reserve, so one unexpected cost could push it into deficit.",
+    "how": "Revenue reserve above zero but under 3% of a year's income.",
+    "source": "pipeline/money/status.py"
+  },
+  "status_healthy": {
+    "label": "Healthy",
+    "plain": "The school has a sensible cushion of savings for its size.",
+    "how": "Revenue reserve between 3% and 8% of a year's income (5% for secondaries), and not overspending year after year.",
+    "source": "pipeline/money/status.py"
+  },
+  "status_large_reserves": {
+    "label": "Large reserves",
+    "plain": "The school has built up more savings than it needs for a cushion, which may be earmarked for a project.",
+    "how": "Revenue reserve at or above 8% of a year's income (5% for secondaries).",
+    "source": "pipeline/money/status.py",
+    "ifs": "questions.large_reserves"
+  },
+  "band": {
+    "label": "Intake band",
+    "plain": "Where the school's intake sits nationally on a scale from 1 (least disadvantaged) to 5 (most disadvantaged), used to compare like with like.",
+    "how": "A national quintile of a combined rank of free school meal eligibility and the deprivation of the school's neighbourhood (IDACI).",
+    "source": "DfE finance returns, GIAS and the English Indices of Deprivation 2019, OGL v3"
+  }
+}
