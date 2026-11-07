@@ -2,7 +2,11 @@
    Colours come from app.css variables, so light and dark follow the page. */
 
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; margin: 18px 0; }
-.chart-card { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+.chart-card { margin: 0; background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; min-width: 0; }
+/* Cards take the accents in turn, like the headline tiles above them. */
+.chart-grid > .chart-card:nth-child(4n+2) { border-top-color: var(--indigo); }
+.chart-grid > .chart-card:nth-child(4n+3) { border-top-color: var(--plum); }
+.chart-grid > .chart-card:nth-child(4n+4) { border-top-color: var(--berry); }
 .chart-card figcaption { font-weight: 700; margin: 0 0 8px; line-height: 1.3; }
 .chart-card .muted.small { margin: 8px 0 0; }
 .chart-card svg.chart { max-width: 560px; }
@@ -35,10 +39,10 @@ svg.spark circle { fill: var(--c1); }
 svg.spark .zero { stroke: var(--grid); stroke-width: 1; }
 
 /* Table filters: one row of buttons per group, wrapping on small screens. */
-.table-filters { display: grid; gap: 8px; margin: 12px 0; padding: 10px 12px; background: var(--card-2); border-radius: var(--radius); }
+.table-filters { display: grid; gap: 8px; margin: 12px 0; padding: 10px 12px; background: var(--th-bg); border-radius: var(--radius); }
 .table-filters [role="group"] { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.table-filters .fl { font-weight: 600; color: var(--ink-2); font-size: .85rem; min-width: 6.5rem; }
-.table-filters .n { color: inherit; opacity: .75; font-size: .8em; margin-left: 2px; }
+.table-filters .fl { font-weight: 600; color: var(--th-ink); font-size: .85rem; min-width: 6.5rem; }
+.table-filters .n { color: inherit; opacity: .85; font-size: .8em; margin-left: 2px; }
 tr.pinned td { background: var(--accent-soft); }
 .mf.suspect { opacity: .55; border-bottom-style: dashed; }
 /* Wide tables (/debts/ has a column per year): the per-pupil figure sits under its total, so a

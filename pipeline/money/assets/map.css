@@ -70,7 +70,7 @@ svg.chart.mx-spark { width: 100%; max-width: 240px; height: 56px; margin: 6px 0 
 @keyframes mx-rise { from { transform: translateY(24px); } to { transform: none; } }
 
 /* ---------- legend ---------- */
-.mx-legend { margin: 12px 0 8px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); min-width: 0; }
+.mx-legend { margin: 12px 0 8px; padding: 12px 14px; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); background: var(--card); min-width: 0; }
 .mx-legend-title { font-weight: 700; margin: 0 0 6px; }
 .mx-key { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .mx-key li { display: flex; align-items: center; gap: 8px; min-height: 28px; font-variant-numeric: tabular-nums; }
@@ -84,7 +84,7 @@ svg.chart.mx-spark { width: 100%; max-width: 240px; height: 56px; margin: 6px 0 
 .mx-dothead { margin: 0 0 4px; font-weight: 600; }
 
 /* ---------- context and table ---------- */
-.mx-why { margin: 18px 0; padding: 4px 16px 6px; border-left: 4px solid var(--accent); background: var(--card); border-radius: var(--radius-s); }
+.mx-why { margin: 18px 0; padding: 4px 16px 6px; border-left: 4px solid var(--accent); background: var(--accent-soft); border-radius: var(--radius-s); }
 .mx-why h2 { font-size: 1.1rem; margin: .8em 0 .4em; }
 .mx-tablebox { min-width: 0; }
 .mx-scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }

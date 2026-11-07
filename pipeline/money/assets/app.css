@@ -12,18 +12,30 @@
      --ink        #1c1b18 / #ece8e0   body text
      --ink-2      #5b574f / #b3ada2   secondary text, axis labels
      --ink-3      #8a8578 / #7e8792   placeholders, disabled
-   Accent (one hue: deep teal)
+   Accents (teal leads; four companions for decoration only, never for status)
      --accent     #0f6e6a / #4fb8b1   links, focus, primary buttons, series 1
      --accent-ink #ffffff / #0c1a19   text on accent
      --accent-soft#d8ece9 / #1f3b39   accent tint for selected rows and pills
+     --indigo     #5b47c2 / #aaa0f4   table heads, pins and compare; series 3
+     --berry      #b02a66 / #f290bd   the "in 30 seconds" video button, parents; series 2
+     --plum       #8b3aa3 / #d79cec   PTFA, tiles and sections in turn
+     --leaf       #457212 / #a8d46c   pupils, sections in turn; series 4 (a yellow-green, kept clear of --good)
+     Each companion comes as a set: --x is safe as text on paper, card, --head-bg and --x-soft (>= 4.5:1);
+     --x-soft is its tint for tiles and chips; --x-ink is text on a filled --x.
+   Bands
+     --head-bg    #e6f2ef / #172625   header band (a 5-colour accent ribbon runs along its top)
+     --foot-bg    #12403e / #11292a   footer band, with --foot-ink, --foot-ink-2 and --foot-link on it
+     --th-bg/--th-ink                 table header row (indigo tint)
    Status (named in money.css; kept the same meaning: never used without icon + label)
      --critical   #c0392b / #ef6a5a   in deficit
      --serious    #d9742a / #f0955a   heading for deficit
-     --warning    #c99a06 / #e6c04a   tight
+     --warning    #ad8402 / #e6c04a   tight (darkened from #c99a06 so bars and map fills reach 3:1)
      --good       #2e8b57 / #5fc48a   healthy
-     --plenty     #0f6e6a / #4fb8b1   large reserves (shares the accent: calm, not alarming)
+     --plenty     #2f6cbd / #6ea8f5   large reserves (blue: calm, not alarming, and no longer the teal accent)
+     Each has --x-soft (badge fill) and --x-text (badge word and icon, >= 4.5:1 on --x-soft, card and paper).
+     The base --x colours stay for status bars, borders and map fills.
    Charts
-     --c1 --c2 --c3 --c4             series colours (teal, rust, violet, olive)
+     --c1 --c2 --c3 --c4             series colours (teal, berry, indigo, leaf: no status hue among them)
      --band       #e2dccf / #3b4149   middle-half band
      --grid       #e8e2d6 / #2b3036   gridlines
    Shape and type
@@ -38,8 +50,16 @@
   --paper: #f6f2ea; --card: #fffdf9; --card-2: #efe9df; --line: #ddd5c7; --line-strong: #b9ae9b;
   --ink: #1c1b18; --ink-2: #5b574f; --ink-3: #8a8578;
   --accent: #0f6e6a; --accent-ink: #ffffff; --accent-soft: #d8ece9;
-  --critical: #c0392b; --serious: #d9742a; --warning: #c99a06; --good: #2e8b57; --plenty: #0f6e6a;
-  --c1: #0f6e6a; --c2: #b5542a; --c3: #5b4ea8; --c4: #6b7f1f; --band: #e2dccf; --grid: #e8e2d6;
+  --indigo: #5b47c2; --indigo-ink: #ffffff; --indigo-soft: #e7e3f9;
+  --berry: #b02a66; --berry-ink: #ffffff; --berry-soft: #fae2ec;
+  --plum: #8b3aa3; --plum-ink: #ffffff; --plum-soft: #f3e3f7;
+  --leaf: #457212; --leaf-ink: #ffffff; --leaf-soft: #e7f1d6;
+  --head-bg: #e6f2ef; --foot-bg: #12403e; --foot-ink: #eef6f4; --foot-ink-2: #bcd6d2; --foot-link: #a3e8de;
+  --th-bg: #e7e3f9; --th-ink: #4a389f;
+  --critical: #c0392b; --serious: #d9742a; --warning: #ad8402; --good: #2e8b57; --plenty: #2f6cbd;
+  --critical-soft: #fbe3df; --serious-soft: #fdeadb; --warning-soft: #fbf0cc; --good-soft: #dcf2e3; --plenty-soft: #dfe9f8;
+  --critical-text: #a52e22; --serious-text: #974610; --warning-text: #775a02; --good-text: #216e40; --plenty-text: #24579c;
+  --c1: #0f6e6a; --c2: #b02a66; --c3: #5b47c2; --c4: #457212; --band: #e2dccf; --grid: #e8e2d6;
   --radius: 10px; --radius-s: 6px; --shadow: 0 8px 28px rgba(40, 30, 10, .16);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --measure: 72rem; --tap: 44px;
@@ -50,8 +70,16 @@
     --paper: #16181b; --card: #1e2126; --card-2: #262a30; --line: #343a42; --line-strong: #4d5560;
     --ink: #ece8e0; --ink-2: #b3ada2; --ink-3: #7e8792;
     --accent: #4fb8b1; --accent-ink: #0c1a19; --accent-soft: #1f3b39;
-    --critical: #ef6a5a; --serious: #f0955a; --warning: #e6c04a; --good: #5fc48a; --plenty: #4fb8b1;
-    --c1: #4fb8b1; --c2: #e07b4a; --c3: #9d92e8; --c4: #a9bd4a; --band: #3b4149; --grid: #2b3036;
+    --indigo: #aaa0f4; --indigo-ink: #16123a; --indigo-soft: #29254a;
+    --berry: #f290bd; --berry-ink: #2b0c1b; --berry-soft: #43202f;
+    --plum: #d79cec; --plum-ink: #26102e; --plum-soft: #382341;
+    --leaf: #a8d46c; --leaf-ink: #172208; --leaf-soft: #26331a;
+    --head-bg: #172625; --foot-bg: #11292a; --foot-ink: #e4ece9; --foot-ink-2: #a6bfbb; --foot-link: #86dcd3;
+    --th-bg: #29254a; --th-ink: #c4bdfa;
+    --critical: #ef6a5a; --serious: #f0955a; --warning: #e6c04a; --good: #5fc48a; --plenty: #6ea8f5;
+    --critical-soft: #4a2320; --serious-soft: #48301c; --warning-soft: #3f3517; --good-soft: #1b3b29; --plenty-soft: #1c2f4d;
+    --critical-text: #ffa498; --serious-text: #ffb684; --warning-text: #f0d06a; --good-text: #85dba8; --plenty-text: #a3c7fb;
+    --c1: #4fb8b1; --c2: #f290bd; --c3: #aaa0f4; --c4: #a8d46c; --band: #3b4149; --grid: #2b3036;
     --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   }
 }
@@ -88,7 +116,9 @@ pre { max-width: 100%; overflow-x: auto; font-size: .875rem; }
 .skip:focus { top: 8px; }
 
 /* ---------- header ---------- */
-header.top { background: var(--card); border-bottom: 1px solid var(--line); }
+/* The ribbon: the five accents in hard-edged stripes, shared by the header and footer bands. Status hues are never in it. */
+:root { --ribbon: linear-gradient(90deg, var(--accent) 0 20%, var(--indigo) 0 40%, var(--berry) 0 60%, var(--plum) 0 80%, var(--leaf) 0); }
+header.top { background: var(--ribbon) top / 100% 5px no-repeat, var(--head-bg); padding-top: 5px; border-bottom: 1px solid var(--line); }
 /* The nav has its own row, so a longer menu never squeezes the search box (ten links took it down to ~40px). */
 header.top .wrap { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand search aud" "tag nav nav";
   column-gap: 20px; row-gap: 2px; align-items: center; padding-top: 10px; padding-bottom: 10px; }
@@ -113,15 +143,23 @@ form.search button { flex: none; white-space: nowrap; min-height: var(--tap); pa
 .listbox .empty { color: var(--ink-2); cursor: default; }
 nav.main-nav { grid-area: nav; display: flex; flex-wrap: wrap; gap: 2px 4px; justify-content: flex-end; }
 nav.main-nav a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 500; font-size: .95rem; }
-nav.main-nav a:hover { background: var(--card-2); }
-nav.main-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
-nav.main-nav .count { display: inline-block; min-width: 1.4em; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--accent-ink);
+nav.main-nav a:hover { background: var(--accent-soft); color: var(--accent); }
+nav.main-nav a[aria-current="page"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+nav.main-nav .count { display: inline-block; min-width: 1.4em; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: var(--indigo); color: var(--indigo-ink);
   font-size: .72rem; font-weight: 700; text-align: center; line-height: 1.5; }
 nav.main-nav .count:empty, nav.main-nav .count[data-zero] { display: none; }
 fieldset.audience { grid-area: aud; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; justify-content: flex-end; }
 fieldset.audience legend { float: left; font-size: .8rem; color: var(--ink-2); margin-right: 4px; padding: 0; }
-fieldset.audience button { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; font-size: .82rem; color: var(--ink-2); }
-fieldset.audience button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+/* Each audience keeps one colour everywhere: these chips, the home page's "Start here" cards and the guide index. */
+fieldset.audience [data-audience="parent"], ul.audiences li:nth-child(1), .guide-group[aria-labelledby="g-parents"] { --aud: var(--berry); --aud-soft: var(--berry-soft); --aud-ink: var(--berry-ink); }
+fieldset.audience [data-audience="governor"], ul.audiences li:nth-child(2), .guide-group[aria-labelledby="g-governors"] { --aud: var(--indigo); --aud-soft: var(--indigo-soft); --aud-ink: var(--indigo-ink); }
+fieldset.audience [data-audience="ptfa"], ul.audiences li:nth-child(3), .guide-group[aria-labelledby="g-ptfa"] { --aud: var(--plum); --aud-soft: var(--plum-soft); --aud-ink: var(--plum-ink); }
+fieldset.audience [data-audience="leader"], ul.audiences li:nth-child(4), .guide-group[aria-labelledby="g-school-leaders"] { --aud: var(--accent); --aud-soft: var(--accent-soft); --aud-ink: var(--accent-ink); }
+fieldset.audience [data-audience="pupil"], ul.audiences li:nth-child(5), .guide-group[aria-labelledby="g-pupils"] { --aud: var(--leaf); --aud-soft: var(--leaf-soft); --aud-ink: var(--leaf-ink); }
+fieldset.audience button { min-height: 32px; padding: 0 10px; border: 1px solid var(--aud, var(--line-strong)); border-radius: 999px; background: transparent;
+  font-size: .82rem; font-weight: 600; color: var(--aud, var(--ink-2)); }
+fieldset.audience button:hover { background: var(--aud-soft, var(--card-2)); }
+fieldset.audience button[aria-pressed="true"] { background: var(--aud, var(--ink)); color: var(--aud-ink, var(--paper)); border-color: var(--aud, var(--ink)); }
 /* Audience-specific copy: show only the block for the chosen audience. */
 [data-for] { display: none; }
 html[data-audience="parent"] [data-for~="parent"], html[data-audience="governor"] [data-for~="governor"], html[data-audience="ptfa"] [data-for~="ptfa"],
@@ -131,8 +169,11 @@ nav.crumbs { font-size: .9rem; color: var(--ink-2); margin: 8px 0 4px; }
 nav.crumbs a { color: var(--ink-2); }
 
 /* ---------- footer ---------- */
-footer { margin-top: 48px; border-top: 1px solid var(--line); background: var(--card); color: var(--ink-2); font-size: .9rem; padding: 28px 0 40px; }
-footer h2 { font-size: 1rem; margin: 0 0 .5em; color: var(--ink); }
+footer { margin-top: 48px; background: var(--ribbon) top / 100% 5px no-repeat, var(--foot-bg); color: var(--foot-ink-2); font-size: .9rem; padding: 33px 0 40px; }
+footer h2 { font-size: 1rem; margin: 0 0 .5em; color: var(--foot-ink); }
+footer a { color: var(--foot-link); }
+footer .muted { color: var(--foot-ink-2); }
+footer :focus-visible { outline-color: var(--foot-ink); }
 footer ul { padding-left: 20px; } footer li { margin: 4px 0; }
 footer .foot-links { font-weight: 600; margin-top: 16px; }
 
@@ -141,7 +182,7 @@ footer .foot-links { font-weight: 600; margin-top: 16px; }
 .mf small { font-weight: 400; color: var(--ink-2); font-size: .85em; white-space: nowrap; }
 .mf.js { cursor: pointer; }
 .mf:hover, .mf.js:focus-visible { border-bottom-color: var(--accent); color: var(--accent); }
-.mf.neg { color: var(--critical); }
+.mf.neg { color: var(--critical-text); }
 .mf.big { font-size: 1.5rem; } .mf.big small { display: block; font-size: .8rem; }
 .tooltip, .money-tip { position: fixed; z-index: 60; max-width: min(320px, calc(100vw - 16px)); padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius);
   background: var(--card); color: var(--ink); font-size: .9rem; line-height: 1.4; box-shadow: var(--shadow); pointer-events: none; font-weight: 400; }
@@ -175,13 +216,15 @@ footer .foot-links { font-weight: 600; margin-top: 16px; }
 .drill .check { display: inline-flex; align-items: center; min-height: var(--tap); font-weight: 600; }
 
 /* ---------- pins ---------- */
-button.pin { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); font-size: .9rem; font-weight: 600; }
-button.pin[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+/* Pins and everything to do with comparing share indigo: the pin, the nav count, the pin bar's button. */
+button.pin { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--indigo); border-radius: 999px; background: var(--card); color: var(--indigo); font-size: .9rem; font-weight: 600; }
+button.pin:hover { background: var(--indigo-soft); }
+button.pin[aria-pressed="true"] { background: var(--indigo); border-color: var(--indigo); color: var(--indigo-ink); }
 .pinbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 8px clamp(14px, 3vw, 28px);
   background: var(--ink); color: var(--paper); font-size: .95rem; box-shadow: 0 -6px 20px rgba(0, 0, 0, .2); }
 .pinbar[hidden] { display: none; }
 .pinbar a, .pinbar button { color: var(--paper); min-height: 36px; display: inline-flex; align-items: center; gap: 6px; }
-.pinbar a.go { background: var(--accent); color: var(--accent-ink); padding: 0 14px; border-radius: 999px; text-decoration: none; font-weight: 700; }
+.pinbar a.go { background: var(--indigo); color: var(--indigo-ink); padding: 0 14px; border-radius: 999px; text-decoration: none; font-weight: 700; }
 .pinbar button { background: transparent; border: 1px solid rgba(255, 255, 255, .35); border-radius: 999px; padding: 0 12px; font-size: .85rem; }
 .pinbar .msg { flex-basis: 100%; font-size: .85rem; color: var(--card-2); }
 .pinbar .names { color: var(--card-2); font-size: .85rem; }
@@ -203,10 +246,16 @@ body.has-pinbar main { padding-bottom: 120px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--card); font-weight: 600; white-space: nowrap; color: var(--ink); }
 .badge.small { font-size: .85rem; padding: 0 8px; } .badge.large { font-size: 1.15rem; padding: 4px 14px; }
 .badge > span[aria-hidden] { font-size: .9em; }
-.s-in_deficit > span[aria-hidden] { color: var(--critical); } .s-heading_for_deficit > span[aria-hidden] { color: var(--serious); }
-.s-tight > span[aria-hidden] { color: var(--warning); } .s-healthy > span[aria-hidden] { color: var(--good); } .s-large_reserves > span[aria-hidden] { color: var(--plenty); }
-.badge.s-in_deficit { border-color: var(--critical); } .badge.s-heading_for_deficit { border-color: var(--serious); } .badge.s-tight { border-color: var(--warning); }
-.badge.s-healthy { border-color: var(--good); } .badge.s-large_reserves { border-color: var(--plenty); }
+/* Status badges are filled with their status tint, so good and bad read at a glance; the word and icon use the deep
+   --x-text shade (>= 4.5:1 on the tint). These five colour sets are for status only. */
+.s-in_deficit > span[aria-hidden] { color: var(--critical-text); } .s-heading_for_deficit > span[aria-hidden] { color: var(--serious-text); }
+.s-tight > span[aria-hidden] { color: var(--warning-text); } .s-healthy > span[aria-hidden] { color: var(--good-text); } .s-large_reserves > span[aria-hidden] { color: var(--plenty-text); }
+.badge.s-in_deficit { border-color: var(--critical); background: var(--critical-soft); color: var(--critical-text); }
+.badge.s-heading_for_deficit { border-color: var(--serious); background: var(--serious-soft); color: var(--serious-text); }
+.badge.s-tight { border-color: var(--warning); background: var(--warning-soft); color: var(--warning-text); }
+.badge.s-healthy { border-color: var(--good); background: var(--good-soft); color: var(--good-text); }
+.badge.s-large_reserves { border-color: var(--plenty); background: var(--plenty-soft); color: var(--plenty-text); }
+.badge.large { border-width: 2px; }
 .status-line { margin: 8px 0 4px; }
 .note { border-left: 3px solid var(--line-strong); padding: 4px 12px; color: var(--ink-2); }
 .statusbar { display: flex; gap: 2px; height: 16px; margin: 16px 0 8px; border-radius: 4px; overflow: hidden; }
@@ -219,6 +268,11 @@ body.has-pinbar main { padding-bottom: 120px; }
 /* ---------- tiles, cards ---------- */
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0; }
 .tile, .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
+/* Statistic tiles take the accents in turn: a tint with a stripe on top. Leaf is left out so no figure sits on green. */
+.tiles > .tile { --tint: var(--accent); --tint-soft: var(--accent-soft); background: var(--tint-soft); border-color: transparent; border-top: 4px solid var(--tint); }
+.tiles > .tile:nth-child(4n+2) { --tint: var(--indigo); --tint-soft: var(--indigo-soft); }
+.tiles > .tile:nth-child(4n+3) { --tint: var(--plum); --tint-soft: var(--plum-soft); }
+.tiles > .tile:nth-child(4n+4) { --tint: var(--berry); --tint-soft: var(--berry-soft); }
 .tlabel { font-size: .8rem; color: var(--ink-2); }
 .tvalue { font-size: 1.5rem; font-weight: 700; line-height: 1.3; }
 .tvalue .sub { display: block; font-size: .78rem; font-weight: 400; color: var(--ink-2); }
@@ -228,6 +282,7 @@ body.has-pinbar main { padding-bottom: 120px; }
 table { width: 100%; border-collapse: collapse; font-size: .95rem; }
 th, td { padding: 9px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 th { color: var(--ink-2); font-weight: 600; background: var(--card); }
+thead th { color: var(--th-ink); background: var(--th-bg); border-bottom: 2px solid var(--indigo); }
 td.num, th.num, td[data-num] { text-align: right; font-variant-numeric: tabular-nums; }
 caption { text-align: left; font-weight: 600; margin: 8px 0; caption-side: top; }
 tbody tr:hover { background: var(--card-2); }
@@ -260,14 +315,17 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 .finder { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; } .finder label { font-weight: 600; }
 .finder input { flex: 1 1 220px; min-width: 0; min-height: var(--tap); padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--card); color: var(--ink); }
 .finder button, .button { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 16px; border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; }
+.finder button:hover, .button:hover, form.search button:hover { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22); }
 .button.quiet { background: transparent; color: var(--accent); }
+.button.quiet:hover { background: var(--accent-soft); box-shadow: none; }
 .results { list-style: none; padding: 0; margin: 0 0 12px; border: 1px solid var(--line); border-radius: var(--radius-s); max-height: 340px; overflow: auto; background: var(--card); }
 .results:empty { display: none; }
 .results li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .results li:last-child { border-bottom: 0; } .results .where { color: var(--ink-2); font-size: .85rem; }
-.results button { min-height: 36px; padding: 0 10px; border: 1px solid var(--accent); border-radius: var(--radius-s); background: none; color: var(--accent); }
+.results button { min-height: 36px; padding: 0 10px; border: 1px solid var(--indigo); border-radius: var(--radius-s); background: none; color: var(--indigo); }
+.results button:hover { background: var(--indigo-soft); }
 .chosen { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
-.chosen li { display: flex; gap: 6px; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); min-height: 36px; }
+.chosen li { display: flex; gap: 6px; align-items: center; padding: 4px 10px; border: 1px solid var(--indigo); border-radius: 999px; background: var(--indigo-soft); min-height: 36px; }
 .chosen button { border: 0; background: none; color: var(--ink-2); font-size: 1.1rem; min-width: 32px; min-height: 32px; }
 
 /* ---------- responsive ---------- */
@@ -291,16 +349,24 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 }
 @media (prefers-reduced-motion: no-preference) {
   .drill { transition: transform .18s ease-out; }
-  .listbox li, nav.main-nav a, button.pin { transition: background-color .12s; }
+  .listbox li, nav.main-nav a, button.pin, fieldset.audience button { transition: background-color .12s; }
 }
 @media print {
   header.top form.search, fieldset.audience, .pinbar, .pin-import, .drill, .drill-backdrop, .tooltip, .preview, button.pin { display: none !important; }
   body { background: #fff; color: #000; }
+  header.top, footer { background: none; color: #000; } footer h2, footer a, footer .muted { color: #000; }
 }
 
 /* ▶ "in 30 seconds" video links: a play button that stands out beside the status badge and in share rows. */
 a.watch { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 14px; border-radius: 999px;
-  background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
-a.watch:hover, a.watch:focus-visible { filter: brightness(1.08); text-decoration: underline; }
+  background: var(--berry); color: var(--berry-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
+a.watch:hover, a.watch:focus-visible { box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .22); text-decoration: underline; }
 .wrapped-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-video { margin: 4px 0 20px; }
+
+/* Home page "Start here": one card per audience, in that audience's colour (set with the chips above). */
+/* Flex rather than grid so a short last row stretches instead of leaving one card on its own. */
+ul.audiences { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+ul.audiences li { flex: 1 1 12rem; min-width: 0; padding: 8px 14px 12px; border-left: 5px solid var(--aud, var(--accent)); border-radius: var(--radius-s);
+  background: var(--aud-soft, var(--accent-soft)); }
+ul.audiences a { display: flex; align-items: center; min-height: var(--tap); color: var(--aud, var(--accent)); }
