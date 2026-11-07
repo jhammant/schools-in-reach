@@ -1,10 +1,13 @@
 """One school's School Money page: status, funding against spending, reserves, every income and
-spending line over the years, pupils, PTA money and the IFS context, in that order.
+spending line over the years, how it compares with the schools nearby, pupils, PTA money and the IFS
+context, in that order.
 
-render(item, ctx) -> {"title", "description", "body", "indexable"}. item is build_money.build_model's
+render(item, ctx) -> {"title", "description", "body", "indexable", "lighter"}. item is build_money.build_model's
 item; ctx carries the school's SERIES (pipeline/money/series.py), status timeline, similar-school
-medians, area figures and the parsed ifs_context.json. Any ctx value except series, ifs and check_url
-may be None. build_money wraps body with site.page(..., extra_head=EXTRA_HEAD).
+medians, area figures, the parsed ifs_context.json and, when the school has neighbours, 'nearby'
+(build_money's nearby contract). Any ctx value except series, ifs and check_url may be None, and
+'nearby' may be absent. build_money wraps body with site.page(..., extra_head=EXTRA_HEAD); 'lighter'
+holds the same body with a lighter nearby section, then none, for pages near the size budget.
 
 Every £ amount in the body text is a money-figure span: school data through site.money_figure, IFS
 amounts quoted in prose as data-mf="ifs_figure" spans that keep the report's exact text. Charts are
@@ -36,7 +39,8 @@ except ImportError:  # pragma: no cover
 esc = site.esc
 DATA = Path(__file__).with_name("data")
 GLOSSARY = Path(__file__).with_name("assets") / "glossary.json"
-EXTRA_HEAD = '<link rel="stylesheet" href="/assets/school.css"><script src="/assets/trend.js" defer></script>'
+EXTRA_HEAD = ('<link rel="stylesheet" href="/assets/school.css"><link rel="stylesheet" href="/assets/nearby.css">'
+              '<script src="/assets/trend.js" defer></script>')
 CHARITY = "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/"
 CHARITY_REGISTER = "https://register-of-charities.charitycommission.gov.uk/"
 FBIT_SOURCES = "https://financial-benchmarking-and-insights-tool.education.gov.uk/data-sources"
@@ -744,6 +748,205 @@ def spending_section(item, view) -> str:
     return _section("spending", "Where it goes", html)
 
 
+NEARBY_LEVELS = ("full", "table", "lite", "brief")  # the nearby section, richest first; render() returns the rest as 'lighter' bodies
+NEARBY_LITE_ROWS = 4   # neighbours in the lighter table
+NEARBY_COMPARE = 6     # URNs in the compare link, this school first
+NEARBY_RANKS = (("spend_pp", "spending per pupil"), ("reserve_pp", "reserve per pupil"),
+                ("pta_pp", "parents' association income per pupil"))
+
+
+def ordinal(n) -> str:
+    """1st, 2nd, 3rd, 4th ... 11th, 12th, 13th ... 21st, 22nd, 101st, 111th."""
+    n = int(n)
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
+def _nearby(view):
+    """ctx['nearby'] when it lists at least one school, else None."""
+    nb = view.ctx.get("nearby")
+    if not isinstance(nb, dict) or not isinstance(nb.get("self"), dict):
+        return None
+    schools = [r for r in nb.get("schools") or [] if isinstance(r, dict) and r.get("name")]
+    me = dict(nb["self"], name=nb["self"].get("name") or view.item.get("name"), urn=nb["self"].get("urn") or view.urn)
+    return dict(nb, self=me, schools=schools) if schools else None
+
+
+def _phase_schools(nb) -> str:
+    """'primary schools', 'alternative provision schools'; 'schools of the same phase' for Other."""
+    phase = str(nb.get("phase") or "").strip()
+    return "schools of the same phase" if not phase or phase == "Other" else f"{phase[:1].lower() + phase[1:]} schools"
+
+
+def _nb_rank_lines(nb, year) -> str:
+    phases, out = _phase_schools(nb), []
+    for key, what in NEARBY_RANKS:
+        r = (nb.get("rank") or {}).get(key) or {}
+        rank, of = _num(r.get("rank")), _num(r.get("of"))
+        if not rank or not of:
+            continue
+        place = "Highest" if rank == 1 else ("Lowest" if rank == of else f"{ordinal(rank)} highest")
+        tail = f" in {year}"
+        if key == "pta_pp":
+            low = sum(1 for row in [nb["self"]] + nb["schools"]
+                      if _num(row.get("pta_pp")) is not None and row.get("pta_confidence") == "medium")
+            tail = (f" with a registered parents' association (charity years nearest {year}"
+                    + (f"; {low} of them matched with lower confidence" if low else "") + ")")
+        out.append(f"<li>{place} {esc(what)} of {int(of)} nearby {esc(phases)}{esc(tail)}.</li>")
+    return f'<ul class="nb-ranks">{"".join(out)}</ul>' if out else ""
+
+
+def _pp_figure(key, pp, total, pupils, year) -> str:
+    """site.money_figure's span (the same data-* for its tooltip) showing pp as the figure and the total beside it,
+    for columns headed 'per pupil'."""
+    fig = site.money_figure(key, total, pupils, year)
+    sign = "-" if pp < 0 else ""
+    return f'{fig[:fig.index(">") + 1]}{sign}£{abs(round(pp)):,}<small> {esc(charts.money(total))} total</small></span>'
+
+
+def _nb_money(key, row, field, year_field=None, year=None):
+    """A per-pupil value as a money figure with that year's pupils (the total is pp x pupils), or a dash."""
+    pp, pupils = _num(row.get(field)), _num(row.get("pupils"))
+    if pp is None:
+        return "—"
+    if year_field:  # PTA: its own school year, and its own income (else pp x that row's pupils when the years match)
+        y, total = row.get(year_field) or year, _num(row.get("pta_income"))
+        if total is None and y == year and pupils:
+            total = round(pp * pupils)
+        if total is None:
+            return "—"
+        fig = _pp_figure(key, pp, total, total / pp if pp else None, y)  # pupils as total / pp, so data-pp is pta_pp
+        if y != year:
+            fig += f" <small>{esc(y)}</small>"
+        if row.get("pta_confidence") == "medium":
+            fig += " <small>matched with lower confidence</small>"
+        return fig
+    if not pupils:
+        return "—"
+    return _pp_figure(key, pp, round(pp * pupils), pupils, year)
+
+
+def _nb_pct(value) -> str:
+    value = _num(value)
+    return "—" if value is None else f"{value:.1f}%"
+
+
+def _nb_name(row, me) -> str:
+    name = esc(row.get("name") or "")
+    if me:
+        return f'<th scope="row">{name} <strong class="nb-you">This school</strong></th>'
+    return f'<th scope="row"><a href="{esc(row["p"])}">{name}</a></th>' if row.get("p") else f'<th scope="row">{name}</th>'
+
+
+def _nb_status(row) -> str:
+    return badge(row["status"], "small") if row.get("status") in charts.STATUS_LABELS else "—"
+
+
+def _nb_table(nb, year, rows, full) -> str:
+    cols = ["School", "Distance", "Status", "Spending per pupil"] + (["Reserve per pupil", "Staff costs", "PTA per pupil", "FSM"] if full else [])
+    head = "".join(f'<th scope="col">{c}</th>' for c in cols)
+    body = []
+    for row in rows:
+        me = row is nb["self"]
+        mi = 0 if me else _num(row.get("mi"))
+        cells = [_nb_name(row, me), "<td>—</td>" if mi is None else f"<td>{mi:g} mi</td>",
+                 f"<td>{_nb_status(row)}</td>", f"<td>{_nb_money('total_expenditure', row, 'spend_pp', year=year)}</td>"]
+        if full:
+            reserve = "revenue_reserve_incl_trust_share" if row.get("reserve_incl_trust_share") else "revenue_reserve"
+            cells += [f"<td>{_nb_money(reserve, row, 'reserve_pp', year=year)}</td>", f"<td>{_nb_pct(row.get('staff_pct'))}</td>",
+                      f"<td>{_nb_money('pta_income', row, 'pta_pp', 'pta_year', year)}</td>", f"<td>{_nb_pct(row.get('fsm_pct'))}</td>"]
+        body.append(f'<tr{' class="nb-self"' if me else ""}>{"".join(cells)}</tr>')
+    caption = f"This school and the {len(rows) - 1} nearest {_phase_schools(nb)}, {year}"
+    return (f'<div class="nb-scroll"><table class="nb-table"><caption>{esc(caption)}</caption><thead><tr>{head}</tr></thead>'
+            f'<tbody>{"".join(body)}</tbody></table></div>')
+
+
+def _nb_chart(nb, year) -> str:
+    """Horizontal bars of spending per pupil, highest first, each labelled with its school and value; this school's
+    bar is filled and named 'this school', so colour is never the only key. The median is a labelled line."""
+    rows = [r for r in [nb["self"]] + nb["schools"] if _num(r.get("spend_pp")) is not None and _num(r.get("spend_pp")) >= 0]
+    if len(rows) < 2 or not any(r is nb["self"] for r in rows):
+        return ""
+    rows.sort(key=lambda r: -r["spend_pp"])
+    top, width, step = max(r["spend_pp"] for r in rows) or 1, 300, 30
+    parts = []
+    for n, r in enumerate(rows):
+        y, me = 14 + n * step, r is nb["self"]
+        name = shorten(str(r.get("name") or ""), 38) + (" (this school)" if me else "")
+        cls = ' class="me"' if me else ""
+        parts.append(f'<text x="0" y="{y}"{cls}>{esc(name)}: £{r["spend_pp"]:,}</text>'
+                     f'<rect y="{y + 4}" width="{max(1, round(r["spend_pp"] / top * width))}" height="9"{cls}/>')
+    height = 14 + len(rows) * step
+    median = _num((nb.get("medians") or {}).get("spend_pp"))
+    if median is not None and median > 0:
+        x = round(median / top * width)
+        parts.append(f'<line class="med" x1="{x}" x2="{x}" y1="4" y2="{height - 8}"/>'
+                     f'<text class="med" x="{min(x + 3, width - 60)}" y="{height}">median £{round(median):,}</text>')
+        height += 6
+    title = f"Spending per pupil in {year}: this school and the nearest {_phase_schools(nb)}"
+    return f'<svg class="nb-chart" viewBox="0 -2 360 {height + 4}" role="img"><title>{esc(title)}</title>{"".join(parts)}</svg>'
+
+
+def _nb_caveats(nb, table=True) -> str:
+    """What every nearby note says, however short: the two financial years when the list mixes them, and that
+    doubtful figures are left out (and, under a table, what its dashes mean)."""
+    text, every = "", [nb["self"]] + nb["schools"]
+    if any(r.get("academy") for r in every) and not all(r.get("academy") for r in every):
+        text += "Council-run schools' years run April to March, academies' September to August. "
+    if not table:
+        return text + "Ranks and medians leave out doubtful figures. "
+    return text + ("A dash means no figure for that year (no full-year return yet, or one left out as doubtful); "
+                   "doubtful figures are left out of ranks and medians. ")
+
+
+def _nb_note(nb, year, view, full) -> str:
+    phases, n = _phase_schools(nb), len(nb["schools"])
+    radius = _num(nb.get("radius_mi"))
+    within = f", all within {radius:.1f} miles" if radius is not None else ""
+    text = f"Only {phases} are compared: the {n} nearest state-funded ones{within}, in {year}"
+    if view.latest and view.latest != year:
+        text += f", the latest year most of them have published (the rest of this page uses {view.latest})"
+    text += ". " + _nb_caveats(nb)
+    html = f'<p class="small muted">{esc(text)}'
+    if full:
+        html += (esc(f"PTA: the parents' association's income in the charity year nearest {year}; a dash means No registered parents' "
+                     "association found (charities with income of ") + threshold_figure()
+                 + esc(" or less need not register) or no recent return. It can overlap with school donations, so the two are never added. "))
+    html += ("Nearby schools serve different families: schools with more pupils on free school meals (FSM) get more funding, "
+             "so higher spending per pupil often has a good reason.</p>")
+    return html
+
+
+def _nb_note_brief(nb, year, view) -> str:
+    text = f"Figures for {year}, comparing only {_phase_schools(nb)}"
+    if view.latest and view.latest != year:
+        text += f" (the rest of this page uses {view.latest})"
+    return (f'<p class="small muted">{esc(text)}. {esc(_nb_caveats(nb, table=False))}Nearby schools serve different families, so compare their '
+            'free school meals shares too; the compare page shows every figure side by side.</p>')
+
+
+def nearby_section(item, view, level="full") -> str:
+    """'Compared with schools nearby' from ctx['nearby'] (build_money's 'nearby' contract): rank sentences, this school
+    and its neighbours nearest first, a bar chart of spending per pupil, a compare link and what to bear in mind.
+    level 'table' drops the chart; 'lite' keeps the nearest NEARBY_LITE_ROWS and fewer columns; 'brief' keeps the
+    sentences and links. "" when ctx has no nearby schools."""
+    nb = _nearby(view)
+    if nb is None:
+        return ""
+    year = str(nb.get("year") or view.latest or "")
+    full = level in ("full", "table")
+    rows = [nb["self"]] + (nb["schools"] if full else nb["schools"][:NEARBY_LITE_ROWS])
+    html = _nb_rank_lines(nb, year)
+    if level != "brief":
+        html += _nb_table(nb, year, rows, full)
+    if level == "full":
+        html += _nb_chart(nb, year)
+    urns = [str(r.get("urn")) for r in [nb["self"]] + nb["schools"] if r.get("urn")][:NEARBY_COMPARE]
+    if len(urns) > 1:
+        html += f'<p><a class="button quiet" href="/compare/?urns={esc(",".join(urns))}">Compare these schools side by side</a></p>'
+    html += _nb_note(nb, year, view, full) if level != "brief" else _nb_note_brief(nb, year, view)
+    return _section("nearby", "Compared with schools nearby", html)
+
+
 def pupils_section(item, view) -> str:
     years = [y for y in view.years if _num(view.pupils.get(y))]
     if not years:
@@ -1152,7 +1355,7 @@ def check_section(item, view) -> str:
 
 def _toc(body) -> str:
     names = [("status", "Status"), ("funding", "Funding vs spending"), ("reserve", "Reserves"), ("income", "Income"),
-             ("spending", "Spending"), ("pupils", "Pupils"), ("trust-central", "Trust"), ("ptfa", "PTA"),
+             ("spending", "Spending"), ("nearby", "Nearby"), ("pupils", "Pupils"), ("trust-central", "Trust"), ("ptfa", "PTA"),
              ("questions", "Questions"), ("check", "Check")]
     links = "".join(f'<li><a href="#{i}">{n}</a></li>' for i, n in names if f'id="{i}"' in body)
     return f'<nav class="sp-toc" aria-label="On this page"><ul>{links}</ul></nav>'
@@ -1192,18 +1395,20 @@ def render(item, ctx) -> dict:
     if not item.get("status"):
         return _plain_page(item, view, "No full-year finance return is published for this school yet, usually because it opened, "
                            "converted to an academy or changed trust part-way through the year.")
-    sections = [status_section(item, view), funding_section(item, view), reserve_section(item, view),
-                income_section(item, view), spending_section(item, view), pupils_section(item, view),
-                pass_through_section(item, view), trust_section(item, view), pta_section(item, view),
-                intake_section(item, view), split_section(item, view), context_section(item, view),
-                questions_section(item, view), check_section(item, view)]
-    inner = "".join(sections)
-    body = f'<h1>{esc(item["name"])}: school finances</h1>{_intro(item, view)}{_toc(inner)}{inner}'
+    before = "".join([status_section(item, view), funding_section(item, view), reserve_section(item, view),
+                      income_section(item, view), spending_section(item, view)])
+    after = "".join([pupils_section(item, view), pass_through_section(item, view), trust_section(item, view), pta_section(item, view),
+                     intake_section(item, view), split_section(item, view), context_section(item, view),
+                     questions_section(item, view), check_section(item, view)])
+    head = f'<h1>{esc(item["name"])}: school finances</h1>{_intro(item, view)}'
+    nearby = dict.fromkeys([nearby_section(item, view, level) for level in NEARBY_LEVELS] + [""])
+    bodies = [f"{head}{_toc(before + n + after)}{before}{n}{after}" for n in nearby]
     st = item["status"]
     span = f"{view.first} to {view.latest}" if view.first and view.first != view.latest else (view.latest or "")
     return {
         "title": shorten(f"{item['name']} finances: {st['label']} | School Money", 70),
         "description": shorten(f"{item['name']}: {st['reason']} Funding, spending, reserves and PTA money, {span}.", 160),
-        "body": body,
+        "body": bodies[0],
+        "lighter": bodies[1:],
         "indexable": True,
     }
