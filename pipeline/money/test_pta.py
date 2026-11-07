@@ -501,6 +501,40 @@ class Pass2Test(unittest.TestCase):
         self.assertEqual(matches["2"][1]["match"]["method"], "council-unique")
         self.assertNotIn("shared_with", matches["2"][2])
 
+    def test_explicit_infant_and_junior_pta_is_shared_but_one_sided_names_are_not(self):
+        # Arrange: found by council name; the second charity names only the infant school
+        schools = [school(1, "Hiltingbury Infant School", "SO53 5NP", town="Chandlers Ford"),
+                   school(2, "Hiltingbury Junior School", "SO53 5NP", town="Chandlers Ford")]
+        charities = [charity(10, "HILTINGBURY INFANT AND JUNIOR SCHOOLS PTA", registered="2001-01-01", removed="2015-01-01"),
+                     charity(11, "HILTINGBURY INFANT SCHOOL PTA", registered="2010-01-01", removed="2016-01-01")]
+        # Act
+        matches, _ = pass2(schools, charities, areas={10: ["Hampshire"], 11: ["Hampshire"]})
+        # Assert
+        self.assertEqual([c["charity_number"] for c in matches["1"]], [11, 10])
+        self.assertEqual([c["charity_number"] for c in matches["2"]], [10])
+        self.assertEqual(matches["2"][0]["shared_with"], ["1"])
+        self.assertNotIn("shared_with", matches["1"][0])
+
+    def test_predecessor_phase_cannot_mask_the_current_gias_phase(self):
+        # Arrange: a junior predecessor of a secondary academy, and of a primary (a real reorganisation)
+        # a middle school's PTA into its secondary successor (Isle of Wight, 2011), and 'High Green' as a place word
+        schools = [school(1, "Arena Academy", "B42 2AA", phase="Secondary"), school(2, "Kingstanding Primary Academy", "B43 1AA", phase="Primary"),
+                   school(3, "Cowes Enterprise College", "B44 1AA", phase="Secondary"),
+                   school(4, "St Mary's Primary School, A Catholic Voluntary Academy", "B45 1AA", phase="Primary", town="Sheffield"),
+                   school(5, "St Mary's Catholic Primary School", "B46 1AA", phase="Primary")]
+        charities = [charity(10, "FRIENDS OF PERRY BEECHES JUNIOR SCHOOL", removed="2010-01-01"),
+                     charity(11, "OAKFIELD JUNIOR SCHOOL PTA", removed="2010-01-01"),
+                     charity(12, "FRIENDS OF SOLENT MIDDLE SCHOOL", removed="2012-01-01"),
+                     charity(13, "ST MARY'S CATHOLIC SCHOOL PTA, HIGH GREEN, SHEFFIELD", removed="2013-01-01")]
+        preds = {"1": ["Perry Beeches Junior School"], "2": ["Oakfield Junior School"], "3": ["Cowes High School", "Solent Middle School"],
+                 "4": ["St Mary's Catholic Primary School High Green"]}
+        # Act
+        matches, rows = pass2(schools, charities, areas={n: ["Birmingham"] for n in (10, 11, 12, 13)}, preds=preds, councils={"330": "Birmingham"})
+        # Assert
+        self.assertEqual(sorted(matches), ["2", "3", "4"])
+        self.assertEqual({urn: cs[0]["match"]["method"] for urn, cs in matches.items()}, {"2": "predecessor", "3": "predecessor", "4": "predecessor"})
+        self.assertNotIn(10, [r["charity_number"] for r in rows])
+
     def test_independent_target_and_predating_charity_rejected(self):
         # Arrange (G1, G2)
         schools = [school(1, "Felsted School", "CM6 3LL", type_group="Independent schools"), school(2, "Felsted Primary School", "CM6 3EW"),
@@ -522,6 +556,136 @@ class Pass2Test(unittest.TestCase):
         self.assertIn("council-unique 1, postcode-exact 1", text)
         self.assertIn("Ambiguous charities exported for adjudication: 2 (several_fit 2)", text)
         self.assertIn("## 1 random `postcode-exact` matches for review", text)
+
+
+class WidenedNameTest(unittest.TestCase):
+    def test_wider_name_forms(self):
+        # Arrange / Act / Assert: the crawl_spec section 5 forms pass 1 misses
+        for name in ("FRIENDS OF BOUSFIELD", "ST JOHNS P.T.A.", "SACRED HEART PARENT/TEACHER ASSOCIATION",
+                     "REIGATE PRIORY SCHOOL FAMILIES & STAFF ASSOCIATION", "SUPPORTERS OF ASHMOLE SCHOOL", "FRIENDS OF COLHAM MANOR"):
+            self.assertFalse(pta.is_parent_association(name), name)
+            self.assertTrue(pta.is_widened_name(name), name)
+        # church, hospital, welfare and activity groups, pre-schools, and names pass 1 already takes
+        for name in ("FRIENDS OF ST MARYS CHURCH", "FRIENDS OF THE ROYAL HOSPITAL", "PARENTS OF AUTISTIC CHILDREN",
+                     "FRIENDS OF THE BAND", "OAK PRE-SCHOOL FRIENDS", "WOODLEA PTA", "FRIENDS OF WOODLEA SCHOOL"):
+            self.assertFalse(pta.is_widened_name(name), name)
+
+    def test_wider_names_match_only_by_exact_postcode_or_domain(self):
+        # Arrange
+        schools = [school(1, "Bousfield Primary School", "SW5 0DJ", town="London"),
+                   school(2, "Sacred Heart Catholic Primary School", "N7 7AA", "http://www.sacredheart.islington.sch.uk", town="London"),
+                   school(3, "Colham Manor Primary School", "UB8 3PT", town="Uxbridge"),
+                   school(4, "St Peter's CofE Primary School", "GU9 9AA", town="Farnham"),
+                   school(5, "Ardleigh Green Infant School", "RM11 2SP", town="Hornchurch")]
+        charities = [charity(10, "FRIENDS OF BOUSFIELD", "SW5 0DJ"),
+                     charity(11, "SACRED HEART PARENT/TEACHER ASSOCIATION", web="https://sacredheart.islington.sch.uk/pta"),
+                     charity(12, "FRIENDS OF COLHAM MANOR"),                  # no anchor: the name alone never places it
+                     charity(13, "FRIENDS OF ST PETERS", "GU9 9AA"),          # a saint's name at the postcode: a church group
+                     charity(14, "FRIENDS OF HORNCHURCH", "RM11 2SP"),        # only the school's town is shared
+                     charity(15, "ST PETERS SCHOOL P.T.A.", "GU9 9AA")]       # dotted, with a school word
+        wide = {c["registered_charity_number"] for c in charities}
+        # Act
+        matches, rows = pta.match_pass2([dict(s, la_code="850", council="Hampshire") for s in schools], charities, wide,
+                                        {n: ["Hampshire"] for n in wide}, {}, {}, councils=HANTS, widened=wide)
+        # Assert
+        got = {urn: [(c["charity_number"], c["match"]["method"], c["match"]["evidence"]) for c in cs] for urn, cs in matches.items()}
+        self.assertEqual(got, {"1": [(10, "postcode-exact", "postcode-exact SW50DJ; wider name")],
+                               "2": [(11, "domain", "domain sacredheart.islington.sch.uk (website); wider name")],
+                               "4": [(15, "postcode-exact", "postcode-exact GU99AA; wider name")]})
+        self.assertEqual(rows, [], "wider names are never exported for adjudication")
+
+    def test_broad_tier_needs_activities_about_parents_money_and_school(self):
+        # Arrange / Act / Assert: crawl_spec section 5's broad tier, which the name alone never admits
+        fund = "Parents organise PTA fundraising events to buy equipment for school pupils."
+        self.assertTrue(pta.is_broad_candidate({"charity_name": "WOODLEA SCHOOL FUND", "charity_activities": fund}))
+        self.assertTrue(pta.is_widened({"charity_name": "WOODLEA SCHOOL FUND", "charity_activities": fund}))
+        for name, activities in (("WOODLEA SCHOOL FUND", ""),                                  # no activities
+                                 ("WOODLEA SCHOOL FUND", "Grants to pupils for school trips."),  # no parents
+                                 ("WOODLEA SCHOOL FUND", "Parents meet at the school."),         # no money
+                                 ("WOODLEA SCHOOL MINIBUS FUND", fund),                          # an activity veto
+                                 ("WOODLEA CHURCH FUND", fund),                                  # no school word
+                                 ("WOODLEA PTA", fund)):                                         # pass 1's already
+            with self.subTest(name=name, activities=activities):
+                self.assertFalse(pta.is_broad_candidate({"charity_name": name, "charity_activities": activities}))
+
+    def test_explicit_pta_wording_and_joint_pairs_at_an_exact_postcode(self):
+        # Arrange: saint names with explicit PTA wording, a 'Friends of' saint group, and a dotted joint PTA on one site
+        schools = [school(1, "St John's Catholic Primary School", "GU1 1AA", town="Guildford"),
+                   school(2, "Sacred Heart Catholic Primary School", "GU2 2AA", town="Guildford"),
+                   school(3, "St Peter's CofE Primary School", "GU3 3AA", town="Guildford"),
+                   school(4, "Woodlea Infant School", "GU14 1AA", town="Farnborough"),
+                   school(5, "Woodlea Junior School", "GU14 1AA", town="Farnborough")]
+        charities = [charity(10, "ST JOHNS P.T.A.", "GU1 1AA"),
+                     charity(11, "SACRED HEART PARENT/TEACHER ASSOCIATION", "GU2 2AA"),
+                     charity(12, "FRIENDS OF ST PETERS", "GU3 3AA"),               # could be the church's friends
+                     charity(13, "WOODLEA INFANT AND JUNIOR SCHOOLS P.T.A.", "GU14 1AA"),
+                     charity(14, "WOODLEA JUNIOR SCHOOL P.T.A.", "GU14 1AA")]      # one-sided: the junior only
+        wide = {c["registered_charity_number"] for c in charities}
+        # Act
+        matches, _ = pta.match_pass2([dict(s, la_code="850", council="Hampshire") for s in schools], charities, wide,
+                                     {}, {}, {}, councils=HANTS, widened=wide)
+        # Assert
+        got = {urn: [(c["charity_number"], c.get("shared_with")) for c in cs] for urn, cs in matches.items()}
+        self.assertEqual(got, {"1": [(10, None)], "2": [(11, None)], "4": [(13, ["5"])], "5": [(13, ["4"]), (14, None)]})
+
+    def test_main_reads_wider_names(self):
+        # Arrange
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            (tmp / "england").mkdir()
+            (tmp / "england/las.json").write_text(json.dumps({"las": [{"la_code": "202", "name": "Kensington and Chelsea"}]}), encoding="utf-8")
+            (tmp / "la/202").mkdir(parents=True)
+            (tmp / "la/202/schools.json").write_text(json.dumps({"schools": [school(100479, "Bousfield Primary School", "SW5 0DJ")]}), encoding="utf-8")
+            (tmp / "charity").mkdir()
+            (tmp / "charity/publicextract.charity.json").write_text(json.dumps([charity(1159, "FRIENDS OF BOUSFIELD", "SW5 0DJ")]), encoding="utf-8")
+            (tmp / "charity/publicextract.charity_annual_return_history.json").write_text("[]", encoding="utf-8")
+            out = tmp / "out/pta.json"
+            # Act
+            pta.main(["--charity-dir", str(tmp / "charity"), "--site-data", str(tmp), "--out", str(out), "--report", str(tmp / "R.md"),
+                      "--links", str(tmp / "none.csv")])
+            data = json.loads(out.read_text(encoding="utf-8"))
+            text = (tmp / "R.md").read_text(encoding="utf-8")
+            written = sorted(p.name for p in out.parent.iterdir())
+        # Assert
+        self.assertEqual([c["charity_number"] for c in data["schools"]["100479"]], [1159])
+        self.assertIn("Wider-name candidates (Friends of X, P.T.A., Parent/Teacher, Families & Staff, Supporters of; rules f and d only): 1, "
+                      "of which 1 matched to 1 schools", text)
+        self.assertIn("## 1 random wider-name `postcode-exact` matches for review", text)
+        self.assertIn("## Regenerating", text)
+        self.assertEqual(written, ["pta.json", "pta_ambiguous.jsonl"], "cache files default to --out's directory, never the live ones")
+
+    def test_main_refuses_the_crawl_review_file(self):
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(SystemExit):
+            pta.main(["--out", str(Path(tmp) / "pta.json"), "--crawl", str(Path(tmp) / "pta_crawl_review.json")])
+
+
+class HistoryStatusTest(unittest.TestCase):
+    def test_history_status_fields(self):
+        # Arrange: (history, removed) -> (status, last income year, removed year)
+        cases = [
+            ([{"period_end": "2025-08", "income": 9000.0}, {"period_end": "2024-08", "income": 8000.0}], None, ("current", 2025, None)),
+            ([{"period_end": "2024-03", "income": 0.0}], None, ("current", 2024, None)),
+            ([{"period_end": "2024-08", "income": None}, {"period_end": "2021-08", "income": 500.0}], "2023-02-01", ("recent", 2021, 2023)),
+            ([{"period_end": "2016-08", "income": 4000.0}], "2017-05-01", ("historical", 2016, 2017)),
+            ([], "2009-09-09", ("historical", None, 2009)),
+        ]
+        for history, removed, want in cases:
+            with self.subTest(history=history):
+                # Act
+                got = pta.history_fields({"history": history, "removed": removed})
+                # Assert
+                self.assertEqual((got["history_status"], got["last_income_year"], got["removed_year"]), want)
+
+    def test_attach_history_adds_the_fields(self):
+        # Arrange
+        matches = {"1": [pta._charity_record(charity(10, "X PTA", removed="2020-01-01"), "postcode", "e")]}
+        returns = [{"registered_charity_number": 10, "fin_period_end_date": "2019-08-31T00:00:00", "total_gross_income": 100.0,
+                    "total_gross_expenditure": 90.0, "suppression_ind": False}]
+        # Act
+        pta.attach_history(matches, iter(returns))
+        # Assert
+        rec = matches["1"][0]
+        self.assertEqual((rec["history_status"], rec["last_income_year"], rec["removed_year"]), ("recent", 2019, 2020))
 
 
 class PartATest(unittest.TestCase):
@@ -547,7 +711,7 @@ class MergeTest(unittest.TestCase):
         # Arrange
         matches = {"2": [pta._charity_record(charity(12, "Z PTA"), "postcode", "e")]}
         by_number = {10: charity(10, "FRIENDS OF WOODLEA SCHOOL"), 11: charity(11, "GRASMERE PTA"), 12: charity(12, "Z PTA"), 13: charity(13, "Q PTA")}
-        llm = {"answers": {"10": {"urn": "1", "confidence": 0.95, "reason": "Woodlea", "name_consistent": True, "accepted": True},
+        llm = {"spot_check": {"n": 50, "wrong": 0}, "answers": {"10": {"urn": "1", "confidence": 0.95, "reason": "Woodlea", "name_consistent": True, "accepted": True},
                            "11": {"urn": "1", "confidence": 0.5, "reason": "x", "name_consistent": True, "accepted": False},
                            "12": {"urn": "1", "confidence": 0.99, "reason": "already placed", "name_consistent": True, "accepted": True},
                            "13": {"urn": "77", "confidence": 0.99, "reason": "unknown school", "name_consistent": True, "accepted": True}}}
@@ -558,6 +722,112 @@ class MergeTest(unittest.TestCase):
         self.assertEqual([c["charity_number"] for c in matches["1"]], [10])
         self.assertEqual(matches["1"][0]["match"], {"method": "llm", "evidence": "Woodlea", "confidence": "medium"})
         self.assertEqual([c["charity_number"] for c in matches["2"]], [12])
+
+    def test_llm_answers_wait_for_a_clean_spot_check(self):
+        # Arrange: the same accepted answer under gates that are not yet open
+        by_number = {10: charity(10, "FRIENDS OF WOODLEA SCHOOL")}
+        answers = {"10": {"urn": "1", "confidence": 0.95, "reason": "Woodlea", "name_consistent": True, "accepted": True}}
+        gates = [None, {"n": 49, "wrong": 0}, {"n": 50, "wrong": 1}, {"n": True, "wrong": 0}, {"n": 50}, "passed"]
+        for gate in gates:
+            with self.subTest(gate=gate):
+                matches = {}
+                llm = {"answers": answers, **({"spot_check": gate} if gate is not None else {})}
+                # Act
+                added = pta.merge_llm(matches, llm, by_number, {"1"})
+                # Assert
+                self.assertEqual((added, matches), (0, {}))
+                self.assertTrue(pta.llm_gate(llm))
+        self.assertIsNone(pta.llm_gate({"spot_check": {"n": 50, "wrong": 0}}))
+
+    def test_shared_llm_answers_go_through_the_deterministic_step(self):
+        # Arrange: 'shared:' answers have urn null; only a pair whose names both fit, in one district, is attached
+        schools = {"102000": school(102000, "Kenmore Park Infant School", "HA3 9JA", phase="Primary"),
+                   "102001": school(102001, "Kenmore Park Junior School", "HA3 9JA", phase="Primary"),
+                   "102002": school(102002, "Grasmere Primary School", "HA3 9JB", phase="Primary"),
+                   "102003": school(102003, "Kenmore Park Primary", "N16 0AA", phase="Primary")}
+        by_number = {10: charity(10, "KENMORE PARK INFANT AND JUNIOR SCHOOLS PTA"), 11: charity(11, "KENMORE PARK PTA"),
+                     12: charity(12, "KENMORE PARK SCHOOLS PTA")}
+        shared = {"urn": None, "confidence": 0.9, "name_consistent": False, "accepted": False}
+        llm = {"spot_check": {"n": 50, "wrong": 0}, "answers": {
+            "10": dict(shared, reason="shared: 102000 and 102001 are infant and junior schools on one site"),
+            "11": dict(shared, reason="shared: 102000 102002"),  # Grasmere's name does not fit
+            "12": dict(shared, reason="shared: 102000 102003"),  # another district
+            "13": dict(shared, reason="shared: 102000 102001")}}  # not a candidate charity
+        matches = {}
+        # Act
+        added = pta.merge_llm(matches, llm, by_number, set(schools), schools)
+        # Assert
+        self.assertEqual(added, 1)
+        self.assertEqual(sorted(matches), ["102000", "102001"])
+        self.assertEqual(matches["102000"][0]["shared_with"], ["102001"])
+        self.assertEqual(matches["102001"][0]["shared_with"], ["102000"])
+        self.assertEqual((matches["102000"][0]["match"]["method"], matches["102000"][0]["match"]["confidence"]), ("llm", "medium"))
+        self.assertEqual(pta.merge_llm({}, llm, by_number, set(schools)), 0, "without the register the shared step is skipped")
+
+    def test_shared_llm_answers_keep_blockers_and_ignore_a_filled_urn(self):
+        # Arrange: Woodlea Infant and Junior on one site, independent Woodlea Park School nearby, and a Woodlea Primary
+        # in the same district that is no infant/junior twin of either
+        schools = {"100001": school(100001, "Woodlea Infant School", "GU14 1AA", la_code="850"),
+                   "100002": school(100002, "Woodlea Junior School", "GU14 1AA", la_code="850"),
+                   "100003": school(100003, "Woodlea Park School", "GU14 2BB", la_code="850", type_group="Independent schools"),
+                   "100004": school(100004, "Woodlea Primary School", "GU14 3CC", la_code="850")}
+        state = {"100001", "100002", "100004"}
+        by_number = {10: charity(10, "FRIENDS OF WOODLEA PARK SCHOOL", "GU14 2BB"), 11: charity(11, "WOODLEA SCHOOLS PTA"),
+                     12: charity(12, "WOODLEA SCHOOLS PTA"), 13: charity(13, "WOODLEA SCHOOLS PTA"),
+                     14: charity(14, "WOODLEA PTA", "GU14 2BB")}
+        shared = {"confidence": 0.99, "name_consistent": False, "accepted": False}
+        pair = "shared: 100001 and 100002"
+        llm = {"spot_check": {"n": 50, "wrong": 0}, "answers": {
+            "10": dict(shared, urn=None, reason=pair),                        # the independent explains the name better
+            "11": dict(shared, urn="100001", accepted=True, reason=pair),     # urn filled in: still the shared step
+            "12": dict(shared, urn="100004", reason=pair),                    # urn contradicts the pair
+            "13": dict(shared, urn=None, reason="shared: 100001 and 100004"),  # not an infant/junior pair
+            "14": dict(shared, urn=None, reason=pair)}}                       # addressed at the independent it fits
+        matches = {}
+        # Act
+        added = pta.merge_llm(matches, llm, by_number, state, schools)
+        # Assert
+        self.assertEqual(added, 1)
+        self.assertEqual({urn: [c["charity_number"] for c in cs] for urn, cs in matches.items()}, {"100001": [11], "100002": [11]})
+        self.assertEqual((matches["100001"][0]["shared_with"], matches["100002"][0]["shared_with"]), (["100002"], ["100001"]))
+
+    def test_crawl_confirms_without_moving_and_ignores_unknown_keys(self):
+        # Arrange: one hit confirms an existing match, one names a charity placed on another school, one adds a school
+        matches = {"1": [pta._charity_record(charity(10, "WOODLEA PTA"), "postcode", "tokens woodlea; postcode GU141AA")],
+                   "2": [pta._charity_record(charity(11, "GRASMERE PTA"), "postcode", "e")]}
+        by_number = {10: charity(10, "WOODLEA PTA"), 11: charity(11, "GRASMERE PTA"), 12: charity(12, "FRIENDS OF ASHMOLE")}
+        crawl = {"meta": {"version": 2}, "schools": {
+            "1": [{"charity_number": 10, "source_url": "https://woodlea.sch.uk/pta", "evidence": "PTA 10", "meta": {"where": "body"}},
+                  {"charity_number": 10, "source_url": "https://woodlea.sch.uk/pta", "evidence": "PTA 10"},
+                  {"charity_number": 11, "source_url": "https://woodlea.sch.uk/news", "evidence": "Grasmere PTA 11"}],
+            "3": [{"charity_number": 12, "source_url": "https://ashmole.sch.uk/friends", "evidence": "Friends of Ashmole 12"}, "junk"],
+            "4": "junk"}}
+        counts = {}
+        # Act
+        added = pta.merge_crawl(matches, crawl, by_number, {"1", "2", "3", "4"}, counts)
+        # Assert
+        self.assertEqual(added, 1)
+        self.assertEqual(counts, {"added": 1, "confirmed": 1})
+        self.assertEqual(matches["1"][0]["match"]["evidence"], "tokens woodlea; postcode GU141AA; website https://woodlea.sch.uk/pta")
+        self.assertEqual([c["charity_number"] for c in matches["1"]], [10])
+        self.assertEqual(matches["2"][0]["match"]["evidence"], "e", "a charity on another school is never moved or touched")
+        self.assertEqual(matches["3"][0]["match"]["method"], "website-crawl")
+
+    def test_crawl_takes_wider_names_that_fit_the_school(self):
+        # Arrange: evidence with no PTA word; the register name is a wider form
+        by_number = {20: charity(20, "REIGATE PRIORY SCHOOL FAMILIES & STAFF ASSOCIATION"), 21: charity(21, "FRIENDS OF BOUSFIELD")}
+        crawl = {"schools": {"1": [{"charity_number": 20, "source_url": "https://rp.sch.uk/fsa", "evidence": "charity 20"}],
+                             "2": [{"charity_number": 21, "source_url": "https://other.sch.uk/", "evidence": "charity 21"}]}}
+        names = {"1": "Reigate Priory Community Junior School", "2": "Grasmere Primary School"}
+        matches = {}
+        # Act
+        added = pta.merge_crawl(matches, crawl, by_number, {"1", "2"}, school_names=names)
+        # Assert
+        self.assertEqual((added, sorted(matches)), (1, ["1"]))
+        self.assertTrue(pta.CRAWL_WORDS.search("The FSA (Families & Staff Association), registered charity 1"))
+        self.assertTrue(pta.CRAWL_WORDS.search("Our Home School Association is charity 2"))
+        for text in ("Our transparent accounts", "Parents evening", "registered charity 3"):
+            self.assertFalse(pta.CRAWL_WORDS.search(text), text)
 
     def test_crawl_hits_merge_when_the_charity_reads_as_a_pta(self):
         # Arrange
@@ -627,7 +897,11 @@ class MainTest(unittest.TestCase):
         self.assertEqual(sorted(data["schools"]), ["100000", "100269", "130932"])
         patten = data["schools"]["130932"][0]
         self.assertEqual(patten["history"], [{"period_end": "2025-08", "income": 48547.0, "expenditure": 50100.0}])
-        self.assertEqual(sorted(patten), ["charity_number", "history", "latest_income", "match", "name", "parta", "registered", "removed", "status"])
+        self.assertEqual(sorted(patten), ["charity_number", "history", "history_status", "last_income_year", "latest_income", "match",
+                                          "name", "parta", "registered", "removed", "removed_year", "status"])
+        self.assertEqual((patten["history_status"], patten["last_income_year"], patten["removed_year"]), ("current", 2025, None))
+        self.assertEqual(data["schools"]["100269"][0]["history_status"], "historical")
+        self.assertEqual(data["schools"]["100269"][0]["removed_year"], 2012)
         self.assertEqual(patten["parta"]["count_volunteers"], 20)
         self.assertEqual(data["schools"]["100269"][0]["match"]["method"], "council-unique")
         self.assertEqual(data["schools"]["100269"][0]["match"]["evidence"], "council-unique in Hackney; objects name 'grasmere school'")
@@ -672,17 +946,38 @@ class ExclusionTest(unittest.TestCase):
 
 @unittest.skipUnless(CHARITY_JSON.exists() and SITE_DATA.exists(), "real charity register and site data not present")
 class RealDataTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # One pass over the register: William Patten's PTFA and the Friends of Highgate School Society (independent
+        # Highgate School's, which pass 1 once gave Highgate Primary as a £307k 'top PTFA').
+        cls.charities = [c for c in pta.iter_candidates(CHARITY_JSON, {1056624}, widened=True)
+                         if "PATTEN" in (c.get("charity_name") or "") or "HIGHGATE" in (c.get("charity_name") or "")]
+        cls.schools = pta.load_schools(SITE_DATA, all_schools=True)
+
     def test_william_patten_ptfa_is_found(self):
         # Arrange
-        schools = [s for s in pta.load_schools(SITE_DATA) if str(s["urn"]) == "130932"]
+        schools = [s for s in self.schools if str(s["urn"]) == "130932"]
         self.assertEqual(len(schools), 1)
-        candidates = (c for c in pta.iter_candidates(CHARITY_JSON) if "PATTEN" in (c.get("charity_name") or ""))
         # Act
-        matches, _ = pta.match(schools, candidates)
+        matches, _ = pta.match(schools, self.charities)
         # Assert
         got = {c["charity_number"]: c for c in matches.get("130932", [])}
         self.assertIn(1103834, got)
         self.assertIn(got[1103834]["match"]["method"], ("postcode", "sector"))
+
+    def test_friends_of_highgate_school_never_reaches_highgate_primary(self):
+        # Arrange: every register school as a blocker, the Highgate charities as candidates, both passes
+        self.assertIn(1056624, {c["registered_charity_number"] for c in self.charities})
+        numbers = {c["registered_charity_number"] for c in self.charities}
+        # Act
+        first, _ = pta.match(self.schools, self.charities)
+        placed = {c["charity_number"] for cs in first.values() for c in cs}
+        second, _ = pta.match_pass2(self.schools, self.charities, numbers - placed, {}, {}, {},
+                                    widened={c["registered_charity_number"] for c in self.charities if pta.is_widened(c)})
+        # Assert
+        for matches in (first, second):
+            self.assertNotIn(1056624, [c["charity_number"] for c in matches.get("102092", [])])
+            self.assertNotIn(1056624, [c["charity_number"] for cs in matches.values() for c in cs])
 
 
 @unittest.skipUnless(PTA_JSON.exists() and SITE_DATA.exists(), "real pta.json not present")
@@ -698,6 +993,25 @@ class RealOutputTest(unittest.TestCase):
         self.assertIn(1103834, patten)
         self.assertGreaterEqual(len(covered), 9000)
         self.assertEqual(set(data["schools"]) - state, set(), "pta.json names schools that are not state-funded")
+        self.assertNotIn(1056624, [c["charity_number"] for c in data["schools"].get("102092", [])],
+                         "independent Highgate School's Friends are on Highgate Primary")
+        self.assertNotIn(1056624, [c["charity_number"] for cs in data["schools"].values() for c in cs])
+
+    def test_pta_json_history_fields_agree_with_history(self):
+        # Arrange
+        data = json.loads(PTA_JSON.read_text(encoding="utf-8"))
+        records = [c for cs in data["schools"].values() for c in cs]
+        with_fields = [c for c in records if "history_status" in c]
+        # Act / Assert: an older pta.json has none; one written by this version has them on every record, consistent
+        if not with_fields:
+            self.skipTest("pta.json predates history_status")
+        self.assertEqual(len(with_fields), len(records))
+        for c in with_fields:
+            self.assertEqual({k: c[k] for k in ("history_status", "last_income_year", "removed_year")}, pta.history_fields(c))
+        shared = [(urn, c) for urn, cs in data["schools"].items() for c in cs if c.get("shared_with")]
+        for urn, c in shared:
+            for other in c["shared_with"]:
+                self.assertIn(urn, next(o["shared_with"] for o in data["schools"][other] if o["charity_number"] == c["charity_number"]))
 
 
 if __name__ == "__main__":
