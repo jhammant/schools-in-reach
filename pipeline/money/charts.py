@@ -300,6 +300,12 @@ def _spread(ys: list[float], gap: float, top: float, bottom: float) -> list[floa
     return out
 
 
+def _compact(pts) -> str:
+    """'398,399,,537': each year's value, empty where missing; whole numbers unless the value needs one decimal."""
+    return ",".join("" if v is None else (str(int(round(v))) if abs(v) >= 100 or float(v).is_integer() else f"{v:.1f}")
+                    for _, v in pts)
+
+
 def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title: str, desc: str, height: int = 220,
                 suspect=(), partial=()) -> str:
     """Lines over years on one axis, each labelled at its end so colour is never the only key.
@@ -333,6 +339,11 @@ def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title:
     def y_of(v):
         return round(top + (hi - v) / (hi - lo) * plot_h)
 
+    # trend.js reads these to show every line's exact value for the year under the pointer (hover, tap or arrow keys):
+    # the years, the x of the first year and the step, the unit; each line's path carries its label and values.
+    step = plot_w / (len(years) - 1) if len(years) > 1 else 0
+    head = head.replace('<svg class="chart trend" ', f'<svg class="chart trend" data-years="{esc("|".join(years))}" '
+                        f'data-x="{x_of(0)},{step:.1f}" data-unit="{esc(unit)}" ', 1)
     parts = [head, f'<path class="grid" d="{"".join(f"M{left},{y_of(t)}H{width - right}" for t in ticks)}"/>',
              '<g class="tick" text-anchor="end">' + "".join(
                  f'<text x="{left - 5}" y="{y_of(t) + 4}">{esc(_axis_text(t, unit, exact))}</text>' for t in ticks) + "</g>"]
@@ -367,11 +378,16 @@ def trend_chart(lines: list[dict], *, years: list[str], unit: str = "£", title:
                         run.append([start, end])
             solid, dashed = _path_data(runs[False]), _path_data(runs[True])
             stroke = f'{" stroke-width=\"3\"" if line.get("emph") else ""}{inline}'
+            data = f' data-l="{esc(line.get("label", ""))}" data-v="{_compact(pts)}"'
             if solid:
                 dash = ' stroke-dasharray="6 4"' if line.get("style") == "dashed" else ""
-                body.append(f'<path class="line {cls}{" emph" if line.get("emph") else ""}" d="{solid}"{stroke}{dash}/>')
+                body.append(f'<path class="line {cls}{" emph" if line.get("emph") else ""}" d="{solid}"{stroke}{dash}{data}/>')
+                data = ""
             if dashed:
-                body.append(f'<path class="line {cls} partial" d="{dashed}"{stroke} stroke-dasharray="2 4"/>')
+                body.append(f'<path class="line {cls} partial" d="{dashed}"{stroke} stroke-dasharray="2 4"{data}/>')
+                data = ""
+            if data:  # a line of isolated points has no path: carry its values on an empty one
+                body.append(f'<path class="line {cls}" d=""{data}/>')
             for i, v in pts:
                 if v is None:
                     continue

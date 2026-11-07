@@ -22,7 +22,7 @@ class MoneyReviewTest(unittest.TestCase):
             args = make_site(Path(tmp), [("204", "Hackney")], {"204": schools}, rows)
 
             # Act
-            build_money.build(*args)
+            build_money.build(*args, out=args[0] / "money")  # never the real ROOT/site_money
 
             # Assert: the requirement applies to every page, not only schools.
             money = args[0] / "money"
@@ -41,7 +41,7 @@ class MoneyReviewTest(unittest.TestCase):
                                  {"204": [school(100001, "Mixed Years")]}, rows)
 
                 # Act
-                build_money.build(*args)
+                build_money.build(*args, out=args[0] / "money")  # never the real ROOT/site_money
 
                 # Assert: omitting an unassessable school is allowed; if published,
                 # its reserve and share must belong to the year the JSON reports.
@@ -86,7 +86,7 @@ class MoneyReviewTest(unittest.TestCase):
 
             # Act: rejecting the malformed identifier is a valid fix.
             try:
-                build_money.build(*args)
+                build_money.build(*args, out=args[0] / "money")  # never the real ROOT/site_money
             except ValueError:
                 pass
 

@@ -304,3 +304,12 @@ a.watch { display: inline-flex; align-items: center; gap: 6px; min-height: var(-
 a.watch:hover, a.watch:focus-visible { filter: brightness(1.08); text-decoration: underline; }
 .wrapped-links { display: flex; flex-wrap: wrap; gap: 8px; }
 .home-video { margin: 4px 0 20px; }
+
+/* ---------- tables: never letter-by-letter ---------- */
+/* body's overflow-wrap:anywhere lets a table cell's minimum width fall to one character, so a squeezed column
+   (Hackney's "Reserve per pupil trend" at ~1000px) broke every letter onto its own line. Cells break between words
+   only, and a table too wide for the page scrolls sideways inside itself (phones keep the stacked layout). */
+th, td { overflow-wrap: break-word; }
+@media (min-width: 601px) {
+  table.responsive, table.mini { display: block; max-width: 100%; overflow-x: auto; }
+}

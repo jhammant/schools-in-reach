@@ -165,3 +165,34 @@ test("a page without localStorage still boots", () => {
   // Assert
   assert.deepEqual(display(blocks[0], "real"), [null, null]);
 });
+
+test("readout helpers: values per year, nearest year, and money formatting", () => {
+  // Arrange
+  const { api } = boot(null);
+  // Act / Assert
+  assert.deepEqual(JSON.parse(JSON.stringify(api.parseValues("398,,537.5"))), [398, null, 537.5]);
+  assert.equal(api.nearestIndex(52, 52, 54, 8), 0);
+  assert.equal(api.nearestIndex(52 + 54 * 2.4, 52, 54, 8), 2);
+  assert.equal(api.nearestIndex(9999, 52, 54, 8), 7);
+  assert.equal(api.fmtValue(9475, "£"), "£9,475");
+  assert.equal(api.fmtValue(-210901, "£"), "-£211k");
+  assert.equal(api.fmtValue(3927968, "£"), "£3.9m");
+  assert.equal(api.fmtValue(14.35, "%"), "14.4%");
+  assert.equal(api.fmtValue(null, "£"), "—");
+});
+
+test("readout lists the shown lines' values for one year, highest first, skipping a hidden basis", () => {
+  // Arrange: a cash group shown and a real group hidden, one path each
+  const { doc, api } = boot(null);
+  const svg = doc.append("svg", {});
+  const cash = svg.append("g", { "data-basis": "cash" });
+  const real = svg.append("g", { "data-basis": "real", display: "none" });
+  cash.append("path", { "data-l": "England", "data-v": "400,,405" });
+  cash.append("path", { "data-l": "London", "data-v": "450,,350" });
+  real.append("path", { "data-l": "England", "data-v": "500,,505" });
+  // Act
+  const rows = api.readout(svg, 2);
+  // Assert
+  assert.deepEqual(JSON.parse(JSON.stringify(rows.map((r) => [r.label, r.v]))), [["England", 405], ["London", 350]]);
+  assert.equal(api.readout(svg, 1).length, 0);
+});
