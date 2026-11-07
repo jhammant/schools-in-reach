@@ -138,6 +138,7 @@
   var FBIT = "https://financial-benchmarking-and-insights-tool.education.gov.uk/";
   var REGISTER = "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/";
   var DRAFT_KEY = "moneyToolsDraft";
+  var MAX_EVENTS = 100;   // a ceiling on the PTA planner events a saved draft can recreate
   var SOURCE_NAMES = { CFR: "DfE CFR return", AAR: "DfE academy accounts return" };
   var PTA_SOURCE = "Charity Commission register";
 
@@ -218,6 +219,11 @@
     for (var i = 0; i < keys.length; i++) if (obj[keys[i]] != null) return obj[keys[i]];
     return null;
   }
+  // GIAS publishes "Secondary"; LARGE_FROM's keys are lower case, as build_money.phase_group makes them.
+  function normPhase(p) {
+    var s = String(p == null ? "" : p).trim().toLowerCase();
+    return s || null;
+  }
 
   // ======================================================================
   // The ONE adapter for /data/s, /data/sx and /data/a documents: every field read happens here.
@@ -234,7 +240,7 @@
         council: { code: council.code != null ? String(council.code) : null, name: council.name || null, path: council.path || null },
         status: has.call(LABELS, s.status) ? s.status : null, label: s.label || null, reason: s.reason || null, year: s.year || null,
         academy: !!s.academy, pupils: toNum(s.pupils), band: toNum(s.band),
-        phase: s.phase || tags.phase || null,
+        phase: normPhase(s.phase || tags.phase),
         pta: (Array.isArray(s.pta) ? s.pta : []).filter(function (c) { return c && !c.review; }).map(function (c) {
           var hist = (Array.isArray(c.history) ? c.history : []).filter(function (h) { return h && h.period_end; })
             .sort(function (a, b) { return String(a.period_end) < String(b.period_end) ? -1 : 1; });
@@ -565,16 +571,24 @@
   function readDrafts() {
     try { var d = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}"); return d && typeof d === "object" ? d : {}; } catch (e) { return {}; }
   }
-  function saveDraft(tool, form) {
+  function readDraft(tool) {
+    var mine = readDrafts()[tool];
+    return mine && typeof mine === "object" ? mine : null;
+  }
+  // A draft maps field ids to values. Keys starting "_" are the tool's own state (the loaded school's URN), not fields.
+  function saveDraft(tool, form, extra) {
     var all = readDrafts(), mine = {};
     Array.prototype.forEach.call(form.elements, function (f) { if (f.id && f.type !== "submit" && f.type !== "button") mine[f.id] = f.value; });
+    Object.keys(extra || {}).forEach(function (k) { if (extra[k] != null) mine["_" + k] = extra[k]; });
     all[tool] = mine;
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(all)); } catch (e) { /* storage full or blocked: drafts are optional */ }
   }
-  function restoreDraft(tool, form) {
-    var mine = readDrafts()[tool];
+  function restoreDraft(form, mine) {
     if (!mine) return;
-    Object.keys(mine).forEach(function (id) { var f = $(id); if (f && form.contains(f) && typeof mine[id] === "string") f.value = mine[id]; });
+    Object.keys(mine).forEach(function (id) {
+      var f = id.charAt(0) === "_" ? null : $(id);
+      if (f && form.contains(f) && typeof mine[id] === "string") f.value = mine[id];
+    });
   }
   function dropDraft(tool) {
     var all = readDrafts();
@@ -620,26 +634,45 @@
   function wireBudget(ctx) {
     var form = $("bc-form"), loader = $("bc-load"), status = $("bc-load-status"), out = $("bc-out");
     if (!form || !loader || !out) return;
-    var state = { history: [], flagged: [], academy: false, name: null, source: null };
-    restoreDraft("budget", form);
+    // The published history behind the form. Its URN goes in the draft, so a reload can fetch the same history again.
+    var state = { urn: null, history: [], flagged: [], academy: false, name: null, source: null, loads: 0 };
+    function reset() { state.urn = null; state.history = []; state.flagged = []; state.academy = false; state.name = null; state.source = null; }
+    function save() { saveDraft("budget", form, { urn: state.urn }); }
+    var draft = readDraft("budget");
+    restoreDraft(form, draft);
     loader.addEventListener("submit", function (e) { e.preventDefault(); load($("bc-urn").value); });
-    form.addEventListener("input", function () { saveDraft("budget", form); });
+    form.addEventListener("input", save);
     form.addEventListener("submit", function (e) { e.preventDefault(); run(); });
     var clearBtn = form.querySelector("[data-clear]");
     if (clearBtn) clearBtn.addEventListener("click", function () {
-      form.reset(); dropDraft("budget"); state.history = []; state.flagged = [];
+      form.reset(); dropDraft("budget"); reset(); state.loads++;
       clear(out).appendChild(el("p", "muted", "Cleared. Fill in the figures and press Check the budget."));
     });
 
-    function load(urn) {
+    // restoring: the form already holds the saved draft, so only the history is fetched and no field changes.
+    function load(urn, restoring) {
+      var ticket = ++state.loads;
       status.textContent = "Loading published figures…";
       loadSchool(urn).then(function (res) {
-        if (!res.ok) { status.textContent = res.message; return; }
+        if (ticket !== state.loads) return;   // a later load or Clear has taken over
+        if (!res.ok) {
+          // Keep the URN in the draft, so the earlier years come back when the figures can be fetched again.
+          if (restoring) { state.urn = res.urn || null; status.textContent = res.message + " Your saved figures are below, without the school's earlier years."; }
+          else status.textContent = res.message;
+          return;
+        }
         var d = res.data, last = d.history[d.history.length - 1];
-        if (!last) { status.textContent = "Figures for this school aren't published yet, so type in your own below."; return; }
-        state.history = d.history; state.flagged = d.flagged; state.source = d.source;
+        reset();
+        if (!last) { status.textContent = "Figures for this school aren't published yet, so type in your own below."; save(); return; }
+        state.urn = res.urn; state.history = d.history; state.flagged = d.flagged; state.source = d.source;
         state.academy = d.school ? d.school.academy : d.source === "AAR";
         state.name = d.school && d.school.name;
+        var flaggedNote = d.flagged.length ? " The figures for " + d.flagged.join(", ") + " look unusual and are marked ⚑: check them on the DfE's tool before relying on them." : "";
+        if (restoring) {
+          status.textContent = "Your saved figures are below, with " + (state.name || "the school") + "'s " + d.history.length +
+            " year" + (d.history.length === 1 ? "" : "s") + " of published figures (" + sourceName(d.source) + ")." + flaggedNote;
+          return;
+        }
         setVal("bc-year", last.year); setVal("bc-income", last.total_income); setVal("bc-spend", last.total_expenditure);
         setVal("bc-reserve", last.revenue_reserve); setVal("bc-pupils", last.pupils);
         if (d.school && d.school.phase && $("bc-phase")) $("bc-phase").value = d.school.phase === "secondary" ? "secondary" : (d.school.phase === "primary" ? "primary" : "default");
@@ -649,9 +682,8 @@
         });
         var msg = "Loaded " + (state.name || "the school") + ": " + d.history.length + " year" + (d.history.length === 1 ? "" : "s") +
           " of published figures, the latest for " + last.year + " (" + sourceName(d.source) + "). The next three years start flat: change them to your forecast.";
-        if (d.flagged.length) msg += " The figures for " + d.flagged.join(", ") + " look unusual and are marked ⚑: check them on the DfE's tool before relying on them.";
-        status.textContent = msg;
-        saveDraft("budget", form);
+        status.textContent = msg + flaggedNote;
+        save();
       });
     }
 
@@ -726,19 +758,17 @@
 
     var q = params();
     if (cleanUrn(q.urn)) { $("bc-urn").value = q.urn; load(q.urn); }
+    else if (draft && cleanUrn(draft._urn)) { $("bc-urn").value = draft._urn; load(draft._urn, true); }
   }
 
   function wirePta(ctx) {
     var form = $("pp-form"), loader = $("pp-load"), status = $("pp-load-status"), out = $("pp-out"), box = $("pp-charity");
     if (!form || !loader || !out) return;
-    var state = { area: null, band: null };
-    restoreDraft("pta", form);
+    // The school the plan is compared with. Its URN goes in the draft, so a reload can show the same comparison.
+    var state = { urn: null, area: null, band: null, loads: 0 };
+    function save() { saveDraft("pta", form, { urn: state.urn }); }
     var events = $("pp-events"), count = events ? events.querySelectorAll("fieldset.event").length : 0;
-    loader.addEventListener("submit", function (e) { e.preventDefault(); loadUrn($("pp-urn").value); });
-    form.addEventListener("input", function () { saveDraft("pta", form); });
-    form.addEventListener("submit", function (e) { e.preventDefault(); run(); });
-    var add = $("pp-add");
-    if (add && events) add.addEventListener("click", function () {
+    function addEvent() {
       count++;
       var fs = el("fieldset", "event"), row = el("div", "field-row");
       fs.appendChild(el("legend", null, "Event " + count));
@@ -750,8 +780,21 @@
         wrap.appendChild(label); wrap.appendChild(input); row.appendChild(wrap);
       });
       fs.appendChild(row); events.appendChild(fs);
-      $("pp-name-" + count).focus();
+      return $("pp-name-" + count);
+    }
+    // Events added with "Add another event" are recreated first, so their saved values have fields to go back into.
+    var draft = readDraft("pta"), savedEvents = 0;
+    Object.keys(draft || {}).forEach(function (k) {
+      var m = /^pp-(?:name|inc|don)-(\d+)$/.exec(k);
+      if (m) savedEvents = Math.max(savedEvents, parseInt(m[1], 10));
     });
+    if (events) while (count < Math.min(savedEvents, MAX_EVENTS)) addEvent();
+    restoreDraft(form, draft);
+    loader.addEventListener("submit", function (e) { e.preventDefault(); loadUrn($("pp-urn").value); });
+    form.addEventListener("input", save);
+    form.addEventListener("submit", function (e) { e.preventDefault(); run(); });
+    var add = $("pp-add");
+    if (add && events) add.addEventListener("click", function () { addEvent().focus(); });
     var clearBtn = form.querySelector("[data-clear]");
     if (clearBtn) clearBtn.addEventListener("click", function () {
       form.reset(); dropDraft("pta");
@@ -781,22 +824,36 @@
       box.appendChild(ul);
       box.appendChild(el("p", "muted small", "The association's income and the school's donations can overlap, so they are never added together."));
     }
-    function loadUrn(urn) {
+    // restoring: the form already holds the saved draft, so the pupils field is left as it is.
+    function loadUrn(urn, restoring) {
+      var ticket = ++state.loads;
+      // The comparison belongs to the school asked for last, so the previous school's goes straight away.
+      state.urn = null; state.area = null; state.band = null; clear(box);
       status.textContent = "Loading the school…";
       loadSchool(urn).then(function (res) {
-        if (!res.ok) { status.textContent = res.message; return; }
+        if (ticket !== state.loads) return;   // a later load has taken over
+        if (!res.ok) {
+          // Keep the URN in the draft, so the comparison comes back when the figures can be fetched again.
+          if (restoring) state.urn = res.urn || null;
+          status.textContent = res.message;
+          return;
+        }
         var school = res.data.school;
-        if (!school) { status.textContent = "This school's details aren't published yet."; return; }
-        if (school.pupils != null) setVal("pp-pupils", Math.round(school.pupils * 10) / 10);
+        if (!school) { status.textContent = "This school's details aren't published yet."; save(); return; }
+        state.urn = res.urn;
+        if (school.pupils != null && !restoring) setVal("pp-pupils", Math.round(school.pupils * 10) / 10);
         state.band = school.band;
         showCharities(school);
         var id = councilAreaId(school.council.code);
-        status.textContent = "Loaded " + (school.name || "the school") + (school.pupils != null ? ", " + fmtPupils(school.pupils) + " pupils" : "") + ".";
+        status.textContent = restoring ? "Your saved plan is below, for " + (school.name || "the school") + "." :
+          "Loaded " + (school.name || "the school") + (school.pupils != null ? ", " + fmtPupils(school.pupils) + " pupils" : "") + ".";
         if (id) loadArea(id).then(function (doc) {
+          if (ticket !== state.loads) return;
           state.area = doc;
           if (!doc) status.textContent += " Council figures aren't published yet, so there is no comparison.";
         });
-        saveDraft("pta", form);
+        else status.textContent += " Its council isn't known, so there is no council comparison.";
+        save();
       });
     }
     function run() {
@@ -828,10 +885,15 @@
 
     var q = params();
     if (cleanUrn(q.urn)) { $("pp-urn").value = q.urn; loadUrn(q.urn); }
-    else if (cleanAreaId(q.area)) loadArea(q.area).then(function (doc) {
-      state.area = doc;
-      status.textContent = doc ? "Comparing with " + (adapt(null, null, doc).area.name) + "." : "Figures for this area aren't published yet.";
-    });
+    else if (cleanAreaId(q.area)) {
+      var ticket = ++state.loads;
+      loadArea(q.area).then(function (doc) {
+        if (ticket !== state.loads) return;
+        state.area = doc;
+        status.textContent = doc ? "Comparing with " + (adapt(null, null, doc).area.name) + "." : "Figures for this area aren't published yet.";
+      });
+    }
+    else if (draft && cleanUrn(draft._urn)) { $("pp-urn").value = draft._urn; loadUrn(draft._urn, true); }
   }
 
   function wireEmbed() {
