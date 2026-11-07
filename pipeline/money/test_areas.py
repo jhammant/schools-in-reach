@@ -237,18 +237,20 @@ class BuildAreasTest(unittest.TestCase):
         self.assertIsNone(academy["income_pp_median"])
 
     def test_pta_counts_the_school_year_holding_the_return_and_hides_reviewed_charities(self):
-        # Act: a council-run school's July 2024 return is 2024-25 (April-March); July 2025 is 2025-26.
+        # Act: July 2024 belongs to academic year 2023-24 and July 2025 to 2024-25 for every school.
         result = self.build()
         latest = result["councils"]["204"]["by_year"]["2024-25"]["all"]
         earlier = result["councils"]["204"]["by_year"]["2023-24"]["all"]
         # Assert
         self.assertEqual(latest["pta_schools"], 1)
         self.assertIsNone(latest["pta_pp_median"])     # under five schools with a PTA figure
-        self.assertEqual(earlier["pta_schools"], 0)
+        self.assertEqual(earlier["pta_schools"], 1)
+        self.assertIsNone(earlier["pta_pp_median"])
         self.assertEqual(areas.pta_income_for(self.pta["schools"]["100000"], 2025), 20_000)
         self.assertIsNone(areas.pta_income_for(self.pta["schools"]["100001"], 2025))
-        self.assertEqual(set(result["pta"]["by_year"]), {"2024-25", "2025-26"})
-        self.assertEqual(result["pta"]["by_year"]["2024-25"]["income"], 10_000)
+        self.assertEqual(set(result["pta"]["by_year"]), {"2023-24", "2024-25"})
+        self.assertEqual(result["pta"]["by_year"]["2023-24"]["income"], 10_000)
+        self.assertEqual(result["pta"]["by_year"]["2024-25"]["income"], 20_000)
 
     def test_s_gains_statuses_government_funding_and_real_terms_medians(self):
         # Act
@@ -385,6 +387,7 @@ class PtaTest(unittest.TestCase):
                          "history": [{"period_end": e, "income": i, "expenditure": i - 1_000} for e, i in history],
                          "match": {"method": "postcode", "evidence": "test", "confidence": "high"}}, **extra)
 
+        # July 2024 belongs to 2023-24 for both sources, with 100 pupils; 2024-25 has 200.
         schools = {str(100000 + i): [charity(2000 + i, f"Friends of School {i}", [("2024-07", 10_000 * (i + 1))])]
                    for i in range(10)}
         # An infant/junior pair sharing one association: split equally.
@@ -404,34 +407,35 @@ class PtaTest(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_pta_year_follows_the_schools_own_year(self):
+    def test_pta_year_uses_the_academic_year_for_all_schools(self):
         # Assert: the shared contract examples, through series.pta_year when present and the local copy.
+        cases = (("2023-03", "2022-23"), ("2023-04", "2022-23"), ("2025-08", "2024-25"),
+                 ("2024-09", "2024-25"), ("2025-09", "2025-26"), ("2024-12-31", "2024-25"))
         for fn in (areas.pta_year, areas.local_pta_year):
-            self.assertEqual(fn("2023-03", "CFR"), "2022-23")
-            self.assertEqual(fn("2025-08", "CFR"), "2025-26")
-            self.assertEqual(fn("2025-08", "AAR"), "2024-25")
-            self.assertEqual(fn("2024-09", "AAR"), "2024-25")
+            for source in ("CFR", "AAR"):
+                for period_end, expected in cases:
+                    with self.subTest(function=fn.__name__, source=source, period_end=period_end):
+                        self.assertEqual(fn(period_end, source), expected)
         years = [row("1", "2024-03", 1, 1, 1), row("1", "2025-08", 1, 1, 1, source="AAR")]
         self.assertEqual(areas.return_source("2025-07", years), "AAR")   # inside the academy's own year
         self.assertEqual(areas.return_source("2024-02", years), "CFR")
         self.assertEqual(areas.return_source("2027-01", years), "AAR")   # nearest return
 
     def test_by_year_splits_shared_charities_and_skips_held_ones(self):
-        # Assert: July 2024 is 2024-25 for council-run schools and 2023-24 for academies.
+        # Assert: all July 2024 returns share academic year 2023-24; the shared charity is split and counted once.
         by_year = self.result["by_year"]
-        self.assertEqual(set(by_year), {"2023-24", "2024-25"})
-        council_run = by_year["2024-25"]
-        self.assertEqual(council_run["schools"], 5)
-        self.assertEqual(council_run["ptas"], 4)            # the shared charity once
-        self.assertEqual(council_run["income"], 30_000 + 30_000 + 40_000 + 50_000)
-        self.assertEqual(by_year["2023-24"]["income"], sum(10_000 * (i + 1) for i in range(5, 10)))
+        self.assertEqual(set(by_year), {"2023-24"})
+        academic_year = by_year["2023-24"]
+        self.assertEqual(academic_year["schools"], 10)
+        self.assertEqual(academic_year["ptas"], 9)            # the shared charity once
+        self.assertEqual(academic_year["income"], 30_000 + sum(10_000 * (i + 1) for i in range(2, 10)))
         self.assertEqual(self.result["held"], [{"charity_number": 4000, "name": "Big Foundation", "income": 900_000}])
 
     def test_per_pupil_uses_that_years_pupils(self):
-        # Assert: council-run 2024-25 has 200 pupils; academies' 2023-24 (to August 2024) has 100.
+        # Assert: both sources use 2023-24's 100 pupils, not the latest finance year's 200.
         top = {t["urn"]: t for t in self.result["top"]}
         self.assertEqual(top["100000"]["income"], 15_000)
-        self.assertEqual(top["100000"]["pp"], 75)
+        self.assertEqual((top["100000"]["year_end"], top["100000"]["pupils"], top["100000"]["pp"]), ("2023-24", 100, 150))
         self.assertEqual((top["100005"]["year_end"], top["100005"]["pupils"], top["100005"]["pp"]), ("2023-24", 100, 600))
 
     def test_top_is_recomputed_and_never_ranks_a_flagged_mismatch(self):
@@ -445,12 +449,13 @@ class PtaTest(unittest.TestCase):
         self.assertEqual({t["urn"]: t["confidence"] for t in self.result["top"]}["100004"], "medium")
 
     def test_bands_and_tags_use_each_schools_latest_return(self):
-        # Assert
-        self.assertEqual(self.result["window"], ["2023-24", "2024-25"])
+        # Assert: every school's latest return is in 2023-24, so the comparison window ends there.
+        self.assertEqual(self.result["window"], ["2022-23", "2023-24"])
         self.assertEqual(sum(b["schools"] for b in self.result["by_band"].values()), 10)
         self.assertIsNone(self.result["by_band"]["1"]["median_pp"])   # two schools: withheld
         governance = self.result["by_tag"]["governance"]
         self.assertEqual((governance["council-run"]["schools"], governance["academy"]["schools"]), (5, 5))
+        self.assertEqual(governance["council-run"]["median_pp"], 300)
         self.assertEqual(governance["academy"]["median_pp"], 800)
         self.assertEqual(self.result["by_tag"]["admissions"]["grammar"]["schools"], 1)
 

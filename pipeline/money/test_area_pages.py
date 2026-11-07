@@ -75,7 +75,8 @@ class Fixture:
             elif n == 1:
                 charities = [charity(1_200_001, "Old PTA", [("2016-07", 4_000), ("2017-07", 3_000)], removed="2018-02-01")]
             elif n == 2:
-                # An LLM match whose newest return is past the PTA window: /ptfa/ ranks its 2023-24 return.
+                # An LLM match whose July 2025 return is in 2024-25, past the PTA window ending in 2023-24.
+                # /ptfa/ ranks its July 2023 return in academic year 2022-23.
                 charities = [charity(1_200_002, "Recent PTA", [("2025-07", 60_000), ("2023-07", 50_000)],
                                      match={"method": "llm", "evidence": "test", "confidence": "medium"})]
             pta[str(urn)] = charities
@@ -211,7 +212,8 @@ class AreaPagesTest(unittest.TestCase):
             with self.subTest(page=name):
                 # Assert
                 text = len(result["intro"].encode("utf-8")) + len(result["outro"].encode("utf-8"))
-                self.assertLessEqual(text, 22_000)
+                # 26 KB, up from 22 KB: trend charts now carry each line's per-year values for the tap/hover readout.
+                self.assertLessEqual(text, 26_000)
                 if name in ("council", "constituency", "trust"):
                     biggest = max(sum(len(c.encode("utf-8")) for c in r) for r in result["table"]["rows"])
                     self.assertLessEqual(biggest, 2_500)
@@ -345,9 +347,10 @@ class AreaPagesTest(unittest.TestCase):
         self.assertIn("The gap by intake", intro)
         self.assertIn("Grammar", intro)
         self.assertEqual(len(self.pages["ptfa"]["table"]["rows"]), 1)
-        # A return after the window (2025-26, still being filed) never displaces one inside it.
+        # A return after the window (2024-25, still being filed) never displaces one inside it.
+        self.assertEqual(pta["window"], ["2022-23", "2023-24"])
         recent = next(t for t in pta["top"] if t["urn"] == "100002")
-        self.assertEqual((recent["year_end"], recent["income"]), ("2023-24", 50_000))
+        self.assertEqual((recent["year_end"], recent["income"]), ("2022-23", 50_000))
 
     def test_dashboards_keep_every_measure_and_compare_with_region_and_england(self):
         # Arrange: record each chart's lines through the charts contract.

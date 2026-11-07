@@ -271,21 +271,24 @@ class RequiredMarkersTest(unittest.TestCase):
         self.assertTrue(all(f["data-year"] in ("2022-23", "2024-25") for f in figures(body, "pta_income")))
 
     def test_pta_rows_name_the_charitys_own_year_end(self):
-        # Arrange: a council-run school; the association's year to August 2025 sits in 2025-26 (April to March)
+        # Arrange: a council-run school; the association's year to August 2025 sits in academic year 2024-25.
         item, ctx = cfr_school()
 
         # Act
         body = school_page.render(item, ctx)["body"]
 
         # Assert
-        self.assertIn('2025-26<br><small class="muted">year to August 2025</small>', body)
-        self.assertIn('2024-25<br><small class="muted">year to August 2024</small>', body)
+        self.assertIn('2024-25<br><small class="muted">year to August 2025</small>', body)
+        self.assertIn('2023-24<br><small class="muted">year to August 2024</small>', body)
 
-    def test_pta_year_rule_for_academies_and_council_run_schools(self):
+    def test_pta_year_uses_one_academic_year_rule_for_all_schools(self):
         # Act / Assert
-        self.assertEqual(school_page.pta_year("2023-03", "CFR"), "2022-23")
-        self.assertEqual(school_page.pta_year("2025-08", "CFR"), "2025-26")
-        self.assertEqual(school_page.pta_year("2025-08", "AAR"), "2024-25")
+        cases = (("2023-03", "2022-23"), ("2023-04", "2022-23"), ("2025-08", "2024-25"),
+                 ("2025-09", "2025-26"), ("2024-12-31", "2024-25"))
+        for source in ("CFR", "AAR"):
+            for period_end, expected in cases:
+                with self.subTest(source=source, period_end=period_end):
+                    self.assertEqual(school_page.pta_year(period_end, source), expected)
 
     def test_series_pta_figures_are_used_when_the_series_has_them(self):
         # Arrange: the series says 2024-25's share is £4,000 with 200 pupils.

@@ -577,15 +577,14 @@ def end_year_of(label):
 
 
 def local_pta_year(period_end, source):
-    """School year label ("2022-23") holding a charity return that ended period_end ("YYYY-MM").
-    Council-run (CFR) years run April to March, academy (AAR) years September to August."""
+    """School year label ("2022-23") holding a charity return that ended period_end ("YYYY-MM"): the academic year
+    (September to August) it ends in, for every school (series.pta_year's rule)."""
     text = str(period_end or "")
     try:
         year, month = int(text[:4]), int(text[5:7])
     except ValueError:
         return None
-    first_month = 9 if str(source).upper() == "AAR" else 4
-    start = year if month >= first_month else year - 1
+    start = year if month >= 9 else year - 1
     return f"{start}-{(start + 1) % 100:02d}"
 
 

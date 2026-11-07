@@ -102,8 +102,10 @@ def sen_share(row: dict):
 def pta_year(period_end, source: str = "CFR"):
     """School year label holding a charity return that ends in `period_end` ('YYYY-MM' or 'YYYY-MM-DD').
 
-    CFR schools' years run April Y to March Y+1, so 2023-03 -> '2022-23' and 2025-08 -> '2025-26'.
-    AAR schools' years run September Y to August Y+1, so 2025-08 -> '2024-25'. None for a bad date.
+    One rule for every school: the academic year (September Y to August Y+1) the charity's year ends in, so
+    2025-08 -> '2024-25' and 2023-03 -> '2022-23'. Parents know a PTFA's year to August 2025 as 2024-25, and filing
+    it under a council-run school's April-March year (2025-26) gave one return different labels on different cards
+    and mixed two years in the England medians. `source` is kept for callers and ignored. None for a bad date.
     """
     text = str(period_end or "")
     try:
@@ -112,8 +114,7 @@ def pta_year(period_end, source: str = "CFR"):
         return None
     if len(text) < 7 or text[4] != "-" or not 1 <= month <= 12:
         return None
-    first_month = 9 if str(source).upper() == "AAR" else 4
-    start = year if month >= first_month else year - 1
+    start = year if month >= 9 else year - 1
     return f"{start}-{str(start + 1)[2:]}"
 
 

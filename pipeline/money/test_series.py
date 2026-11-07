@@ -268,12 +268,12 @@ class FlagsTest(unittest.TestCase):
 class PtaYearTest(unittest.TestCase):
     def test_return_goes_in_the_school_year_holding_its_period_end(self):
         # Arrange / Act / Assert
-        self.assertEqual(series.pta_year("2023-03", "CFR"), "2022-23")
-        self.assertEqual(series.pta_year("2023-04", "CFR"), "2023-24")
-        self.assertEqual(series.pta_year("2025-08", "CFR"), "2025-26")
-        self.assertEqual(series.pta_year("2025-08", "AAR"), "2024-25")
-        self.assertEqual(series.pta_year("2025-09", "AAR"), "2025-26")
-        self.assertEqual(series.pta_year("2024-12-31", "AAR"), "2024-25")
+        cases = (("2023-03", "2022-23"), ("2023-04", "2022-23"), ("2025-08", "2024-25"),
+                 ("2025-09", "2025-26"), ("2024-12-31", "2024-25"))
+        for source in ("CFR", "AAR"):
+            for period_end, expected in cases:
+                with self.subTest(source=source, period_end=period_end):
+                    self.assertEqual(series.pta_year(period_end, source), expected)
         self.assertIsNone(series.pta_year("2024", "CFR"))
         self.assertIsNone(series.pta_year(None, "CFR"))
         self.assertIsNone(series.pta_year("2024-13", "CFR"))
@@ -308,26 +308,30 @@ class PtaSeriesTest(unittest.TestCase):
         self.assertEqual((pta["2023-24"]["income"], pta["2023-24"]["spend"], pta["2023-24"]["income_pp"]), (10_000, 5_000, 100))
 
     def test_charities_summed_with_lowest_confidence_and_largest_contributor(self):
-        # Arrange: a high-confidence match and an LLM match in the same school year; one review-flagged charity.
+        # Arrange: a high-confidence match and an LLM match in the same academic year; one review-flagged charity.
+        # Move the August returns to 2024 so they still share 2023-24 with the December 2023 return.
         rows = [row("2023-24", pupils=200)]
-        records = [charity(1, [("2023-08", 4_000, 3_000)], match={"method": "postcode", "confidence": "high"}),
+        records = [charity(1, [("2024-08", 4_000, 3_000)], match={"method": "postcode", "confidence": "high"}),
                    charity(2, [("2023-12", 6_000, None)], match={"method": "llm", "evidence": "x", "confidence": "medium"}),
-                   charity(1056624, [("2023-08", 307_000, 300_000)], review="independent school's society")]
+                   charity(1056624, [("2024-08", 307_000, 300_000)], review="independent school's society")]
         # Act
         pta = series.school_series(rows, records)["pta"]
         # Assert
+        self.assertEqual(list(pta), ["2023-24"])
         self.assertEqual(pta["2023-24"], {"income": 10_000, "spend": 3_000, "income_pp": 50, "spend_pp": 15,
                                           "charity_number": 2, "confidence": "medium"})
 
     def test_year_without_pupils_leaves_per_pupil_out_and_returns_are_never_relabelled(self):
-        # Arrange: returns from long before the finance years, and a missing match block.
+        # Arrange: August 2005 belongs to 2004-05, long before the finance years; the match block is missing.
         rows = [row("2023-24", pupils=200)]
         old = charity(9, [("2005-08", 2_000, 1_000), ("2024-03", 5_000, 4_000)])
         # Act
         pta = series.school_series(rows, [old])["pta"]
         # Assert
-        self.assertEqual(list(pta), ["2005-06", "2023-24"])
-        self.assertIsNone(pta["2005-06"]["income_pp"])
+        self.assertEqual(list(pta), ["2004-05", "2023-24"])
+        self.assertEqual(pta["2004-05"]["income"], 2_000)
+        self.assertIsNone(pta["2004-05"]["income_pp"])
+        self.assertIsNone(pta["2004-05"]["spend_pp"])
         self.assertEqual(pta["2023-24"]["income_pp"], 25)
 
     def test_returns_in_one_school_year_are_summed_and_a_repeat_counts_once(self):
@@ -340,15 +344,18 @@ class PtaSeriesTest(unittest.TestCase):
         self.assertEqual((pta["2022-23"]["income"], pta["2022-23"]["spend"]), (3_500, 3_000))
         self.assertEqual(pta["2022-23"]["income_pp"], 35)
 
-    def test_converter_uses_its_own_row_else_the_nearest_years_source(self):
+    def test_converter_uses_the_academic_year_for_returns_from_either_source(self):
         # Arrange: council-run to March 2021, an academy from September 2021.
         rows = [row("2020-21", pupils=100), row("2021/22", pupils=120)]
         records = [charity(4, [("2021-03", 1_000, 0), ("2022-08", 2_400, 0)]), charity(6, [("2021-06", 500, 0)])]
         # Act
         pta = series.school_series(rows, records)["pta"]
-        # Assert: 2021-03 is the CFR row's year, 2022-08 the AAR row's year, 2021-06 is nearest the CFR row.
-        self.assertEqual(pta["2020-21"]["income"], 1_000)
-        self.assertEqual(pta["2021-22"]["income"], 2_400 + 500)
+        # Assert: March and June 2021 both fall in 2020-21; August 2022 falls in 2021-22, regardless of source.
+        self.assertEqual(list(pta), ["2020-21", "2021-22"])
+        self.assertEqual(pta["2020-21"]["income"], 1_000 + 500)
+        self.assertEqual(pta["2020-21"]["income_pp"], 15)  # 1,500 / 100
+        self.assertEqual(pta["2021-22"]["income"], 2_400)
+        self.assertEqual(pta["2021-22"]["income_pp"], 20)  # 2,400 / 120
 
     def test_no_charities(self):
         # Arrange / Act / Assert
@@ -404,16 +411,17 @@ class WilliamPattenGoldTest(unittest.TestCase):
         self.assertEqual(cells["2024-25"]["v"], 200455)
         self.assertEqual(cells["2025-26"]["v"], self.gold["years"]["2025-26"]["lines"]["I06"]["value"])
 
-    def test_ptfa_returns_land_in_the_schools_april_to_march_years(self):
+    def test_ptfa_returns_land_in_the_academic_year_their_accounts_end_in(self):
         # Arrange: the PTFA's September-August returns from the gold file.
         ptfa = self.gold["ptfa"]
         history = [(y["period"][-10:-3], y["income"], y["expenditure"]) for y in ptfa["years"].values()]
         # Act
         pta = series.school_series(self.rows, [charity(ptfa["charity_number"], history)])["pta"]
-        # Assert: August 2025 sits in April 2025 to March 2026, divided by that year's 432.5 pupils.
-        self.assertEqual(pta["2025-26"]["income"], 48547)
-        self.assertEqual(pta["2025-26"]["income_pp"], round(48547 / 432.5))
-        self.assertEqual(pta["2021-22"]["income"], 12602)
+        # Assert: August 2025 sits in 2024-25, divided by that year's 437.5 pupils.
+        self.assertEqual(set(pta), set(ptfa["years"]))
+        self.assertEqual(pta["2024-25"]["income"], 48547)
+        self.assertEqual(pta["2024-25"]["income_pp"], round(48547 / 437.5))
+        self.assertEqual(pta["2020-21"]["income"], 12602)
 
     def test_no_flags_fire_for_william_patten(self):
         # Arrange / Act
