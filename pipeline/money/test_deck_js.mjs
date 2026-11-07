@@ -40,6 +40,9 @@ const pupils = (y) => fin(y).pupils;
 const ppOf = (v, y) => Math.round(v / pupils(y));
 const ptfaYears = Object.keys(gold.ptfa.years).sort();
 const ptfaEnd = (y) => gold.ptfa.years[y].period.slice(-10);
+// The school year the producer counts each charity return in (series.pta_year), as /data/sx keys sx.pta.
+const PTA_SCHOOL_YEARS = JSON.parse(execFileSync("python3", ["-c", "import json, sys; from pipeline.money import series; print(json.dumps({e: series.pta_year(e, 'CFR') for e in sys.argv[1:]}))", ...ptfaYears.map(ptfaEnd)], { cwd: repo, encoding: "utf8" }));
+const ptaSchoolYear = (y) => PTA_SCHOOL_YEARS[ptfaEnd(y)];
 
 function sxFixture({ flags = [], drop = [] } = {}) {
   const m = {};
@@ -57,8 +60,8 @@ function sxFixture({ flags = [], drop = [] } = {}) {
   }
   const pta = {};
   for (const y of ptfaYears) {
-    const p = gold.ptfa.years[y];
-    pta[y] = { income: p.income, spend: p.expenditure, income_pp: pupils(y) ? p.income / pupils(y) : null, spend_pp: pupils(y) ? p.expenditure / pupils(y) : null, charity_number: String(gold.ptfa.charity_number), confidence: "high" };
+    const p = gold.ptfa.years[y], sy = ptaSchoolYear(y);
+    pta[sy] = { income: p.income, spend: p.expenditure, income_pp: pupils(sy) ? p.income / pupils(sy) : null, spend_pp: pupils(sy) ? p.expenditure / pupils(sy) : null, charity_number: String(gold.ptfa.charity_number), confidence: "high" };
   }
   return { years: YEARS, source: "CFR", pupils: Object.fromEntries(YEARS.map((y) => [y, pupils(y)])), m, gap: null, pta, flags, trust_central_pp: null };
 }
@@ -497,7 +500,7 @@ test("PTFA pack: income per charity year equals the register, comparisons name t
   // Assert
   const money = findSlide(deck, "pta_money");
   const inc = seriesOf(money, "pta_income"), sp = seriesOf(money, "pta_spend");
-  assert.deepEqual(inc.points.map((p) => p.y), ptfaYears);
+  assert.deepEqual(inc.points.map((p) => p.y), ptfaYears.map(ptaSchoolYear), "each return in the school year the producer counts it in");
   assert.deepEqual(inc.points.map((p) => p.v), ptfaYears.map((y) => gold.ptfa.years[y].income));
   assert.deepEqual(sp.points.map((p) => p.v), ptfaYears.map((y) => gold.ptfa.years[y].expenditure));
   assert.ok(money.figures.every((f) => f.year.includes("charity year")), "years labelled as charity years");
@@ -518,8 +521,9 @@ test("PTFA pack: income per charity year equals the register, comparisons name t
   assert.ok(q.bullets.some((b) => b.includes("extra money")) && q.bullets.every((b) => !/[{}]/.test(b)));
   const msgs = findSlide(deck, "summary").messages;
   assert.equal(msgs.length, 3);
-  const lastY = ptfaYears.at(-1);
-  assert.ok(msgs[0].startsWith("Raised " + D.fmtExact(gold.ptfa.years[lastY].income) + " in " + lastY), msgs[0]);
+  const lastY = ptfaYears.at(-1), lastSchoolY = ptaSchoolYear(lastY);
+  assert.ok(msgs[0].startsWith("Raised " + D.fmtExact(gold.ptfa.years[lastY].income) + " in the charity year to "), msgs[0]);
+  assert.ok(msgs[0].includes("(school year " + lastSchoolY + "), " + D.fmtExact(gold.ptfa.years[lastY].income / pupils(lastSchoolY)) + " per pupil"), "per pupil uses the same school year's pupils: " + msgs[0]);
   // Never summed: no figure or chart value equals any PTA income + school donations total.
   const sums = new Set();
   for (const p of ptfaYears) for (const y of YEARS) if (donations(y)) sums.add(Math.round(gold.ptfa.years[p].income + donations(y)));
@@ -535,19 +539,19 @@ test("PTFA target: the council's median per pupil times the same year's pupils, 
   const council = areaDoc("council-" + gold.la.code, "council", gold.la.name);
   Object.values(council.by_year).forEach((b) => { b.all.pta_pp_median = 400; });
   const m = schoolModel({ council });
-  const lastY = ptfaYears.at(-1);
+  const lastY = ptfaYears.at(-1), schoolY = ptaSchoolYear(lastY);
   // Act
   const t = D.ptaTarget(m);
   const deck = D.ptfaDeck(m, CTXT);
   // Assert
-  assert.equal(t.year, lastY, "the association's own year");
-  assert.equal(t.pupils, pupils(lastY), "the same year's pupils");
-  assert.equal(t.target, Math.round(400 * pupils(lastY)));
-  assert.equal(t.gap, Math.round(400 * pupils(lastY) - gold.ptfa.years[lastY].income));
+  assert.equal(t.year, schoolY, "the school year the association's latest return is counted in");
+  assert.equal(t.pupils, pupils(schoolY), "the same year's pupils");
+  assert.equal(t.target, Math.round(400 * pupils(schoolY)));
+  assert.equal(t.gap, Math.round(400 * pupils(schoolY) - gold.ptfa.years[lastY].income));
   assert.match(t.message, /illustration/);
   const fig = findSlide(deck, "ideas").figures.find((f) => f.key === "pta_target");
   assert.equal(fig.v, t.target);
-  assert.equal(fig.year, lastY);
+  assert.equal(fig.year, schoolY);
   assert.ok(fig.label.startsWith("Illustration"));
   // Above the median: says so, still an illustration.
   const above = D.ptaTarget(schoolModel());
