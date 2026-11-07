@@ -25,7 +25,10 @@ where the school stands (IDACI), since a school can draw from far beyond its str
 
 Deciles in lsoa.geojson follow the Indices: 1 = most deprived tenth of England.
 Distances in admissions.json are miles; over 7 miles means everyone who applied was
-offered a place, so no real catchment exists and it is skipped.
+offered a place, so no real catchment exists and it is skipped. A catchment is the set
+of LSOAs whose geometric centroid lies within that distance, from the school's own
+council and any neighbouring council whose las.json bbox reaches the point; the
+school's own LSOA is included only when its centroid qualifies like any other.
 
 Stdlib only. Every loader takes a path and tolerates a missing file.
 """
@@ -42,7 +45,7 @@ from datetime import date
 from pathlib import Path
 
 from pipeline.money import status as health
-from pipeline.money.timeline import status_by_year, year_label
+from pipeline.money.timeline import status_by_year
 
 try:  # build_money owns these; keep a tiny fallback so this module imports on its own
     from pipeline.money.build_money import reserve_of, per_pupil
@@ -179,21 +182,48 @@ def load_constituency_codes(path=CONSTITUENCIES_PATH):
 # ----------------------------------------------------------------- geometry
 
 def centroid(geometry):
-    """Mean of the outer ring's vertices as (lat, lon); good enough for LSOA-sized areas."""
+    """Geometric centroid of a GeoJSON geometry as (lat, lon).
+
+    Uses the shoelace formula on each outer ring (area weighted across a MultiPolygon),
+    treating degrees as planar, which is fine at LSOA scale. Averaging the vertices
+    instead would pull the point towards whichever edge was digitised most finely,
+    so a long thin LSOA could land inside a catchment its real centre is well outside."""
     kind, coords = geometry.get("type"), geometry.get("coordinates")
     if not coords:
         return None
-    if kind == "Polygon":
-        ring = coords[0]
-    elif kind == "MultiPolygon":
-        ring = max((poly[0] for poly in coords if poly), key=len, default=None)
-    elif kind == "Point":
+    if kind == "Point":
         return (coords[1], coords[0])
+    if kind == "Polygon":
+        rings = [coords[0]] if coords and coords[0] else []
+    elif kind == "MultiPolygon":
+        rings = [poly[0] for poly in coords if poly and poly[0]]
     else:
         return None
-    if not ring:
-        return None
-    return (sum(p[1] for p in ring) / len(ring), sum(p[0] for p in ring) / len(ring))
+    area_sum = lon_sum = lat_sum = 0.0
+    vertices = []
+    for ring in rings:
+        pts = [p for p in ring if len(p) >= 2]
+        if len(pts) > 1 and pts[0][:2] == pts[-1][:2]:
+            pts = pts[:-1]  # the closing vertex repeats the first
+        vertices.extend(pts)
+        if len(pts) < 3:
+            continue
+        twice_area = cx = cy = 0.0
+        for (x0, y0), (x1, y1) in zip([q[:2] for q in pts], [q[:2] for q in pts[1:] + pts[:1]]):
+            cross = x0 * y1 - x1 * y0
+            twice_area += cross
+            cx += (x0 + x1) * cross
+            cy += (y0 + y1) * cross
+        if twice_area:
+            area = twice_area / 2
+            area_sum += abs(area)
+            lon_sum += abs(area) * cx / (3 * twice_area)
+            lat_sum += abs(area) * cy / (3 * twice_area)
+    if area_sum:
+        return (lat_sum / area_sum, lon_sum / area_sum)
+    if vertices:  # degenerate (zero area): fall back to the vertex mean
+        return (sum(p[1] for p in vertices) / len(vertices), sum(p[0] for p in vertices) / len(vertices))
+    return None
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
@@ -302,6 +332,33 @@ class Context:
         if code not in self._lsoas:
             self._lsoas[code] = load_lsoas(self.data_root, code)
         return self._lsoas[code]
+
+    def councils_near(self, code, lat, lon, radius_km):
+        """Council codes whose LSOAs might have a centroid within radius_km of (lat, lon):
+        the school's own council plus every council whose las.json bbox, grown by the
+        radius, contains the point. Councils without a bbox are always included."""
+        out = [code] if code else []
+        lat_margin = radius_km / 111.0 + 1e-6
+        lon_margin = radius_km / (111.0 * max(math.cos(math.radians(lat)), 0.01)) + 1e-6
+        for other in self.council_codes():
+            if other in out:
+                continue
+            bbox = (self.las.get(other) or {}).get("bbox")
+            if bbox and len(bbox) == 4:
+                west, south, east, north = bbox
+                if not (south - lat_margin <= lat <= north + lat_margin
+                        and west - lon_margin <= lon <= east + lon_margin):
+                    continue
+            out.append(other)
+        return out
+
+    def lsoas_near(self, code, lat, lon, radius_km):
+        """{lsoa code: feature} across every council that could hold an LSOA centroid
+        within radius_km of the point; catchments do not stop at council borders."""
+        merged = {}
+        for other in self.councils_near(code, lat, lon, radius_km):
+            merged.update(self.lsoas(other))
+        return merged
 
     @property
     def msoa_income(self):
@@ -430,24 +487,28 @@ def school_profile(school, council_code, data_root, schools=None, ctx=None):
     own = lsoas.get(lsoa) if lsoa else None
     area = {"lsoa": lsoa}
     area.update({k: (own or {}).get(k) for k in AREA_KEYS})
-    area["catchment"] = catchment(school, ctx.admissions(code) if code else {}, lsoas, own)
+    miles = latest_distance((ctx.admissions(code) if code else {}).get(str(school.get("urn")), {}))
+    lat, lon = school.get("lat"), school.get("lon")
+    near = ctx.lsoas_near(code, lat, lon, miles * KM_PER_MILE) if None not in (miles, lat, lon) else {}
+    area["catchment"] = catchment(school, miles, near)
     msoa = str(school.get("msoa") or "")
     area["msoa_income"] = ctx.msoa_income.get(msoa) if msoa else None
     return {"tags": tags, "intake": intake, "area": area, "band": ctx.band(fsm, area.get("idaci_decile"))}
 
 
-def catchment(school, admissions, lsoas, own=None):
-    """AREA_KEYS averaged over the LSOAs whose centroid lies within the school's last
-    distance offered (plus its own LSOA), with the distance and count used."""
-    miles = latest_distance(admissions.get(str(school.get("urn")), {}))
+def catchment(school, miles, lsoas):
+    """AREA_KEYS averaged over the LSOAs (from any council) whose centroid lies within
+    miles of the school, with the distance and count used. The school's own LSOA gets
+    no special treatment: a school on the edge of a large LSOA whose centre is beyond
+    the distance it offered places to does not draw its pupils from that whole area."""
     lat, lon = school.get("lat"), school.get("lon")
     if miles is None or lat is None or lon is None:
         return None
     radius_km = miles * KM_PER_MILE
     picked = []
-    for code, feature in lsoas.items():
+    for feature in lsoas.values():
         c = feature.get("centroid")
-        if feature is own or (c and haversine_km(lat, lon, c[0], c[1]) <= radius_km):
+        if c and haversine_km(lat, lon, c[0], c[1]) <= radius_km:
             picked.append(feature)
     if not picked:
         return None
@@ -511,13 +572,19 @@ def summarise(entries):
 
 
 def school_years(rows, charities):
-    """One entry per full year for a school: the inputs summarise() needs."""
-    by_label = {year_label(r): r for r in health.full_years(rows)}
+    """One entry per full year for a school: the inputs summarise() needs.
+
+    status_by_year() walks status.full_years() in order and always yields one point per
+    full year (the year itself is in the rows it assesses), so the two lists are paired
+    by position. Pairing by display label would be wrong: in a conversion year a March
+    CFR return and an August AAR return both read "2024-25", and the academy's pupils
+    and spending would be stitched onto the council-run return's reserve and status."""
+    years = health.full_years(rows)
+    points = status_by_year(rows)
+    if len(points) != len(years):  # pragma: no cover - guards the invariant above
+        raise ValueError(f"status_by_year gave {len(points)} points for {len(years)} full years")
     out = []
-    for point in status_by_year(rows):
-        r = by_label.get(point["year"])
-        if r is None:
-            continue
+    for r, point in zip(years, points):
         pupils = r.get("pupils") or None
         pta = pta_income_for(charities, end_year_of(point["year"]))
         out.append({
@@ -576,17 +643,23 @@ def build_areas(history_rows_by_urn, schools, pta, dsg, data_root, constituencie
     out = {"england": None, "regions": {}, "councils": {}, "constituencies": {}}
     for (kind, key), items in buckets.items():
         area = new_area(names[(kind, key)])
-        per_year = defaultdict(list)
+        per_year = defaultdict(list)       # every return ending in the year (feeds the source splits)
+        per_year_schools = defaultdict(list)  # one entry per school per year, its latest return
         for entries, latest in items:
             if latest:
                 area["statuses_latest"][latest] = area["statuses_latest"].get(latest, 0) + 1
+            last_by_year = {}
             for e in entries:
                 per_year[e["year"]].append(e)
+                last_by_year[e["year"]] = e  # entries are oldest first
+            for year, e in last_by_year.items():
+                per_year_schools[year].append(e)
         for year in sorted(per_year):
-            entries = per_year[year]
-            area["pupils_by_year"][year] = sum(e["pupils"] or 0 for e in entries)
-            area["schools_by_year"][year] = len(entries)
-            area["by_year"][year] = {split: summarise([e for e in entries if source is None or e["source"] == source])
+            entries, per_school = per_year[year], per_year_schools[year]
+            area["pupils_by_year"][year] = sum(e["pupils"] or 0 for e in per_school)
+            area["schools_by_year"][year] = len(per_school)
+            area["by_year"][year] = {split: summarise(per_school if source is None
+                                                      else [e for e in entries if e["source"] == source])
                                      for split, source in SPLITS.items()}
         values = None
         if kind == "council":
