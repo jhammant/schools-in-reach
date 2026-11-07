@@ -785,9 +785,22 @@ def _nb_rank_lines(nb, year) -> str:
         if not rank or not of:
             continue
         place = "Highest" if rank == 1 else ("Lowest" if rank == of else f"{ordinal(rank)} highest")
-        tail = f" with a registered parents' association (charity years nearest {year})" if key == "pta_pp" else f" in {year}"
+        tail = f" in {year}"
+        if key == "pta_pp":
+            low = sum(1 for row in [nb["self"]] + nb["schools"]
+                      if _num(row.get("pta_pp")) is not None and row.get("pta_confidence") == "medium")
+            tail = (f" with a registered parents' association (charity years nearest {year}"
+                    + (f"; {low} of them matched with lower confidence" if low else "") + ")")
         out.append(f"<li>{place} {esc(what)} of {int(of)} nearby {esc(phases)}{esc(tail)}.</li>")
     return f'<ul class="nb-ranks">{"".join(out)}</ul>' if out else ""
+
+
+def _pp_figure(key, pp, total, pupils, year) -> str:
+    """site.money_figure's span (the same data-* for its tooltip) showing pp as the figure and the total beside it,
+    for columns headed 'per pupil'."""
+    fig = site.money_figure(key, total, pupils, year)
+    sign = "-" if pp < 0 else ""
+    return f'{fig[:fig.index(">") + 1]}{sign}£{abs(round(pp)):,}<small> {esc(charts.money(total))} total</small></span>'
 
 
 def _nb_money(key, row, field, year_field=None, year=None):
@@ -801,7 +814,7 @@ def _nb_money(key, row, field, year_field=None, year=None):
             total = round(pp * pupils)
         if total is None:
             return "—"
-        fig = site.money_figure(key, total, total / pp if pp else None, y)  # pupils as total / pp, so it shows pta_pp
+        fig = _pp_figure(key, pp, total, total / pp if pp else None, y)  # pupils as total / pp, so data-pp is pta_pp
         if y != year:
             fig += f" <small>{esc(y)}</small>"
         if row.get("pta_confidence") == "medium":
@@ -809,7 +822,7 @@ def _nb_money(key, row, field, year_field=None, year=None):
         return fig
     if not pupils:
         return "—"
-    return site.money_figure(key, round(pp * pupils), pupils, year)
+    return _pp_figure(key, pp, round(pp * pupils), pupils, year)
 
 
 def _nb_pct(value) -> str:
@@ -838,7 +851,8 @@ def _nb_table(nb, year, rows, full) -> str:
         cells = [_nb_name(row, me), "<td>—</td>" if mi is None else f"<td>{mi:g} mi</td>",
                  f"<td>{_nb_status(row)}</td>", f"<td>{_nb_money('total_expenditure', row, 'spend_pp', year=year)}</td>"]
         if full:
-            cells += [f"<td>{_nb_money('revenue_reserve', row, 'reserve_pp', year=year)}</td>", f"<td>{_nb_pct(row.get('staff_pct'))}</td>",
+            reserve = "revenue_reserve_incl_trust_share" if row.get("reserve_incl_trust_share") else "revenue_reserve"
+            cells += [f"<td>{_nb_money(reserve, row, 'reserve_pp', year=year)}</td>", f"<td>{_nb_pct(row.get('staff_pct'))}</td>",
                       f"<td>{_nb_money('pta_income', row, 'pta_pp', 'pta_year', year)}</td>", f"<td>{_nb_pct(row.get('fsm_pct'))}</td>"]
         body.append(f'<tr{' class="nb-self"' if me else ""}>{"".join(cells)}</tr>')
     caption = f"This school and the {len(rows) - 1} nearest {_phase_schools(nb)}, {year}"
@@ -872,6 +886,18 @@ def _nb_chart(nb, year) -> str:
     return f'<svg class="nb-chart" viewBox="0 -2 360 {height + 4}" role="img"><title>{esc(title)}</title>{"".join(parts)}</svg>'
 
 
+def _nb_caveats(nb, table=True) -> str:
+    """What every nearby note says, however short: the two financial years when the list mixes them, and that
+    doubtful figures are left out (and, under a table, what its dashes mean)."""
+    text, every = "", [nb["self"]] + nb["schools"]
+    if any(r.get("academy") for r in every) and not all(r.get("academy") for r in every):
+        text += "Council-run schools' years run April to March, academies' September to August. "
+    if not table:
+        return text + "Ranks and medians leave out doubtful figures. "
+    return text + ("A dash means no figure for that year (no full-year return yet, or one left out as doubtful); "
+                   "doubtful figures are left out of ranks and medians. ")
+
+
 def _nb_note(nb, year, view, full) -> str:
     phases, n = _phase_schools(nb), len(nb["schools"])
     radius = _num(nb.get("radius_mi"))
@@ -879,11 +905,7 @@ def _nb_note(nb, year, view, full) -> str:
     text = f"Only {phases} are compared: the {n} nearest state-funded ones{within}, in {year}"
     if view.latest and view.latest != year:
         text += f", the latest year most of them have published (the rest of this page uses {view.latest})"
-    text += ". "
-    every = [nb["self"]] + nb["schools"]
-    if any(r.get("academy") for r in every) and not all(r.get("academy") for r in every):
-        text += "Council-run schools' years run April to March, academies' September to August. "
-    text += "A dash means no figure for that year (no full-year return yet, or one left out as doubtful); doubtful figures are left out of ranks and medians. "
+    text += ". " + _nb_caveats(nb)
     html = f'<p class="small muted">{esc(text)}'
     if full:
         html += (esc(f"PTA: the parents' association's income in the charity year nearest {year}; a dash means No registered parents' "
@@ -898,8 +920,8 @@ def _nb_note_brief(nb, year, view) -> str:
     text = f"Figures for {year}, comparing only {_phase_schools(nb)}"
     if view.latest and view.latest != year:
         text += f" (the rest of this page uses {view.latest})"
-    return (f'<p class="small muted">{esc(text)}. Nearby schools serve different families, so compare their free school meals '
-            'shares too; the compare page shows every figure side by side.</p>')
+    return (f'<p class="small muted">{esc(text)}. {esc(_nb_caveats(nb, table=False))}Nearby schools serve different families, so compare their '
+            'free school meals shares too; the compare page shows every figure side by side.</p>')
 
 
 def nearby_section(item, view, level="full") -> str:

@@ -2029,6 +2029,12 @@ def _value(row, key):
     return value
 
 
+def _pupils(row):
+    """A row's pupils on roll, or None when missing, not a positive number or flagged suspect."""
+    pupils = _value(row, "pupils")
+    return pupils if pupils is not None and pupils > 0 else None
+
+
 class _NearbyFacts:
     """Each school's figures for a comparison year, worked out once however many neighbour lists it is in."""
 
@@ -2043,6 +2049,16 @@ class _NearbyFacts:
 
     def row_for(self, item, label):
         return self.returns(item).get(label)
+
+    def pupils(self, item, label):
+        """Pupils on roll in label from the return the year's other figures come from (the later of two full-year
+        returns sharing a label, as after a conversion), else the school's latest other return for it; None when
+        that count is missing or flagged suspect."""
+        r = self.row_for(item, label)
+        if r is None:
+            r = max((x for x in item["rows"] if x.get("period_end") and year_label(x) == label),
+                    key=lambda x: x["period_end"], default=None)
+        return _pupils(r)
 
     def status(self, item, label):
         """The school's status for label, judged as the timeline does: on the returns up to that year's end."""
@@ -2081,7 +2097,7 @@ class _NearbyFacts:
         for gap, _, y in sorted(years):
             if gap > NEARBY_PTA_YEARS:
                 break
-            pupils = year_pupils(item["rows"], y)
+            pupils = self.pupils(item, y)
             if pupils:
                 income, low = self.pta_years(item)[y]
                 return round(income / pupils), y, low, round(income)
@@ -2099,8 +2115,8 @@ class _NearbyFacts:
         status = self.status(item, label)
         if status:
             out["status"] = status
-        pupils = None if r is None or suspect(r, "pupils") else r.get("pupils")
-        if isinstance(pupils, (int, float)) and not isinstance(pupils, bool) and pupils > 0:
+        pupils = _pupils(r)
+        if pupils is not None:
             out["pupils"] = round(pupils, 1)
             for field, k in NEARBY_PP:
                 v = _value(r, k)
@@ -2109,6 +2125,8 @@ class _NearbyFacts:
             reserve = reserve_of(r)
             if not (suspect(r, "revenue_reserve") or suspect(r, "revenue_reserve_incl_trust_share")) and isinstance(reserve, (int, float)):
                 out["reserve_pp"] = round(reserve / pupils)
+                if r.get("revenue_reserve_incl_trust_share") is not None:
+                    out["reserve_incl_trust_share"] = True
             for k, _ in COMPARE_KEYS:
                 v = _value(r, k)
                 if v is not None:
@@ -2181,8 +2199,10 @@ def add_nearby(schools, n=NEARBY_N, max_mi=NEARBY_MAX_MI):
      'medians': {spend_pp, income_pp, gov_pp, reserve_pp, pta_pp} (NEARBY_MIN+ values), 'rank': {spend_pp, reserve_pp,
      pta_pp: {'rank', 'of'}} (1 = highest, ties share the better rank), 'line_medians': {COMPARE_KEYS}}. A ROW has urn,
     name, p, mi and, when known and not suspect, academy, status (for 'year'), pupils, spend_pp, income_pp, gov_pp,
-    reserve_pp, staff_pct, pta_pp with pta_year and pta_income (plus pta_confidence 'medium' for a lower-confidence
-    match), fsm_pct, and on self only 'lines'. Unknown or suspect values are left out, never 0 or null."""
+    reserve_pp (plus reserve_incl_trust_share true when it includes the academy's share of trust reserves), staff_pct,
+    pta_pp with pta_year and pta_income (plus pta_confidence 'medium' for a lower-confidence match), fsm_pct, and on self
+    only 'lines'. Every per-pupil figure, PTA included, divides by the pupils of the one return its year's figures come
+    from. Unknown or suspect values are left out, never 0 or null."""
     assessed = [s for s in schools if s.get("status") and not s.get("member_of")]
     grids = defaultdict(lambda: defaultdict(list))
     for s in assessed:

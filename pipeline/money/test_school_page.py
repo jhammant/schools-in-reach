@@ -887,7 +887,7 @@ class NearbySectionTest(unittest.TestCase):
             "3rd highest spending per pupil of 8 nearby primary schools in 2024-25.",
             "Highest reserve per pupil of 8 nearby primary schools in 2024-25.",
             "2nd highest parents&#x27; association income per pupil of 3 nearby primary schools with a registered parents&#x27; "
-            "association (charity years nearest 2024-25)."])
+            "association (charity years nearest 2024-25; 1 of them matched with lower confidence)."])
 
     def test_this_school_is_highlighted_in_words_and_listed_first(self):
         # Act
@@ -940,6 +940,17 @@ class NearbySectionTest(unittest.TestCase):
         self.assertNotIn("£0", nearby)
         self.assertIn("80.1%", nearby)
         self.assertIn("A dash means no figure for that year", nearby)
+
+    def test_per_pupil_columns_lead_with_the_per_pupil_figure_and_show_the_total_beside_it(self):
+        # Act
+        nearby = section(school_page.render(*nearby_school())["body"], "nearby")
+
+        # Assert
+        gamma = re.search(r"Gamma Primary</a></th>(.*?)</tr>", nearby).group(1)
+        spend = re.search(r'data-mf="total_expenditure"[^>]*>(.*?)</span>', gamma).group(1)
+        reserve = re.search(r'data-mf="revenue_reserve"[^>]*>(.*?)</span>', gamma).group(1)
+        self.assertEqual(spend, "£7,000<small> £1.5m total</small>")  # 220 pupils x £7,000
+        self.assertEqual(reserve, "-£150<small> -£33k total</small>")
 
     def test_pta_cells_follow_the_wording_rules(self):
         # Act
