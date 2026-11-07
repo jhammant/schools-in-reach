@@ -1,5 +1,6 @@
 """Runs the node suite for assets/deck.js (test_deck_js.mjs) from pytest, handing it the IFS context that
-deck.py writes into the /deck/ page through DECK_CONTEXT_FILE (a JSON file in a temporary directory)."""
+deck.py writes into the /deck/ page through DECK_CONTEXT_FILE (a JSON file in a temporary directory), and the
+phrasing case table (contract C1) through PHRASING_CASES."""
 
 import json
 import os
@@ -22,7 +23,8 @@ class DeckJsTest(unittest.TestCase):
             # Arrange
             context = Path(tmp) / "deck_context.json"
             context.write_text(json.dumps(deck.deck_context(), ensure_ascii=False), encoding="utf-8")
-            env = {**os.environ, "DECK_CONTEXT_FILE": str(context)}
+            env = {**os.environ, "DECK_CONTEXT_FILE": str(context),
+                   "PHRASING_CASES": str(REPO / "pipeline/money/data/phrasing_cases.json")}
             # Act
             proc = subprocess.run(["node", "--test", "--test-reporter=tap", str(REPO / "pipeline/money/test_deck_js.mjs")],
                                   capture_output=True, text=True, timeout=120, cwd=REPO, env=env)

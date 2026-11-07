@@ -3,8 +3,8 @@
 Writes: <out>/deck/index.html through env['write'] (nothing else; site.asset_files() copies
 assets/deck.js and assets/deck.css to /assets/).
 Reads: data/ifs_context.json (IFS framings, questions to ask and context lines, each with its page
-numbers) and data/la_dsg.json (the statutory override note for council high-needs balances), both next
-to this file, falling back to the real repository like areas.py does.
+numbers) and data/la_dsg.json (the statutory override note for a council's Dedicated Schools Grant balance,
+all four blocks), both next to this file, falling back to the real repository like areas.py does.
 
 assets/deck.js reads the query and builds one of:
   ?urn=<urn>&view=governors  the governors' finance committee pack (view=school, or no view, is the same pack)
@@ -20,6 +20,7 @@ supplies the static context deck.js needs, as an escaped JSON block, and the lin
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from urllib.parse import quote
 
@@ -28,14 +29,26 @@ from pipeline.money import deflator, site
 PATH = "/deck/"
 HERE = Path(__file__).resolve().parent
 REAL_ROOT = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea")
-REGISTER_URL = "https://register-of-charities.charitycommission.gov.uk/charity-search/-/charity-details/"
+REGISTER_URL = "https://register-of-charities.charitycommission.gov.uk/"
+# A charity's page on the register (contract C9): the number sits mid-URL, so links are only built by charity_url().
+CHARITY_PAGE = ("https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                "CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_"
+                "CharityDetailsPortlet_regId={number}&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0")
 FBIT_URL = "https://financial-benchmarking-and-insights-tool.education.gov.uk/school/"
 
 # The IFS framings and question sets the decks quote. Context lines are carried whole (they are short).
 FRAMINGS = ["why_schools_go_into_deficit", "one_deficit_year", "falling_rolls", "send_pressure",
             "academy_central_top_slice", "real_terms", "funding_vs_spending_per_pupil", "pass_through_grants"]
-QUESTION_SETS = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves",
+QUESTION_SETS = ["in_deficit", "heading_for_deficit", "tight", "healthy", "large_reserves", "reserve_held_by_trust",
                  "falling_rolls", "academy", "high_send", "any"]
+# This site's own questions for a status the IFS report has no set for (no page numbers, as they aren't the IFS's).
+SITE_QUESTIONS = {
+    "reserve_held_by_trust": [
+        {"text": "How much of {overseer}'s pooled reserve is held for {name}, and how is that decided?", "why": None, "page": None},
+        {"text": "If {name} had a hard year, how would {overseer} decide whether to draw on the pooled reserve?", "why": None, "page": None},
+        {"text": "Does {overseer} publish how its central reserve is shared between its schools?", "why": None, "page": None},
+    ],
+}
 
 
 def _data_file(name: str) -> Path:
@@ -75,6 +88,8 @@ def deck_context() -> dict:
         if q:
             questions[key] = [{"text": x.get("text"), "why": x.get("why"), "page": x.get("page")}
                               for x in q.get("questions") or []]
+        elif key in SITE_QUESTIONS:
+            questions[key] = [dict(x) for x in SITE_QUESTIONS[key]]
     lines = {}
     for group, rows in (ifs.get("context_lines") or {}).items():
         lines[group] = [{"id": r.get("id"), "use_when": r.get("use_when"), "text": r.get("text"), "page": r.get("page")}
@@ -92,6 +107,12 @@ def deck_context() -> dict:
         "dsg_note": _dsg_note(),
         "links": {"register": REGISTER_URL, "fbit": FBIT_URL, "base": site.BASE_MONEY, "ptfa_guide": "/guides/ptfa/"},
     }
+
+
+def charity_url(number) -> str:
+    """The Charity Commission register page for a charity number (1103834 -> its page), else the register's home."""
+    match = re.match(r"\s*(\d+)", "" if number is None else str(number))
+    return CHARITY_PAGE.format(number=match.group(1)) if match else REGISTER_URL
 
 
 def _json_block(data: dict) -> str:
