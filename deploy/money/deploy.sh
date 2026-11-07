@@ -62,4 +62,7 @@ if problems:
 print(f"School Money deploy check passed: {schools:,} school pages, sitemap, search index, robots and 404 present.")
 PY_CHECK
 rsync -a --delete "$REPO/site_money/" "$HERE/site/"
-cd "$HERE" && railway up --detach --no-gitignore --service school-money "$@"
+# Name project, environment and service explicitly: the repo root is linked to another Railway
+# project, and a directory link can change under you.
+cd "$HERE" && railway up --detach --no-gitignore \
+  --project 798e2bac-4dc2-4729-93fd-357bd67a7774 --environment production --service school-money "$@"

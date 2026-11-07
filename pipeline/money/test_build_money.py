@@ -1316,12 +1316,14 @@ class DeployFilesTest(unittest.TestCase):
         self.assertNotIn("location /money/ ", text)
         self.assertIn("location /school/", text)
 
-    def test_money_template_serves_a_static_site_with_long_lived_assets(self):
+    def test_money_template_serves_a_static_site_with_revalidated_assets(self):
         text = (ROOT / "deploy/money/nginx.conf.template").read_text(encoding="utf-8")
         self.assertIn("listen ${PORT};", text)
         self.assertIn("absolute_redirect off;", text)
         self.assertIn("error_page 404 /404.html;", text)
-        self.assertIn("max-age=31536000, immutable", text)
+        # Asset URLs are unversioned, so a year-long immutable cache would pin stale JS/CSS after a deploy.
+        self.assertIn("location /assets/ { add_header Cache-Control \"public, max-age=300, stale-while-revalidate=86400\"", text)
+        self.assertNotIn("max-age=31536000", text)
         self.assertIn("location /data/ { add_header Cache-Control \"public, max-age=3600\"", text)
         self.assertIn("try_files $uri $uri/ =404;", text)
         self.assertIn("location = /health", text)

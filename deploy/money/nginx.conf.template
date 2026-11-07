@@ -14,9 +14,10 @@ server {
   error_page 404 /404.html;
   location = /health { default_type text/plain; return 200 "ok\n"; }
 
-  # Assets are copied verbatim from pipeline/money/assets/ at build time; a new build ships new bytes,
-  # so a long immutable cache is safe. Data files can be an hour stale; HTML never.
-  location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; try_files $uri =404; }
+  # Asset URLs are not versioned (/assets/app.js), so a long immutable cache would pin old JS/CSS
+  # against new HTML after a deploy. Revalidate after five minutes; serve stale while doing so.
+  # Data files can be an hour stale; HTML never.
+  location /assets/ { add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400"; try_files $uri =404; }
   location /data/ { add_header Cache-Control "public, max-age=3600"; try_files $uri =404; }
   location ~* \.geojson$ { default_type application/geo+json; add_header Cache-Control "public, max-age=3600"; }
   location ~* \.xml$ { add_header Cache-Control "public, max-age=3600"; }
