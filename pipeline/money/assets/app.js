@@ -751,14 +751,13 @@
   });
   refreshPins();
 
-  // ---------------------------------------------------------------- global search (#q)
-  (function search() {
-    var input = document.getElementById("q");
+  // ---------------------------------------------------------------- search boxes (#q in the header, #find on the home page)
+  function attachSearch(input) {
     if (!input) return;
-    var list = document.getElementById("q-list");
+    var list = document.getElementById(input.id + "-list");
     if (!list) {
       list = el("ul", "listbox");
-      list.id = "q-list";
+      list.id = input.id + "-list";
       list.setAttribute("role", "listbox");
       list.hidden = true;
       input.parentNode.appendChild(list);
@@ -790,7 +789,7 @@
       }
       rows.forEach(function (r, i) {
         var li = el("li");
-        li.id = "q-opt-" + i;
+        li.id = input.id + "-opt-" + i;
         li.setAttribute("role", "option");
         li.setAttribute("aria-selected", "false");
         li.appendChild(el("span", "kind", r.t || ""));
@@ -835,6 +834,53 @@
       else if (e.key === "Escape") { hide(); }
     });
     input.addEventListener("blur", function () { setTimeout(hide, 120); });
+  }
+  attachSearch(document.getElementById("q"));
+  attachSearch(document.getElementById("find"));
+
+  // ---------------------------------------------------------------- /search/?q=: results in the page
+  (function searchPage() {
+    if (!/^\/search\/?$/.test(location.pathname)) return;
+    var q = (new URLSearchParams(location.search).get("q") || "").trim();
+    var header = document.getElementById("q");
+    if (header && q) header.value = q;
+    if (q.length < 2) return;
+    var main = document.querySelector("main") || document.body;
+    var h1 = main.querySelector("h1");
+    var box = el("section", "search-results");
+    box.setAttribute("aria-live", "polite");
+    box.appendChild(el("p", "muted", "Searching…"));
+    if (h1 && h1.nextSibling) h1.parentNode.insertBefore(box, h1.nextSibling); else main.insertBefore(box, main.firstChild);
+    function show(rows, emptyNote) {
+      box.textContent = "";
+      box.appendChild(el("h2", null, rows.length ? "Results for “" + q + "”" : emptyNote));
+      if (!rows.length) return;
+      var ul = el("ul", "results");
+      rows.forEach(function (r) {
+        var li = el("li"), a = el("a", null, r.name || "");
+        a.href = r.p || "#";
+        li.appendChild(el("span", "kind", r.t || ""));
+        li.appendChild(a);
+        if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
+        if (r.sub) li.appendChild(el("span", "sub", r.sub));
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      if (rows.length === 1 && rows[0].p) location.replace(rows[0].p);
+    }
+    var pc = parsePostcode(q);
+    if (pc && /\d/.test(q)) {
+      Promise.resolve(API.postcodeLookup(pc.district)).then(function (d) {
+        var rows = (Array.isArray(d) ? d : (d && (d.schools || d.results || d.rows)) || []).map(function (r) {
+          var id = r.id != null ? r.id : r.urn;
+          return { t: r.t || "school", id: id, name: r.name || ("School " + id), sub: r.sub || [r.town, r.postcode].filter(Boolean).join(" "),
+            status: r.status || null, p: r.p || ("/school/" + id + "-" + slugify(r.name || "") + "/") };
+        });
+        show(rows.slice(0, 50), "No schools found near " + pc.district);
+      });
+      return;
+    }
+    loadIndex().then(function (rows) { show(rankSearch(rows, q, 50), "No matches for “" + q + "”"); });
   })();
 
   // ---------------------------------------------------------------- preview cards ([data-preview])

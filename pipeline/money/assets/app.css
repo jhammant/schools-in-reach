@@ -256,7 +256,7 @@ svg.chart { display: block; width: 100%; height: auto; max-width: 760px; overflo
 .key.median { width: 2px; height: 14px; background: var(--ink-2); }
 
 /* ---------- compare tool and finders ---------- */
-.finder { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; } .finder label { font-weight: 600; }
+.finder { position: relative; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 16px 0; } .finder label { font-weight: 600; }
 .finder input { flex: 1 1 220px; min-width: 0; min-height: var(--tap); padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-s); background: var(--card); color: var(--ink); }
 .finder button, .button { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 16px; border: 1px solid var(--accent); border-radius: var(--radius-s); background: var(--accent); color: var(--accent-ink); font-weight: 600; text-decoration: none; }
 .button.quiet { background: transparent; color: var(--accent); }
