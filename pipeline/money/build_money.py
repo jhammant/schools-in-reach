@@ -109,7 +109,9 @@ TOP_N = 10
 # carries data-* metadata for the app and the shell is richer, so the ceiling is 48 KB (about 8 KB gzipped).
 # School dashboards carry several years of every line, so /school/ pages get SCHOOL_PAGE_BUDGET.
 PAGE_BUDGET = 48_000
-SCHOOL_PAGE_BUDGET = 64_000
+# 80 KB (~15 KB gzipped), up from 64 KB: the nearby-schools section and the charts' per-year readout data pushed
+# most pages to the old limit, where the nearby section fell back to a cut-down table or none.
+SCHOOL_PAGE_BUDGET = 80_000
 AREA_PAGE_TARGET = 40_000  # paged tables are cut so each page, shell included, stays under this when it can
 SX_BUDGET = 12_000         # bytes of one /data/sx/<urn>.json
 SIMILAR_MIN = 5            # similar schools with a value before their median is passed to a page

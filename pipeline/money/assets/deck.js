@@ -2702,10 +2702,24 @@
         present(compareDeck(list, ctx), warnings, notesKey(urns.join(","), "compare"));
       });
     }
+    // The page's breadcrumb says Home > Presentation; once we know whose figures these are, lead back to them:
+    // School Money > Hackney > William Patten Primary School > Governors' finance pack.
+    function setCrumbs(trail, here) {
+      var nav = document.querySelector("nav.crumbs");
+      if (!nav) return;
+      nav.textContent = "";
+      trail.filter(function (t) { return t && t.name && t.path; }).forEach(function (t) {
+        var a = document.createElement("a"); a.href = t.path; a.textContent = t.name; nav.appendChild(a);
+        var sep = document.createElement("span"); sep.setAttribute("aria-hidden", "true"); sep.textContent = " › "; nav.appendChild(sep);
+      });
+      var cur = document.createElement("span"); cur.setAttribute("aria-current", "page"); cur.textContent = here; nav.appendChild(cur);
+    }
     if (areaQ) {
       if (!/^[A-Za-z0-9-]{1,60}$/.test(areaQ)) { showMessage("Area presentation", "That area link doesn't look right. Choose a council or constituency instead."); return Promise.resolve(); }
       return Promise.all([getJSON("/data/a/" + encodeURIComponent(areaQ) + ".json"), getJSON("/data/a/england.json")]).then(function (r) {
         if (!r[0].ok) { showMessage("Area presentation", "Figures for this area are " + r[0].why + ", so there is nothing to present yet."); return; }
+        var ad = r[0].data || {};
+        setCrumbs([{ name: "School Money", path: "/" }, { name: ad.name, path: ad.path }], "Presentation");
         present(areaDeck(r[0].data, r[1].ok ? r[1].data : null, ctx),
           [failed(r[1], "England figures are {why}, so the England comparisons are left out.")], notesKey(areaQ, "area"));
       });
@@ -2720,6 +2734,8 @@
         return Promise.all([code ? getJSON("/data/a/council-" + encodeURIComponent(code) + ".json") : Promise.resolve({ ok: false }), getJSON("/data/a/england.json")]).then(function (a) {
           var m = adapt(s, r[1].ok ? r[1].data : null, a[0].ok ? a[0].data : null, a[1].ok ? a[1].data : null);
           var pack = packView(view) || "governors";
+          setCrumbs([{ name: "School Money", path: "/" }, { name: m.council.name, path: m.council.path }, { name: m.name, path: m.path }],
+            (PACKS[pack] && PACKS[pack].label) || "Presentation");
           present(packDeck(pack, m, ctx), [
             failed(r[1], "Year-by-year detail for this school is {why}, so the slides use the summary figures."),
             failed(a[0], "Figures for the council are {why}, so the council comparisons are left out."),
