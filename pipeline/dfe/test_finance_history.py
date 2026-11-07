@@ -234,6 +234,8 @@ class AliasDriftTest(FixtureTest):
         self.assertEqual(by_urn["100003"]["total_expenditure"], 875000)
         self.assertEqual(by_urn["100003"]["in_year_balance"], 100000)
         self.assertEqual(by_urn["100003"]["derived"], ["total_income", "total_expenditure"])
+        self.assertEqual(by_urn["100003"]["adjusted"], ["total_income", "total_expenditure"])
+        self.assertNotIn("adjusted", by_urn["100004"])
         self.assertEqual(by_urn["100003"]["federated"], "Lead school")
         self.assertEqual(by_urn["100004"]["total_income"], 1000000)
         self.assertNotIn("derived", by_urn["100004"])
@@ -344,11 +346,13 @@ class LoudFailureTest(FixtureTest):
 class AcademyMergeTest(FixtureTest):
     def test_two_rows_same_urn_summed_latest_trust_kept(self):
         # Arrange
-        rows_in = [aar_header(),
-                   aar_row(140003, income=1000000, spend=900000, reserve=100000, trust="Old Trust", joined=44000, months=5),
-                   aar_row(140003, income=2000000, spend=1700000, reserve=250000, trust="New Trust", joined=44200, months=7),
-                   aar_row(140004, income=3000000, spend=2900000, reserve=10000, trust="Solo Trust")]
-        path = self.aar_file(rows_in)
+        header = aar_header() + ["Donations and/or voluntary funds"]
+        codes = aar_code_row(len(header), **{str(len(header) - 1): "BAI140"})
+        rows_in = [header,
+                   aar_row(140003, income=1000000, spend=900000, reserve=100000, trust="Old Trust", joined=44000, months=5) + [1500],
+                   aar_row(140003, income=2000000, spend=1700000, reserve=250000, trust="New Trust", joined=44200, months=7) + [2500],
+                   aar_row(140004, income=3000000, spend=2900000, reserve=10000, trust="Solo Trust") + [700]]
+        path = self.aar_file(rows_in, lead_rows=[codes])
         # Act
         rows, _ = fh.read_workbook(path)
         # Assert
@@ -363,6 +367,11 @@ class AcademyMergeTest(FixtureTest):
         self.assertEqual(merged["trust"], "New Trust")
         self.assertNotIn("date_joined", merged)
         self.assertEqual(by_urn["140004"]["trust"], "Solo Trust")
+        # Detail keys and lines sum across the two rows too.
+        self.assertEqual(merged["donations_revenue"], 4000)
+        self.assertEqual(merged["lines"]["bai140"], 4000)
+        self.assertEqual(by_urn["140004"]["donations_revenue"], 700)
+        self.assertEqual(by_urn["140004"]["lines"], {"bai140": 700})
 
     def test_mixed_excel_serial_and_text_join_dates_share_one_epoch(self):
         # Arrange: an earlier textual date and a later Excel serial for the same academy.
@@ -464,8 +473,9 @@ class YearLabelTest(FixtureTest):
         expected = {"urn", "year", "period_end", "source", "la", "laestab", "name", "phase", "period_months", "pupils",
                     "teachers_fte", "total_income", "total_expenditure", "in_year_balance", "revenue_reserve", "did_not_supply",
                     "federated", "lead_laestab", "fsm_pct", "grant_funding", "self_generated", "sen_funding", "pupil_premium",
-                    *finance.EXPENDITURE_KEYS}
+                    *finance.EXPENDITURE_KEYS, *fh.NEW_KEYS, "lines"}
         self.assertEqual(set(rows[0]), expected)
+        self.assertEqual(list(rows[0])[-len(fh.NEW_KEYS) - 1:], fh.NEW_KEYS + ["lines"])
         self.assertEqual(rows[0]["la"], 204)
         self.assertEqual(rows[0]["phase"], "primary")
         self.assertIsInstance(rows[0]["urn"], str)
@@ -518,6 +528,200 @@ class LoadHistoryTest(FixtureTest):
         self.assertIn("revenue_reserve < 0: 1", text)
         self.assertIn("| total_income | `Total Income: I01:I18 - E30` |", text)
         self.assertIn("## Totals", text)
+
+
+
+class NewKeysTest(FixtureTest):
+    def test_cfr_detail_keys_lines_and_copies(self):
+        # Arrange: 2024-25 CFR with the detail columns and a run of line columns, incl. the a/b totals.
+        header = cfr_header() + ["% of pupils with EHCP", "Number of pupils in 6th form", "I13 Donations and/or private funds",
+                                 "CI03 Voluntary or private income", "I08a Income from lettings",
+                                 "I08b Income from facilities and services", "I08a/b Total income from facilities and services",
+                                 "I17 Community focused school facilities income", "I09 Income from catering",
+                                 "I18 Total additional grant for schools", "I18c Income from the £1bn COVID-19 catch-up package",
+                                 "I01/2 Total pre and Post-16 Funding", "E20A Connectivity", "E20G IT support",
+                                 "E28a/b Total bought in professional services", "OB01 Opening pupil-focused revenue balance",
+                                 "B07 Outstanding balance on capital loans to school"]
+        extra = [3.5, 120, 15000, 2500, 8000, 4000, 12000, 500, 30000, 7000, 7000, 999999, 1100, 1200, 2800, 50000, 0]
+        path = self.cfr_file([header, cfr_row(100020, pupils=400) + extra, cfr_row(100021, pupils=300) + extra])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        r = rows[0]
+        self.assertEqual(r["ehcp_pct"], 3.5)
+        self.assertEqual(r["sixth_form_pupils"], 120)
+        self.assertEqual(r["donations_revenue"], 15000)
+        self.assertEqual(r["donations_capital"], 2500)
+        self.assertEqual(r["lettings_income"], 8000)
+        self.assertEqual(r["facilities_income"], 12000)
+        self.assertEqual(r["community_facilities_income"], 500)
+        self.assertEqual(r["catering_income"], 30000)
+        self.assertEqual(r["cfr_additional_grants_i18"], 7000)
+        self.assertIsNone(r["teacher_pension_ni_grants"])
+        self.assertIsNone(r["aar_other_dfe_revenue_grants"])
+        self.assertIsNone(r["company_number"])
+        self.assertIsNone(r["trust_central_pupils"])
+        self.assertEqual(r["grant_funding_government"], r["grant_funding"])
+        self.assertEqual(r["self_generated_income"], r["self_generated"])
+        self.assertEqual(r["total_staff_costs"], r["total_staff"])
+        self.assertEqual(r["teaching_staff_costs"], r["teaching_staff"])
+        self.assertEqual(r["education_support_staff_costs"], r["education_support_staff"])
+        self.assertEqual(info["mapping"]["self_generated_income"], "= self_generated")
+        # 'Teaching Staff E01' is a derived column, not a line, so there is no E01 in this fixture.
+        self.assertEqual(r["lines"], {"I03": 1000, "I05": 1000, "E05": 1000, "E04": 1000, "E06": 1000, "E16": 1000,
+                                      "I13": 15000, "I08a": 8000, "I08b": 4000, "I08": 12000, "I17": 500, "I09": 30000,
+                                      "I18": 7000, "I18c": 7000, "E20A": 1100, "E20G": 1200, "E28": 2800, "OB01": 50000, "B07": 0})
+        self.assertNotIn("adjusted", r)
+        self.assertNotIn("suspect", r)
+        for code in r["lines"]:
+            self.assertIn(code, fh.LINE_LABELS, code)
+        self.assertEqual(fh.LINE_LABELS["E20A"], "Connectivity")
+        self.assertEqual(info["lines"]["E28"], "E28a/b Total bought in professional services")
+
+    def test_cfr_line_code_rules(self):
+        # Arrange / Act / Assert
+        self.assertEqual(fh.cfr_line_code("I18a Income from the Coronavirus Job Retention Scheme"), "I18a")
+        self.assertEqual(fh.cfr_line_code("E20E Laptops, desktops and tablets"), "E20E")
+        self.assertEqual(fh.cfr_line_code("OB02 Opening community-focused revenue balance"), "OB02")
+        self.assertEqual(fh.cfr_line_code("I08a/b Total income from facilities and services"), "I08")
+        self.assertIsNone(fh.cfr_line_code("I01/2 Total pre and Post-16 Funding"))
+        self.assertIsNone(fh.cfr_line_code("CI03 Voluntary or private income"))
+        self.assertIsNone(fh.cfr_line_code("Teaching Staff E01"))
+        self.assertIsNone(fh.cfr_line_code("Revenue Reserve: B01 + B02 + B06"))
+        for code in fh.CFR_LINE_LABELS:
+            self.assertTrue(fh.LINE_LABELS[code])
+
+    def test_sixth_form_column_all_zero_is_suspect(self):
+        # Arrange: 2024-25 CFR carries the column but every school reads 0.
+        header = cfr_header() + ["Number of pupils in 6th form"]
+        path = self.cfr_file([header, cfr_row(100022) + [0], cfr_row(100023) + [0]])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        for r in rows:
+            self.assertIsNone(r["sixth_form_pupils"])
+            self.assertEqual(r["suspect"], ["sixth_form_pupils"])
+        self.assertTrue(any("sixth_form_pupils column is zero" in w for w in info["warnings"]))
+
+    def test_did_not_supply_nulls_detail_keys_and_lines(self):
+        # Arrange
+        header = cfr_header() + ["I13 Donations and/or private funds"]
+        path = self.cfr_file([header, cfr_row(100024, dns="Y", federated="Non returning school", lead=2043358) + [900]])
+        # Act
+        rows, _ = fh.read_workbook(path)
+        # Assert
+        self.assertIsNone(rows[0]["donations_revenue"])
+        self.assertIsNone(rows[0]["grant_funding_government"])
+        self.assertIsNone(rows[0]["self_generated_income"])
+        self.assertEqual(rows[0]["lines"], {})
+
+    def test_aar_government_grants_facilities_sum_suspect_fsm_and_trust_central(self):
+        # Arrange: 2024-25 AAR layout: no facilities total, lettings BAI100 + other BAI101 under a code row,
+        # a company number joined to the Central Services sheet, and one school with FSM 646.2%.
+        header = aar_header() + ["Company Number", "Non-Government", "Academies", "Income from rentals and lettings",
+                                 "Income from facilities and services - other", "Donations and/or voluntary funds",
+                                 "Other DfE Revenue Grants", "% of pupils with EHCP", "No of pupils in 6th form", "Energy"]
+        base = len(aar_header())
+        codes = aar_code_row(len(header), **{str(base + 3): "BAI100", str(base + 4): "BAI101", str(base + 5): "BAI140",
+                                             str(base + 6): "BAI040", str(base + 9): "BAE150"})
+        # The canonical 'Energy' column has no code; the appended duplicate under BAE150 becomes the line.
+        good = aar_row(140020, pupils=1000) + [7595434, 30000, 20000, 5000, 1500, 9000, 11000, 2.5, 80, 123]
+        bad = aar_row(140021, pupils=500) + [7595434, 0, 0, 0, 0, 0, 0, 1.0, 0, 456]
+        bad[aar_header().index("% of pupils eligible for FSM")] = 646.2
+        central = [["MAT SAT or Central Services", "Company Number", "Company Name", "Total number of Pupils", "Total Expenditure"],
+                   ["Central services", 7595434, "Trust A", 1500, 300000]]
+        path = make_xlsx(self.dir / "AAR_2024-25_download.xlsx",
+                         [("Index", [["Contents"]]), ("Academies", [codes, header, good, bad]), ("Central Services", central)])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        by_urn = {r["urn"]: r for r in rows}
+        g, b = by_urn["140020"], by_urn["140021"]
+        self.assertEqual(g["non_government_grants"], 30000)
+        self.assertEqual(g["income_from_academies"], 20000)
+        self.assertEqual(g["grant_funding_government"], g["grant_funding"] - 50000)
+        self.assertEqual(g["lettings_income"], 5000)
+        self.assertEqual(g["facilities_income"], 6500)
+        self.assertIn("facilities_income", g["derived"])
+        self.assertEqual(g["donations_revenue"], 9000)
+        self.assertIsNone(g["donations_capital"])
+        self.assertEqual(g["aar_other_dfe_revenue_grants"], 11000)
+        self.assertEqual(g["ehcp_pct"], 2.5)
+        self.assertEqual(g["company_number"], "07595434")
+        self.assertEqual(g["trust_central_total_expenditure"], 300000)
+        self.assertEqual(g["trust_central_pupils"], 1500)
+        self.assertEqual(g["trust_central_spend_per_pupil"], 200)
+        self.assertEqual(g["lines"]["bai100"], 5000)
+        self.assertEqual(g["lines"]["bai101"], 1500)
+        self.assertEqual(g["lines"]["bai140"], 9000)
+        self.assertEqual(g["lines"]["bai040"], 11000)
+        self.assertEqual(g["lines"]["bae150"], 123)
+        self.assertNotIn("suspect", g)
+        self.assertEqual(b["fsm_pct"], 646.2)
+        self.assertEqual(b["suspect"], ["fsm_pct"])
+        self.assertEqual(b["sixth_form_pupils"], 0)
+        self.assertEqual(g["sixth_form_pupils"], 80)
+        self.assertTrue(any("fsm_pct above 100%" in w for w in info["warnings"]))
+        self.assertEqual(info["central"]["trusts"], 1)
+        self.assertTrue(any("trust_central_spend_per_pupil derived" in w for w in info["warnings"]))
+
+    def test_aar_without_central_sheet_warns_and_translates_old_codes(self):
+        # Arrange: a 2019-20 style workbook with BNCH codes above the header and no central-services sheet.
+        header = aar_header() + ["Non- Government", "Academies", "Income from facilities and services",
+                                 "Building and Grounds maintenance and improvement", "Coronavirus Government Funding"]
+        base = len(aar_header())
+        codes = aar_code_row(len(header), **{str(base): "BNCH11163", str(base + 1): "BNCH11162", str(base + 2): "BNCH11201",
+                                             str(base + 3): "BNCH21301 & BNCH21405", str(base + 4): "BNCHBAI061",
+                                             str(header.index("Energy")): "BNCH21403"})
+        row = aar_row(140030) + [1000, 2000, 3000, 4000, 5000]
+        path = make_xlsx(self.dir / "AAR_2019-20_download.xlsx", [("Index", [["x"]]), ("Academies", [codes, header, row])])
+        # Act
+        rows, info = fh.read_workbook(path)
+        # Assert
+        r = rows[0]
+        self.assertEqual(r["facilities_income"], 3000)
+        self.assertIsNone(r["lettings_income"])
+        self.assertEqual(r["lines"]["bai090"], 1000)
+        self.assertEqual(r["lines"]["bai080"], 2000)
+        self.assertEqual(r["lines"]["income_from_facilities_and_services"], 3000)
+        self.assertEqual(r["lines"]["building_and_grounds_maintenance"], 4000)
+        self.assertEqual(r["lines"]["bai061"], 5000)
+        self.assertEqual(r["lines"]["bae150"], 2000)
+        self.assertIsNone(r["trust_central_total_expenditure"])
+        self.assertTrue(any("no central-services sheet" in w for w in info["warnings"]))
+        self.assertIn("bai061", fh.LINE_LABELS)
+
+    def test_aar_line_key_rules(self):
+        # Arrange / Act / Assert
+        self.assertEqual(fh.aar_line_key("Teaching staff", "BAE010"), "bae010")
+        self.assertEqual(fh.aar_line_key("Teaching staff", "BNCH21101"), "bae010")
+        self.assertEqual(fh.aar_line_key("Direct revenue financing", "BAE290 (is -ve income)"), "bae290")
+        self.assertEqual(fh.aar_line_key("Direct revenue financing", "BNCH21707 (is -ve income)"), "bae290")
+        self.assertEqual(fh.aar_line_key("Pre-16 DFE/EFA Revenue grants", "BNCH11110T & BNCH11131"), "bai010")
+        self.assertEqual(fh.aar_line_key("DFE/EFA Revenue grants (includes Coronavirus Government Funding", "BNCH11110T, BNCHBAI061 & BNCH11131"), "bai010")
+        self.assertEqual(fh.aar_line_key("of which: Coronavirus Government Funding", "BAI061"), "bai061")
+        self.assertEqual(fh.aar_line_key("All income from facilities and services", "BAI100_x000D_ BAI101"), "income_from_facilities_and_services")
+        self.assertIsNone(fh.aar_line_key("Total Income", "BAI050 BAI010 BAI020"))
+        self.assertIsNone(fh.aar_line_key("Revenue Reserve", "BNCH44001"))
+        self.assertIsNone(fh.aar_line_key("URN", ""))
+        for key in fh.AAR_LINE_LABELS:
+            self.assertTrue(fh.LINE_LABELS[key])
+
+    def test_report_lists_new_key_coverage_and_flags(self):
+        # Arrange
+        header = cfr_header() + ["Number of pupils in 6th form", "I13 Donations and/or private funds"]
+        self.cfr_file([header, cfr_row(100040) + [0, 500]])
+        rows, infos = fh.load_history_with_info(self.dir)
+        # Act
+        text = fh.report(rows, infos)
+        # Assert
+        self.assertIn("## New keys: rows with a value per workbook", text)
+        self.assertIn("## Adjusted and suspect flags", text)
+        self.assertIn("| suspect | sixth_form_pupils | 1 |", text)
+        self.assertIn("| donations_revenue | 1 |", text)
+        self.assertIn("| I13 | `I13 Donations and/or private funds` |", text)
+        self.assertIn("| self_generated_income | `= self_generated` |", text)
+        self.assertEqual(text, fh.report(rows, infos))
 
 
 # ----------------------------------------------------------------- real data
@@ -595,6 +799,38 @@ class RealDataTest(unittest.TestCase):
         self.assertTrue(500000 <= reserve <= 600000, reserve)
         self.assertEqual(by_year["2019-20"]["period_end"], "2020-03")
         self.assertIn("William Patten", by_year["2024-25"]["name"])
+        lines = by_year["2019-20"]["lines"]
+        self.assertAlmostEqual(lines["B01"] + lines["B02"] + lines["B06"], reserve, delta=1)  # the reserve is rounded to the pound
+        self.assertEqual(by_year["2019-20"]["adjusted"], ["total_income", "total_expenditure"])
+        self.assertEqual(by_year["2019-20"]["donations_revenue"], lines["I13"])
+        self.assertIsNone(by_year["2024-25"]["sixth_form_pupils"])
+        self.assertIn("sixth_form_pupils", by_year["2024-25"]["suspect"])
+        self.assertEqual(by_year["2024-25"]["grant_funding_government"], by_year["2024-25"]["grant_funding"])
+
+    def test_new_keys_populated_across_real_workbooks(self):
+        # Arrange
+        rows = real_history()
+        aar = [r for r in rows if r["source"] == "AAR"]
+        cfr = [r for r in rows if r["source"] == "CFR" and not r["did_not_supply"]]
+        # Act
+        aar_2425 = [r for r in aar if r["year"] == "2024/25"]
+        aar_2223 = [r for r in aar if r["year"] == "2022/23"]
+        # Assert: detail keys, the government-only grant figure, trust-central join and the known-bad FSM year.
+        self.assertTrue(all(r["ehcp_pct"] is not None for r in cfr[:200]))
+        self.assertTrue(all(r["donations_revenue"] is not None for r in cfr if r["year"] == "2024-25"))
+        self.assertTrue(all(r["donations_capital"] is None for r in aar))
+        self.assertTrue(all(r["company_number"] for r in aar_2425))
+        self.assertGreater(sum(1 for r in aar_2425 if r["trust_central_total_expenditure"] is not None), 0.9 * len(aar_2425))
+        self.assertTrue(all(r["facilities_income"] is not None for r in aar_2425 if r["lettings_income"] is not None))
+        # Negative non-government or inter-academy income (refunds) can push the government-only figure above the total.
+        with_grants = [r for r in aar if r["grant_funding"] is not None]
+        self.assertTrue(all(r["grant_funding_government"] == r["grant_funding"] - (r["non_government_grants"] or 0)
+                            - (r["income_from_academies"] or 0) for r in with_grants))
+        self.assertGreater(sum(1 for r in with_grants if r["grant_funding_government"] < r["grant_funding"]), len(with_grants) / 2)
+        self.assertTrue(any("fsm_pct" in r.get("suspect", []) for r in aar_2223))
+        self.assertTrue(all("fsm_pct" in r.get("suspect", []) for r in rows if (r["fsm_pct"] or 0) > 100))
+        self.assertTrue(all("bae010" in r["lines"] and "bai030" in r["lines"] for r in aar))
+        self.assertTrue(all("E01" in r["lines"] and "B01" in r["lines"] for r in cfr))
 
 
 if __name__ == "__main__":
