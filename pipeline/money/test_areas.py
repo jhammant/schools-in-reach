@@ -204,6 +204,16 @@ class BuildAreasTest(unittest.TestCase):
         return areas.build_areas(self.rows, schools or self.schools, self.pta, self.dsg, self.data,
                                  constituencies_path=constituencies_path or Path(self.tmp.name) / "missing.json")
 
+    def test_a_school_counts_under_each_years_return_not_todays_governance(self):
+        # Arrange: School 7 is an academy today, but its 2022-23 return was a council-run (CFR) one, before it converted
+        self.rows["100007"].insert(0, row("100007", "2023-03", 1_900_000, 1_850_000, 200_000, pupils=480))
+        # Act
+        by_year = self.build()["councils"]["204"]["by_year"]
+        # Assert
+        self.assertEqual(by_year["2022-23"]["council-run"]["schools"], 1)
+        self.assertEqual(by_year["2022-23"]["academy"]["schools"], 0)
+        self.assertEqual(by_year["2024-25"]["academy"]["schools"], 2)
+
     def test_splits_counts_and_medians(self):
         # Act
         result = self.build()
