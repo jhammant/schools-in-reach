@@ -1,14 +1,15 @@
 """Compact, lazy-loaded fundraising finder data. Figures follow areas.py's PTA rules.
 
-Names, links, phase and money status come from search.json; this file contains only
-schools with a registered association. Null means unavailable, never zero.
+Names, links, phase and money status come from search.json. Rows contain schools
+with a registered association; the pupil-count map also covers other schools.
+Null means unavailable, never zero.
 """
 import json
 
-from pipeline.money import areas
+from pipeline.money import areas, series
 
 PHASES = ("other", "primary", "secondary", "special", "all_through", "nursery", "alternative_provision", "post16")
-COLUMNS = ("id", "c", "b", "lat", "lon", "income", "pp", "year", "charities", "flags")
+COLUMNS = ("id", "c", "b", "lat", "lon", "income", "pp", "year", "charities", "flags", "change")
 DATA_BUDGET = 1_200_000
 
 
@@ -24,7 +25,7 @@ def registered(charity):
             and not areas.held_back(charity))
 
 
-def latest(item):
+def latest(item, *, latest_complete=None):
     charities = [c for c in item.get("pta") or [] if registered(c)]
     if not charities:
         return None
@@ -34,12 +35,25 @@ def latest(item):
     year = max(record["years"], default=None)
     slot = record["years"].get(year) or {}
     income, pupils = slot.get("income"), slot.get("pupils")
+    changes = series.pta_changes(charities, rows, series.pta_pupils(rows), record["years"], latest_complete=latest_complete)
+    change = changes.get(year) or {"reason": 6}
     return {"income": round(income) if income is not None else None,
             "pp": round(income / pupils) if income is not None and pupils else None,
             "year": year,
             "charities": sorted({str(c["charity_number"]) for c in charities if c.get("charity_number")}),
             "flags": (1 if slot.get("confidence") == "medium" else 0)
-                     | (2 if any(c.get("shared_with") for c in charities) else 0)}
+                     | (2 if any(c.get("shared_with") for c in charities) else 0),
+            "change": change["reason"] or [change["value"], change["pct"], change["pp"]]}
+
+
+def school_size(item):
+    """The latest full return's own-school roll; never substitute an older or federation count."""
+    rows = item.get("rows") or []
+    full = series.status.full_years(rows)
+    if not full:
+        return None
+    count = series.pta_pupils(rows).get(series.year_label(full[-1]))
+    return round(count, 1) if count is not None else None
 
 
 def build_data(schools, area_doc):
@@ -50,9 +64,12 @@ def build_data(schools, area_doc):
     """
     pta = (area_doc or {}).get("pta") or {}
     year = pta.get("year")
-    councils, rows = {}, []
+    councils, rows, pupils = {}, [], {}
     for item in schools:
-        item["fundraising"] = latest(item)
+        count = school_size(item)
+        if count is not None:
+            pupils[item["urn"]] = int(count) if count == int(count) else count
+        item["fundraising"] = latest(item, latest_complete=year)
         if item["fundraising"] is None:
             continue
         council = item["council"]
@@ -65,8 +82,8 @@ def build_data(schools, area_doc):
                       lon=round(item["lon"], 5) if isinstance(item.get("lon"), (int, float)) else None)
         rows.append([values[key] for key in COLUMNS])
     median = ((pta.get("by_year") or {}).get(year) or {}).get("median_pp")
-    return {"v": 1, "columns": COLUMNS, "councils": councils, "year": year,
-            "england": round(median) if median is not None else None, "rows": rows}
+    return {"v": 2, "columns": COLUMNS, "councils": councils, "year": year,
+            "england": round(median) if median is not None else None, "rows": rows, "pupils": pupils}
 
 
 def encode(doc):

@@ -563,6 +563,33 @@ class CopyRulesTest(unittest.TestCase):
         self.assertNotIn('data-mf="deficit_total"', section(body, "status"))
 
 
+class PtaChangeColumnTest(unittest.TestCase):
+    def test_each_year_has_a_change_column_with_text_direction_and_same_year_pupils(self):
+        # Arrange
+        item, ctx = cfr_school(pta=[charity(history=returns(("2023-08", 35000, 1), ("2024-08", 39200, 1),
+                                                          ("2025-08", 35000, 1)))])
+        # Act
+        html = section(school_page.render(item, ctx)["body"], "ptfa")
+        # Assert
+        self.assertIn('<th scope="col">Change</th>', html)
+        self.assertEqual(html.count('data-label="Change"'), 3)
+        self.assertIn('Up £4,200 (+12%) on 2022-23', html)
+        self.assertIn('Down £4,200 (-10.7%) on 2023-24', html)
+        self.assertIn('No change figure: previous school year missing', html)
+        self.assertRegex(html, r'<small>Up £\d+ per pupil</small>')
+
+    def test_single_year_and_still_filing_explain_why_the_change_is_missing(self):
+        # Arrange
+        item, ctx = cfr_school(pta=[charity(history=returns(("2025-08", 10000, 1)))])
+        # Act
+        single = section(school_page.render(item, ctx)["body"], "ptfa")
+        ctx["pta_national"] = {"by_year": {"2023-24": {"schools": 100}, "2024-25": {"schools": 10}}}
+        filing = section(school_page.render(item, ctx)["body"], "ptfa")
+        # Assert
+        self.assertIn('No change figure: only one year filed', single)
+        self.assertIn('No change figure: latest year still being filed', filing)
+
+
 class SizeBudgetTest(unittest.TestCase):
     def test_two_year_academy_with_one_pta(self):
         # Arrange
@@ -589,9 +616,10 @@ class SizeBudgetTest(unittest.TestCase):
                          extra_head=school_page.EXTRA_HEAD)
 
         # Assert
-        # Three C9 register links (~330 bytes each) and the spending-row notes add about 1 KB.
-        self.assertLessEqual(len(page["body"].encode("utf-8")), 58_000)
-        self.assertLess(len(html.encode("utf-8")), 66_000)
+        # Ten years of income changes and their accessible figure explanations add up to 3 KB.
+        # The production SCHOOL_PAGE_BUDGET stays at 96 KB.
+        self.assertLessEqual(len(page["body"].encode("utf-8")), 61_000)
+        self.assertLess(len(html.encode("utf-8")), 69_000)
 
 
 class OptionalContextTest(unittest.TestCase):

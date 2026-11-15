@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from pipeline.money import build_money, fundraising, school_page, site
+from pipeline.money import build_money, fundraising, school_page, series, site
 from pipeline.money.test_build_money import make_site, row, school
 from pipeline.money.test_school_page import big_school, cfr_school
 
@@ -64,7 +64,7 @@ class FundraisingTest(unittest.TestCase):
         self.assertEqual((missing["income"], missing["pp"], missing["year"]), (None, None, None))
         self.assertIsNone(removed)
 
-    def test_new_data_shape_medians_and_size_with_7900_rows(self):
+    def test_new_data_shape_medians_and_size_with_8750_associations_and_24800_schools(self):
         # Arrange
         with TemporaryDirectory() as tmp:
             _, _, items = model(Path(tmp))
@@ -73,16 +73,54 @@ class FundraisingTest(unittest.TestCase):
             # Act
             doc = fundraising.build_data(items, area_doc)
             sample = doc["rows"][0]
-            large = dict(doc, rows=[list(sample) for _ in range(7900)])
+            large = dict(doc, rows=[list(sample[:-1]) + [[4200, 12, 10]] for _ in range(8750)],
+                         pupils={str(100000 + i): 1234.5 for i in range(24800)})
             encoded = fundraising.encode(large)
         # Assert
         self.assertEqual(doc["columns"], fundraising.COLUMNS)
+        self.assertEqual(doc["v"], 2)
         self.assertEqual(len(doc["rows"]), 11)
         self.assertEqual(doc["england"], 31)
         self.assertEqual(doc["councils"]["204"], ["Hackney", "London", 76])
         self.assertEqual(len(sample), len(doc["columns"]))
         self.assertLess(len(encoded.encode()), fundraising.DATA_BUDGET)
         self.assertNotIn("name", doc["columns"])
+        self.assertIn("100000", doc["pupils"], "pupils also cover schools without an association")
+
+    def test_latest_change_matches_series_and_keeps_the_original_income_fields(self):
+        # Arrange
+        with TemporaryDirectory() as tmp:
+            _, _, items = model(Path(tmp))
+            item = items[1]
+            current = item["rows"][0]
+            previous = dict(current, period_end="2024-03-31", year="2023-24", pupils=200)
+            item["rows"] = [previous, current]
+            item["pta"] = [association(history=[{"period_end": "2024-08", "income": 35000, "expenditure": 1},
+                                                {"period_end": "2025-08", "income": 39200, "expenditure": 1}])]
+            # Act
+            latest = fundraising.latest(item, latest_complete="2024-25")
+            change = series.pta_changes(item["pta"], item["rows"], series.pta_pupils(item["rows"]))["2024-25"]
+            partial = fundraising.latest(item, latest_complete="2023-24")
+        # Assert
+        self.assertEqual(latest["change"], [4200, 12, -44])
+        self.assertEqual(latest["change"], [change[k] for k in ("value", "pct", "pp")])
+        self.assertEqual(partial["change"], 4)
+        self.assertEqual({k: v for k, v in partial.items() if k != "change"}, {k: v for k, v in latest.items() if k != "change"})
+
+    def test_school_size_does_not_fall_back_from_an_unreliable_latest_count(self):
+        # Arrange
+        with TemporaryDirectory() as tmp:
+            _, _, items = model(Path(tmp))
+            item = items[0]
+            item["rows"].insert(0, dict(item["rows"][0], period_end="2024-03-31", year="2023-24", pupils=200))
+            for fields in ({"suspect": ["pupils"]}, {"federated": "Lead school"}, {"pupils": None}):
+                original = dict(item["rows"][-1])
+                item["rows"][-1].update(fields)
+                # Act
+                count = fundraising.school_size(item)
+                # Assert
+                self.assertIsNone(count)
+                item["rows"][-1] = original
 
     def test_search_adds_only_seven_bytes_per_school(self):
         # Arrange
