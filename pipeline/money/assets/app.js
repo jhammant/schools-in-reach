@@ -212,6 +212,8 @@
   function searchState(query) {
     var params = new URLSearchParams(query), state = {};
     ["q", "phase", "status", "pta", "sort"].forEach(function (k) { state[k] = (params.get(k) || "").trim(); });
+    // A sort the page doesn't offer (an old or mistyped link) falls back to relevance rather than a blank select.
+    if (["relevance", "pp", "total"].indexOf(state.sort) === -1) state.sort = "";
     return state;
   }
   function stateQuery(state) {

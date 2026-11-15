@@ -1372,6 +1372,13 @@ def render_ptfa(areas_doc_, items, ctx):
              f'{esc(OVERLAP_NOTE)} Each return is counted in the school year it falls in (April to March for council-run '
              'schools, September to August for academies), and an association shared by several schools is split '
              'equally between them.</p>']
+    # The finder comes straight after the introduction: parents arriving from the menu came to look schools up.
+    parts.append('<section id="fundraising-finder"><h2>Find what other parents raise</h2>'
+                 '<p>Choose an area or school phase to find registered parents\' associations. '
+                 'National figures and the biggest fundraisers follow below.</p>'
+                 '<p><a href="/guides/ptfa/">How to raise more: Gift Aid, match funding and more</a></p>'
+                 '<div id="fundraising-controls"></div>'
+                 '<noscript><p>The filters need JavaScript. Browse the top lists and councils below.</p></noscript></section>')
     by_year_ = {y: v for y, v in (pta.get("by_year") or {}).items() if y >= FROM_YEAR}
     years = sorted(by_year_)
     partial = [y for y in years if newest and y > newest]
@@ -1415,12 +1422,6 @@ def render_ptfa(areas_doc_, items, ctx):
         parts.append('<h2>Grammar and non-selective, academy and council-run</h2><table class="mini"><thead><tr>'
                      '<th scope="col">Schools</th><th scope="col">With a registered association</th>'
                      f'<th scope="col">Median per pupil</th></tr></thead><tbody>{"".join(tag_rows)}</tbody></table>')
-    parts.append('<section id="fundraising-finder"><h2>Find what other parents raise</h2>'
-                 '<p>Choose an area or school phase to find registered parents\' associations. '
-                 'The biggest fundraisers below are a starting point.</p>'
-                 '<p><a href="/guides/ptfa/">How to raise more: Gift Aid, match funding and more</a></p>'
-                 '<div id="fundraising-controls"></div>'
-                 '<noscript><p>The filters need JavaScript. Browse the top lists and councils below.</p></noscript></section>')
     top = [t for t in pta.get("top") or [] if _num(t.get("income"))]
 
     def entry(t):

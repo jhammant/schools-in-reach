@@ -1236,6 +1236,17 @@ test("search filters honour all URL fields and apply before limiting, null incom
   assert.deepEqual(M.filterSearch(rows, { status: "unknown" }).map((r) => r.id), ["4"]);
 });
 
+test("a sort the search page doesn't offer falls back to relevance instead of a blank choice", () => {
+  // Arrange
+  const query = "?q=primary+hackney&sort=pta_pp";
+  // Act
+  const state = M.searchState(query);
+  // Assert
+  assert.equal(state.sort, "");
+  assert.equal(state.q, "primary hackney");
+  assert.equal(M.searchState("?sort=total").sort, "total");
+});
+
 test("search page restores shareable filters, updates the URL, shows results without redirecting a unique name", async () => {
   // Arrange
   const h = boot({ path: "/search/?q=hackney&phase=primary&status=healthy&pta=1&sort=pp", data: findData, setup: searchSetup });

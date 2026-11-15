@@ -442,6 +442,19 @@ ul.audiences a { display: flex; align-items: center; min-height: var(--tap); col
 .find-filters :focus-visible, .search-panel :focus-visible, #fundraising-finder :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .search-panel .results li, .fund-results .results li { overflow-wrap: anywhere; margin-bottom: .8rem; }
 .search-panel .sub, .fund-results .sub { display: block; }
+/* A full results list, not the dropdown: no 340px scroll box, and each row reads left to right (kind, name, status),
+   with its details on their own line. */
+.search-panel .results, .fund-results .results { max-height: none; overflow: visible; }
+.search-panel .results li, .fund-results .results li { justify-content: flex-start; align-items: baseline; column-gap: .6rem; margin-bottom: 0; }
+.search-panel .results .kind, .fund-results .results .kind { flex: 0 0 6.5rem; color: var(--ink-2); font-size: .85rem; text-transform: capitalize; }
+.search-panel .results li > a, .fund-results .results li > a:not(.charity-link) { font-weight: 600; }
+.search-panel .results .sub, .fund-results .results .sub { flex-basis: 100%; padding-left: calc(6.5rem + .6rem); color: var(--ink-2); }
+.fund-results .results .charity-link:first-of-type { margin-left: calc(6.5rem + .6rem); }
+@media (max-width: 560px) {
+  .search-panel .results .kind, .fund-results .results .kind { flex-basis: 100%; }
+  .search-panel .results .sub, .fund-results .results .sub { padding-left: 0; }
+  .fund-results .results .charity-link:first-of-type { margin-left: 0; }
+}
 .fund-results .charity-link { display: inline-block; margin: .3rem 1rem .3rem 0; }
 .fund-medians { font-weight: 600; }
 .nearby-fundraising { padding-left: 1.3rem; }
