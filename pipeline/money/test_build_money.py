@@ -329,7 +329,7 @@ class BuildMoneyTest(unittest.TestCase):
         kinds = {e["t"] for e in search}
         self.assertEqual(kinds, {"school", "council", "constituency", "trust"})
         for e in search:
-            self.assertEqual(set(e), {"t", "id", "name", "sub", "status", "p"})
+            self.assertEqual(set(e), {"t", "id", "name", "sub", "status", "p"} | ({"ph"} if e["t"] == "school" else set()))
             self.assertTrue(e["p"].startswith("/") and e["p"].endswith("/") and "/money/" not in e["p"], e)
         by_id = {(e["t"], e["id"]): e for e in search}
         self.assertEqual(by_id[("school", "100000")]["status"], "in_deficit")

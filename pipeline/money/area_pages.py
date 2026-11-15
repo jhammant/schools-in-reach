@@ -1415,6 +1415,12 @@ def render_ptfa(areas_doc_, items, ctx):
         parts.append('<h2>Grammar and non-selective, academy and council-run</h2><table class="mini"><thead><tr>'
                      '<th scope="col">Schools</th><th scope="col">With a registered association</th>'
                      f'<th scope="col">Median per pupil</th></tr></thead><tbody>{"".join(tag_rows)}</tbody></table>')
+    parts.append('<section id="fundraising-finder"><h2>Find what other parents raise</h2>'
+                 '<p>Choose an area or school phase to find registered parents\' associations. '
+                 'The biggest fundraisers below are a starting point.</p>'
+                 '<p><a href="/guides/ptfa/">How to raise more: Gift Aid, match funding and more</a></p>'
+                 '<div id="fundraising-controls"></div>'
+                 '<noscript><p>The filters need JavaScript. Browse the top lists and councils below.</p></noscript></section>')
     top = [t for t in pta.get("top") or [] if _num(t.get("income"))]
 
     def entry(t):
@@ -1467,7 +1473,7 @@ def render_ptfa(areas_doc_, items, ctx):
                      sort(median, pp_fig("pta_per_pupil", median, newest)),
                      sort(rec["total"], money_figure("pta_income", rec["total"], None, span) if rec["with"] else '<span class="muted">—</span>')])
     outro = sources()
-    intro = fit([(p, n == 0) for n, p in enumerate(parts)], outro)
+    intro = fit([(p, n == 0 or 'id="fundraising-finder"' in p) for n, p in enumerate(parts)], outro)
     return {"title": title_of("Parents' associations: what PTAs and PTFAs raise"),
             "description": shorten("What registered parents' associations raise in England: by year, by intake band, "
                                    "grammar and academy schools, the biggest fundraisers and every council.", 160),

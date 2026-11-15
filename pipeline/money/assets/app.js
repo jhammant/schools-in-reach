@@ -2,7 +2,7 @@
    Pure helpers are exported as globalThis.MoneyApp (loadable under node for tests); DOM wiring
    runs only in a browser. All data goes through textContent: no HTML built from strings of data.
 
-   Reads: /assets/glossary.json, /data/search.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's
+   Reads: /assets/glossary.json, /data/search.json, /data/fundraising.json, /data/s/<urn>.json, /data/sx/<urn>.json (a school's
           SERIES, for data-drill="/data/sx/<urn>.json#m:<metric>"), /data/a/<id>.json,
           /data/postcodes/<district>.json (a 404 = no suggestions; deploy/money/check_site.py requires them).
           A full postcode goes to api.postcodes.io only when Search is pressed (/search/), never while typing.
@@ -156,6 +156,88 @@
     for (var i = 0; i < ws.length; i++) if (!starts(ws[i], toks)) return false;
     return true;
   }
+  // fundraising finder and search: phase codes cost seven bytes per school in search.json.
+  var PHASES = ["other", "primary", "secondary", "special", "all_through", "nursery", "alternative_provision", "post16"];
+  var PHASE_NAMES = ["Other", "Primary", "Secondary", "Special", "All-through", "Nursery", "Alternative provision", "Post-16"];
+  var FUNDRAISING = { t: "finder", id: "fundraising", name: "Find what parents’ associations raise", sub: "PTAs, PTFAs and Friends of schools", p: "/ptfa/#fundraising-finder" };
+  function queryIntent(q) {
+    var text = fold(q), phase = "";
+    PHASES.slice(1).forEach(function (p) {
+      var term = p.replace(/_/g, " ");
+      if (new RegExp("\\b" + term + "\\b").test(text)) { phase = p; text = text.replace(new RegExp("\\b" + term + "\\b"), ""); }
+    });
+    if (phase) text = text.replace(/\b(schools?|in|near|around)\b/g, "").replace(/\s+/g, " ").trim();
+    return { phase: phase, text: text, postcode: parsePostcode(text) };
+  }
+  function rowPhase(r) { return PHASES[r.ph] || "other"; }
+  function fundraisingRows(doc) {
+    if (!doc || doc.v !== 1 || !Array.isArray(doc.columns) || !Array.isArray(doc.rows) || !doc.councils
+        || doc.columns.join() !== "id,c,b,lat,lon,income,pp,year,charities,flags"
+        || doc.rows.some(function (r) { return !Array.isArray(r) || r.length !== 10 || !Array.isArray(r[8]); })) return null;
+    var out = Object.create(null);
+    doc.rows.forEach(function (values) {
+      var r = {};
+      doc.columns.forEach(function (key, i) { r[key] = values[i]; });
+      out[String(r.id)] = r;
+    });
+    return out;
+  }
+  function withFundraising(rows, data) {
+    return rows.map(function (r) { return Object.assign({}, r, { fund: data && data[String(r.id)] }); });
+  }
+  function moneyOrder(a, b, sort) {
+    var key = sort === "pp" ? "pp" : "income", av = a.fund && a.fund[key], bv = b.fund && b.fund[key];
+    return (av == null ? 1 : 0) - (bv == null ? 1 : 0) || (bv || 0) - (av || 0);
+  }
+  function filterSearch(rows, state) {
+    var active = state.phase || state.status || state.pta === "1" || state.sort === "pp" || state.sort === "total";
+    var out = rows.filter(function (r) {
+      return (!active || r.t === "school") && (!state.phase || rowPhase(r) === state.phase)
+        && (!state.status || (state.status === "unknown" ? !r.status : r.status === state.status))
+        && (state.pta !== "1" || !!r.fund);
+    });
+    if (state.sort === "pp" || state.sort === "total") out.sort(function (a, b) { return moneyOrder(a, b, state.sort); });
+    return out;
+  }
+  function filterFundraisers(rows, state, point, councils) {
+    var out = rows.filter(function (r) {
+      var f = r.fund;
+      return f && (!state.region || (councils[f.c] || [])[1] === state.region)
+        && (!state.council || String(f.c) === state.council) && (!state.phase || rowPhase(r) === state.phase)
+        && (!state.band || String(f.b) === state.band)
+        && (!point || (isNum(f.lat) && isNum(f.lon) && milesBetween(point, f) <= 10));
+    });
+    return out.sort(function (a, b) { return moneyOrder(a, b, state.sort) || a.name.localeCompare(b.name); });
+  }
+  function searchState(query) {
+    var params = new URLSearchParams(query), state = {};
+    ["q", "phase", "status", "pta", "sort"].forEach(function (k) { state[k] = (params.get(k) || "").trim(); });
+    return state;
+  }
+  function stateQuery(state) {
+    var params = new URLSearchParams();
+    Object.keys(state).forEach(function (k) { if (state[k]) params.set(k, state[k]); });
+    return params.toString();
+  }
+  function searchNextSteps(rows, q) {
+    var needle = fold(q), area = rows.filter(function (r) {
+      return (r.t === "council" || r.t === "constituency") && (" " + needle + " ").indexOf(" " + fold(r.name) + " ") !== -1;
+    }).sort(function (a, b) { return b.name.length - a.name.length; })[0];
+    var rest = area ? needle.replace(fold(area.name), "").trim() : needle;
+    var words = rest.split(" ").filter(function (w) { return w && !AREA_WORDS[w]; });
+    if (!words.length) words = [rest || needle];
+    var near = rows.filter(function (r) { return r.t === "school" && (!area || prepRow(r).st.join(" ").indexOf(fold(area.name)) === -1); })
+      .map(function (r) {
+        var tokens = prepRow(r).nt;
+        var score = words.reduce(function (sum, w) {
+          return sum + Math.min.apply(null, tokens.map(function (t) { return t.indexOf(w) === 0 ? 0 : editDistance(w, t, 3); }));
+        }, 0);
+        return { row: r, score: score };
+      }).sort(function (a, b) { return a.score - b.score || a.row.name.length - b.row.name.length; }).slice(0, 3).map(function (x) { return x.row; });
+    return { rows: (area ? [area] : []).concat(near, [{ t: "browse", name: "Browse by council", p: "/council/" }]),
+      message: area ? "Nothing called '" + rest + "' in " + area.name + ". Browse this area or try the closest names elsewhere."
+        : "Nothing found for '" + q + "'. Try these closest names, a postcode (for example E8 1AA), or browse by council." };
+  }
   // Search rows (the /data/search.json shape) for q: {rows, fuzzy, urn}. Best first:
   //   a URN or council code typed as digits (urn: true); the name exactly; the name's start; every word starting a word
   //   of the name; an area typed with "schools in" / "council" around it; every word starting a word of the name or
@@ -167,6 +249,10 @@
     var types = opts && Array.isArray(opts.types) ? opts.types : null;
     var needle = fold(q), out = { rows: [], fuzzy: false, urn: false };
     if (!needle || !Array.isArray(rows)) return out;
+    if (/^(pta|ptfa|pfa|fundraising|parents association|friends of)$/.test(needle) && (!types || types.indexOf("finder") !== -1)) {
+      out.rows = [FUNDRAISING]; return out;
+    }
+    var intent = queryIntent(q);
     var words = needle.split(" "), canon = canonical(words), digits = /^\d{3,8}$/.test(needle) ? needle : null;
     var core = words.filter(function (w) { return !AREA_WORDS[w]; }), areaWords = core.length && core.length < words.length ? core : null;
     var areaCanon = areaWords ? canonical(areaWords) : null;
@@ -174,6 +260,7 @@
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (!r || !r.name || (types && types.indexOf(r.t) === -1)) continue;
+      if (intent.phase && r.t === "school" && rowPhase(r) !== intent.phase) continue;
       pool.push(r);
       var p = prepRow(r), score = 0;
       if (digits && String(r.id) === digits && (r.t === "school" || r.t === "council")) score = 9;
@@ -181,6 +268,7 @@
       else if (p.name.indexOf(needle) === 0 || p.canon.indexOf(canon) === 0) score = 5;
       else if (allStart(words, p.nt)) score = 4;
       else if (areaWords && (r.t === "council" || r.t === "constituency") && allStart(areaWords, p.nt)) score = areaCanon === p.canon ? 5.5 : 3.5;
+      else if (intent.phase && r.t === "school" && (!intent.text || allStart(intent.text.split(" "), p.nt.concat(p.st)))) score = 3;
       else if (placed(words, p)) score = 2;
       else if (p.full.indexOf(needle) !== -1) score = 1;
       if (score) hits.push({ row: r, score: score, i: i, len: p.name.length });
@@ -458,6 +546,8 @@
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     milesBetween: milesBetween, nearestRows: nearestRows, schoolsNear: schoolsNear,
     searchMatches: searchMatches, fold: fold, editDistance: editDistance,
+    queryIntent: queryIntent, searchNextSteps: searchNextSteps, searchState: searchState, stateQuery: stateQuery,
+    fundraisingRows: fundraisingRows, withFundraising: withFundraising, filterSearch: filterSearch, filterFundraisers: filterFundraisers,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
     slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
     rowShown: rowShown, pinnedFirst: pinnedFirst, SX_REF: SX_REF,
@@ -955,6 +1045,38 @@
     return indexPromise;
   }
   var UNAVAILABLE = "Search is unavailable just now. Try again in a moment, or browse:";
+  var fundraisingPromise = null;
+  function loadFundraising() {
+    if (!fundraisingPromise) fundraisingPromise = fetchJSON("/data/fundraising.json").then(function (doc) {
+      var rows = fundraisingRows(doc);
+      if (rows) return { doc: doc, rows: rows };
+      fundraisingPromise = null;
+      delete jsonCache["/data/fundraising.json"];
+      return null;
+    });
+    return fundraisingPromise;
+  }
+  function searchDetail(r) {
+    var bits = [];
+    if (r.t === "school") bits.push(PHASE_NAMES[r.ph] || "Other phase");
+    if (r.sub) bits.push(r.sub);
+    if (r.fund) {
+      var f = r.fund;
+      bits.push("Parents’ association: " + (f.pp != null ? fmtExact(f.pp) + " per pupil" : f.income != null ? fmtExact(f.income) + " total" : "income unavailable")
+        + (f.year ? " (" + f.year + ")" : "") + (f.flags & 1 ? "; lower-confidence match" : "") + (f.flags & 2 ? "; equal share of shared association" : ""));
+    }
+    return bits.join(" · ");
+  }
+  function enrichedNear(pc, phase, limit, districtOnly) {
+    return Promise.all([schoolsNear(pc, 1000, districtOnly), loadIndex(), loadFundraising()]).then(function (values) {
+      var near = values[0], index = Object.create(null);
+      (values[1] || []).forEach(function (r) { if (r.t === "school") index[r.id] = r; });
+      near.rows = withFundraising(near.rows.map(function (r) { return Object.assign({}, index[r.id], r); }), values[2] && values[2].rows)
+        .filter(function (r) { return !phase || rowPhase(r) === phase; }).slice(0, limit);
+      near.fundraisingAvailable = !!values[2];
+      return near;
+    });
+  }
   var BROWSE = [{ t: "browse", name: "Councils and regions", p: "/areas/" }, { t: "browse", name: "Schools on the map", p: "/map/" },
                 { t: "browse", name: "Academy trusts", p: "/trust/" }];
   function didYouMean(row) { return "No exact matches. Did you mean " + row.name + "?"; }
@@ -1133,7 +1255,7 @@
         li.appendChild(el("span", "kind", r.t || ""));
         li.appendChild(el("span", "name", r.name || ""));
         if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
-        if (r.sub) li.appendChild(el("span", "sub", r.sub));
+        if (searchDetail(r)) li.appendChild(el("span", "sub", searchDetail(r)));
         li.addEventListener("mousedown", function (e) { e.preventDefault(); });
         // data-go="video/" (the Videos page) sends a school pick to that page under the school's path.
         li.addEventListener("click", function () { if (r.p) location.href = r.p + (go && (r.t || "school") === "school" ? go : ""); });
@@ -1149,20 +1271,23 @@
       lastQuery = q;
       urnHit = null;
       if (q.length < 2) { hide(); return; }
-      var pc = parsePostcode(q);
+      var intent = queryIntent(q), pc = intent.postcode;
       if (pc && /\d/.test(q)) {
-        schoolsNear(pc, 8, true).then(function (near) {
+        enrichedNear(pc, intent.phase, 8, true).then(function (near) {
           if (lastQuery !== q) return;
-          render(near.rows, "No schools found near " + (pc.full || pc.district));
+          render(near.rows.length ? near.rows : BROWSE, null, near.rows.length ? null : "No schools found near " + (pc.full || pc.district) + ". Check the postcode or browse by council.");
         });
         return;
       }
-      loadIndex().then(function (rows) {
+      Promise.all([loadIndex(), loadFundraising()]).then(function (data) {
         if (lastQuery !== q) return;
+        var rows = data[0];
         if (!rows) { render(BROWSE, null, UNAVAILABLE); return; }
         var m = searchMatches(rows, q, 8);
         urnHit = m.urn ? m.rows[0] : null;
-        render(m.rows, "No matches", m.fuzzy && m.rows.length ? didYouMean(m.rows[0]) : null);
+        var next = !m.rows.length ? searchNextSteps(rows, q) : null;
+        render(withFundraising(next ? next.rows : m.rows, data[1] && data[1].rows), null,
+          next ? next.message : m.fuzzy ? didYouMean(m.rows[0]) : null);
       });
     }
     input.addEventListener("focus", function () { loadIndex(); });
@@ -1182,78 +1307,217 @@
   attachSearch(document.getElementById("q"));
   attachSearch(document.getElementById("find"));
 
-  // ---------------------------------------------------------------- /search/?q=: results in the page
+  // ---------------------------------------------------------------- fundraising finder and search
+  function field(form, id, label, choices, value) {
+    var wrap = el("div", "find-field"), text = el("label", null, label), input;
+    text.setAttribute("for", id);
+    wrap.appendChild(text);
+    if (choices) {
+      input = el("select");
+      choices.forEach(function (pair) { var o = el("option", null, pair[1]); o.value = pair[0]; input.appendChild(o); });
+    } else { input = el("input"); input.type = "search"; }
+    input.id = id; input.name = id.replace(/^(search|fund)-/, ""); input.value = value || "";
+    wrap.appendChild(input); form.appendChild(wrap);
+    return input;
+  }
+  function phaseChoices() { return [["", "All phases"]].concat(PHASES.map(function (p, i) { return [p, PHASE_NAMES[i]]; })); }
+  function resultList(box, rows) {
+    var ul = el("ul", "results");
+    rows.forEach(function (r) {
+      var li = el("li"), a = el("a", null, r.name || "");
+      a.href = r.p || "#";
+      li.appendChild(el("span", "kind", r.t || "")); li.appendChild(a);
+      if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
+      if (searchDetail(r)) li.appendChild(el("span", "sub", searchDetail(r)));
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    return ul;
+  }
+  function retryButton(box, text, run) {
+    var button = el("button", "button", text); button.type = "button";
+    button.addEventListener("click", run); box.appendChild(button);
+  }
   (function searchPage() {
     if (!/^\/search\/?$/.test(location.pathname)) return;
-    var q = (new URLSearchParams(location.search).get("q") || "").trim();
+    var state = searchState(location.search), sequence = 0;
     var header = document.getElementById("q");
-    if (header && q) header.value = q;
-    if (q.length < 2) return;
-    var main = document.querySelector("main") || document.body;
-    var h1 = main.querySelector("h1");
-    var box = el("section", "search-results");
-    box.setAttribute("aria-live", "polite");
-    box.appendChild(el("p", "muted", "Searching…"));
-    if (h1 && h1.nextSibling) h1.parentNode.insertBefore(box, h1.nextSibling); else main.insertBefore(box, main.firstChild);
-    function show(rows, emptyNote, heading, jump) {
-      box.textContent = "";
-      box.appendChild(el("h2", null, rows.length ? (heading || "Results for “" + q + "”") : emptyNote));
-      if (!rows.length) {
-        box.appendChild(el("p", "muted", "Try part of the school's name, its town or council, its URN, or a postcode."));
-        return;
-      }
-      var ul = el("ul", "results");
-      rows.forEach(function (r) {
-        var li = el("li"), a = el("a", null, r.name || "");
-        a.href = r.p || "#";
-        li.appendChild(el("span", "kind", r.t || ""));
-        li.appendChild(a);
-        if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
-        if (r.sub) li.appendChild(el("span", "sub", r.sub));
-        ul.appendChild(li);
-      });
-      box.appendChild(ul);
-      if (jump && rows.length === 1 && rows[0].p) location.replace(rows[0].p);
+    if (header && state.q) header.value = state.q;
+    var main = document.querySelector("main") || document.body, h1 = main.querySelector("h1");
+    var panel = el("div", "search-panel"), form = el("form", "find-filters"), controls = {};
+    form.action = "/search/"; form.method = "get";
+    controls.q = field(form, "search-q", "School, place or postcode", null, state.q);
+    controls.phase = field(form, "search-phase", "Phase", phaseChoices(), state.phase);
+    controls.status = field(form, "search-status", "Money status", [["", "All money statuses"]].concat(Object.keys(LABELS).map(function (k) { return [k, LABELS[k]]; }), [["unknown", "No money status available"]]), state.status);
+    controls.pta = field(form, "search-pta", "Parents’ association", [["", "All schools"], ["1", "Has a registered parents’ association"]], state.pta);
+    controls.sort = field(form, "search-sort", "Sort by", [["relevance", "Relevance"], ["pp", "Parents’ association income per pupil"], ["total", "Parents’ association total income"]], state.sort || "relevance");
+    var submit = el("button", "button", "Search"); submit.type = "submit"; form.appendChild(submit);
+    panel.appendChild(form);
+    var box = el("section", "search-results"); box.setAttribute("aria-live", "polite"); panel.appendChild(box);
+    if (h1) h1.parentNode.insertBefore(panel, h1.nextSibling); else main.appendChild(panel);
+    function update() {
+      Object.keys(controls).forEach(function (k) { state[k] = controls[k].value.trim(); });
+      history.replaceState(null, "", "/search/?" + stateQuery(state));
+      find();
     }
-    var pc = parsePostcode(q);
-    if (pc && /\d/.test(q)) {
-      schoolsNear(pc, 30).then(function (near) {
-        show(near.rows, "No schools found near " + (pc.full || pc.district), "Schools nearest " + (pc.full || pc.district));
-        if (near.rows.length && !near.exact && pc.full) {
-          box.insertBefore(el("p", "muted small", "Sorted from the middle of " + pc.district + "; the exact postcode couldn't be looked up."), box.children[1] || null);
-        }
-      });
-      return;
-    }
+    form.addEventListener("submit", function (e) { e.preventDefault(); update(); });
+    Object.keys(controls).filter(function (k) { return k !== "q"; }).forEach(function (k) { controls[k].addEventListener("change", update); });
+    if (root.addEventListener) root.addEventListener("popstate", function () {
+      state = searchState(location.search);
+      Object.keys(controls).forEach(function (k) { controls[k].value = state[k] || (k === "sort" ? "relevance" : ""); });
+      find();
+    });
     function unavailable() {
-      box.textContent = "";
-      box.appendChild(el("h2", null, "Search is unavailable just now"));
-      box.appendChild(el("p", null, "The list of schools didn't load. Try again in a moment, or browse:"));
+      box.textContent = ""; box.appendChild(el("h2", null, "Search is unavailable just now"));
       var ul = el("ul", "browse");
-      BROWSE.forEach(function (b) { var li = el("li"), a = el("a", null, b.name); a.href = b.p; li.appendChild(a); ul.appendChild(li); });
-      box.appendChild(ul);
-      var again = el("button", "button", "Try again");
-      again.type = "button";
-      again.addEventListener("click", function () { box.textContent = ""; box.appendChild(el("p", "muted", "Searching…")); find(); });
-      box.appendChild(again);
+      BROWSE.forEach(function (r) { var li = el("li"), a = el("a", null, r.name); a.href = r.p; li.appendChild(a); ul.appendChild(li); });
+      box.appendChild(ul); retryButton(box, "Try again", find);
+    }
+    function show(rows, heading) {
+      box.textContent = ""; box.appendChild(el("h2", null, heading));
+      var count = el("p", "muted small"), shown = 50;
+      box.appendChild(count);
+      function paint() {
+        var old = box.querySelector("ul.results"); if (old) old.parentNode.removeChild(old);
+        var button = box.querySelector("button.more-results"); if (button) button.parentNode.removeChild(button);
+        count.textContent = "Showing " + Math.min(shown, rows.length) + " of " + rows.length + " results";
+        resultList(box, rows.slice(0, shown));
+        if (shown < rows.length) {
+          var more = el("button", "button more-results", "Show more results"); more.type = "button";
+          more.addEventListener("click", function () { shown += 50; paint(); }); box.appendChild(more);
+        }
+      }
+      paint();
     }
     function find() {
-      loadIndex().then(function (rows) {
-        if (!rows) { unavailable(); return; }
-        var m = searchMatches(rows, q, 50);
-        if (m.urn) { show(m.rows.slice(0, 1), "", null, true); return; }  // a URN goes straight to its school
-        if (!m.fuzzy) { show(m.rows, "No matches for “" + q + "”", null, true); return; }
-        // Close matches only: say so, offer the best as "Did you mean", and never jump to it.
-        show(m.rows, "", "Close matches for “" + q + "”");
-        var dym = el("p", "dym", "No exact matches. Did you mean "), a = el("a", null, m.rows[0].name);
-        a.href = m.rows[0].p || "#";
-        dym.appendChild(a);
-        dym.appendChild(document.createTextNode("?"));
-        box.insertBefore(dym, box.children[1] || null);
+      var turn = ++sequence, q = state.q, filters = state.phase || state.status || state.pta || state.sort === "pp" || state.sort === "total";
+      if (!q && !filters) { box.textContent = "Enter a school, place or postcode, or choose a filter."; return; }
+      box.textContent = "Searching…";
+      var intent = queryIntent(q), pc = intent.postcode;
+      if (pc) {
+        enrichedNear(pc, intent.phase, 1000, false).then(function (near) {
+          if (turn !== sequence) return;
+          var rows = filterSearch(near.rows, state);
+          show(rows, "Schools nearest " + (pc.full || pc.district));
+          if (!near.exact) box.appendChild(el("p", "muted small", "Distances are from the middle of " + pc.district + (pc.full ? "; the exact postcode couldn't be looked up." : ".")));
+          if (!rows.length) { box.appendChild(el("p", null, "Check the postcode or clear the filters and try again.")); resultList(box, BROWSE); }
+          fundWarning(near.fundraisingAvailable);
+        });
+        return;
+      }
+      Promise.all([loadIndex(), loadFundraising()]).then(function (values) {
+        if (turn !== sequence) return;
+        var index = values[0], fund = values[1];
+        if (!index) { unavailable(); return; }
+        var m = q ? searchMatches(index, q, index.length) : { rows: index.filter(function (r) { return r.t === "school"; }) };
+        if (m.urn && !filters) { location.replace(m.rows[0].p); return; }
+        var rows = filterSearch(withFundraising(m.rows, fund && fund.rows), state);
+        show(rows, m.fuzzy ? "Close matches for “" + q + "”" : q ? "Results for “" + q + "”" : "Schools");
+        if (!m.rows.length) {
+          var next = searchNextSteps(index, q); box.appendChild(el("p", null, next.message));
+          resultList(box, withFundraising(next.rows, fund && fund.rows));
+        } else if (!rows.length) {
+          box.appendChild(el("p", null, "No schools match these filters. Clear the filters to see the name or place matches."));
+          retryButton(box, "Clear filters", function () {
+            ["phase", "status", "pta"].forEach(function (k) { controls[k].value = ""; }); controls.sort.value = "relevance"; update();
+          });
+          resultList(box, BROWSE);
+        } else if (m.fuzzy) {
+          var dym = el("p", "dym", "No exact matches. Did you mean "), a = el("a", null, rows[0].name);
+          a.href = rows[0].p; dym.appendChild(a); dym.appendChild(document.createTextNode("?")); box.appendChild(dym);
+        }
+        fundWarning(!!fund);
       });
+    }
+    function fundWarning(available) {
+      if (available) return;
+      box.appendChild(el("p", "muted", "Fundraising figures could not be loaded. Association filters and income sorting may be incomplete."));
+      retryButton(box, "Retry fundraising figures", find);
     }
     find();
   })();
+
+  (function fundraisingFinder() {
+    var host = document.getElementById("fundraising-controls");
+    if (!host) return;
+    var params = new URLSearchParams(location.search), state = {}, controls = {}, sequence = 0;
+    ["region", "council", "phase", "band", "postcode", "sort"].forEach(function (k) { state[k] = params.get(k) || ""; });
+    function initialise() {
+      host.textContent = "Loading fundraising filters…";
+      Promise.all([loadIndex(), loadFundraising()]).then(function (values) {
+        var index = values[0], fund = values[1];
+        host.textContent = "";
+        if (!index || !fund) {
+          host.appendChild(el("p", null, "The finder could not load. You can still browse the top lists below."));
+          retryButton(host, "Try again", initialise); return;
+        }
+        var rows = withFundraising(index.filter(function (r) { return r.t === "school"; }), fund.rows), councils = fund.doc.councils;
+        var form = el("form", "find-filters"); form.action = "/ptfa/"; form.method = "get";
+        var regions = Array.from(new Set(Object.keys(councils).map(function (c) { return councils[c][1]; }).filter(Boolean))).sort();
+        controls.region = field(form, "fund-region", "Region", [["", "All regions"]].concat(regions.map(function (r) { return [r, r]; })), state.region);
+        controls.council = field(form, "fund-council", "Council", [["", "All councils"]], state.council);
+        function councilOptions(selected) {
+          if (typeof selected !== "string") selected = controls.council.value;
+          controls.council.textContent = "";
+          var choices = [["", "All councils"]].concat(Object.keys(councils).filter(function (c) { return !controls.region.value || councils[c][1] === controls.region.value; })
+            .sort(function (a, b) { return councils[a][0].localeCompare(councils[b][0]); }).map(function (c) { return [c, councils[c][0]]; }));
+          choices.forEach(function (pair) { var option = el("option", null, pair[1]); option.value = pair[0]; controls.council.appendChild(option); });
+          controls.council.value = choices.some(function (c) { return c[0] === selected; }) ? selected : "";
+        }
+        councilOptions(state.council);
+        controls.region.addEventListener("change", councilOptions);
+        controls.phase = field(form, "fund-phase", "Phase", phaseChoices(), state.phase);
+        controls.band = field(form, "fund-band", "Intake band", [["", "All intakes"], ["1", "1 – more affluent"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5 – less affluent"]], state.band);
+        controls.postcode = field(form, "fund-postcode", "Near a postcode", null, state.postcode);
+        controls.postcode.setAttribute("aria-describedby", "fund-distance-note");
+        controls.sort = field(form, "fund-sort", "Sort by", [["total", "Total income"], ["pp", "Income per pupil"]], state.sort || "total");
+        var submit = el("button", "button", "Find fundraisers"); submit.type = "submit"; form.appendChild(submit); host.appendChild(form);
+        var note = el("p", "small muted", "Near a postcode means within 10 miles of its district centre. Intake bands use free school meals and neighbourhood deprivation: 1 is more affluent, 5 less affluent.");
+        note.id = "fund-distance-note"; host.appendChild(note);
+        var box = el("div", "fund-results"); box.setAttribute("aria-live", "polite"); host.appendChild(box);
+        form.addEventListener("submit", function (e) {
+          e.preventDefault(); Object.keys(controls).forEach(function (k) { state[k] = controls[k].value.trim(); });
+          history.replaceState(null, "", "/ptfa/?" + stateQuery(state) + "#fundraising-finder"); run();
+        });
+        function run() {
+          var turn = ++sequence, pc = state.postcode ? parsePostcode(state.postcode) : null;
+          box.textContent = "Finding fundraisers…";
+          if (state.postcode && !pc) { box.textContent = "Enter a postcode or district, for example E8 1AA or E8."; return; }
+          (pc ? postcodeLookup(pc.district) : Promise.resolve(null)).then(function (district) {
+            if (turn !== sequence) return;
+            if (pc && (!district || !isNum(district.lat) || !isNum(district.lon))) {
+              box.textContent = "That postcode district could not be loaded. Check it, try again, or leave the postcode blank."; return;
+            }
+            var matches = filterFundraisers(rows, state, district, councils), shown = matches.slice(0, 25);
+            box.textContent = "";
+            box.appendChild(el("p", null, "Showing " + shown.length + " of " + matches.length + " schools with a registered parents’ association."));
+            var local = councils[state.council], year = fund.doc.year || "year unavailable";
+            box.appendChild(el("p", "fund-medians", "England median: " + (fund.doc.england != null ? fmtExact(fund.doc.england) + " per pupil" : "unavailable")
+              + (local ? ". " + local[0] + " median: " + (local[2] != null ? fmtExact(local[2]) + " per pupil" : "unavailable (too few comparable returns)") : "") + " (" + year + ")."));
+            box.appendChild(el("p", "small muted", "Medians use the published, well-covered year and do not change with these filters. Results use each association’s latest available return; years may differ. Per-pupil figures need a reliable pupil count for that year. Figures start a conversation, not a verdict."));
+            if (!shown.length) { box.appendChild(el("p", null, "Try a wider area, a different phase, or clear the intake or postcode filter. The top lists below are still available.")); return; }
+            var list = resultList(box, shown);
+            list.querySelectorAll("li").forEach(function (li, i) {
+              var r = shown[i], f = r.fund, details = el("span", "sub", "Latest income: " + fmtExact(f.income) + " total · " + (f.pp == null ? "per pupil unavailable" : fmtExact(f.pp) + " per pupil") + (f.year ? " · " + f.year : ""));
+              if (district) details.appendChild(document.createTextNode(" · " + milesBetween(district, f).toFixed(1) + " miles from " + pc.district + " centre"));
+              li.appendChild(details);
+              f.charities.forEach(function (number) {
+                var a = el("a", "charity-link", "Charity " + number);
+                a.href = charityLink(number); li.appendChild(a);
+              });
+              var compare = el("a", "charity-link", "Compare school"); compare.href = "/compare/?urns=" + encodeURIComponent(r.id); li.appendChild(compare);
+            });
+          });
+        }
+        if (Object.keys(state).some(function (k) { return !!state[k]; })) run();
+      });
+    }
+    initialise();
+  })();
+
+  function charityLink(number) {
+    return "https://register-of-charities.charitycommission.gov.uk/charity-search?p_p_id=uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet&p_p_lifecycle=0&p_p_state=maximized&p_p_mode=view&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_regId=" + encodeURIComponent(number) + "&_uk_gov_ccew_onereg_charitydetails_web_portlet_CharityDetailsPortlet_subId=0";
+  }
 
   // ---------------------------------------------------------------- preview cards ([data-preview])
   (function previews() {

@@ -1492,13 +1492,41 @@ def _pta_national(view, by_year=None) -> str:
     return html
 
 
+def nearby_fundraising(item, view) -> str:
+    rows = []
+    for other in (view.ctx.get("nearby_fundraising") or [])[:8]:
+        income, pp = other.get("income"), other.get("pp")
+        figures = f'£{income:,.0f}' if income is not None else "Income not available"
+        if pp is not None:
+            figures += f' · £{pp:,.0f} per pupil'
+        elif income is not None:
+            figures += " · per pupil unavailable"
+        if other.get("year"):
+            figures += f' ({other["year"]})'
+        if other.get("flags", 0) & 1:
+            figures += " · lower-confidence match"
+        if other.get("flags", 0) & 2:
+            figures += " · shared association, equal share"
+        distance = f'{other["mi"]:.1f} miles' if other["mi"] >= 0.1 else "under 0.1 miles"
+        rows.append(f'<li><a href="{esc(other["p"])}#ptfa">{esc(other["name"])}</a> '
+                    f'· {distance} · {esc(figures)}</li>')
+    code = str((item.get("council") or {}).get("code") or "")
+    url = f'/ptfa/?council={code}#fundraising-finder' if code.isdigit() else '/ptfa/#fundraising-finder'
+    html = '<h3>What parents raise at schools nearby</h3>'
+    if rows:
+        html += '<p class="small muted">Nearest schools of the same phase within 30 miles. Latest returns; years may differ.</p><ul class="nearby-fundraising">' + "".join(rows) + '</ul>'
+    else:
+        html += '<p>No nearby registered associations found in this phase, or a school location is unavailable.</p>'
+    return html + f'<p><a href="{esc(url)}">Find fundraisers in this council</a></p>'
+
+
 def pta_section(item, view) -> str:
     charities = [c for c in item.get("pta") or [] if not c.get("review")]
     if not charities:
         html = (f'<p><strong>No registered parents\' association found</strong> for {esc(item["name"])}. Charities with an income of '
                 f'{threshold_figure()} or less a year don\'t have to register with the Charity Commission, so many schools have an '
                 'active PTA or friends\' group that isn\'t on the register.</p>')
-        return _section("ptfa", "Money raised by parents", html + _pta_national(view))
+        return _section("ptfa", "Money raised by parents", html + _pta_national(view) + nearby_fundraising(item, view))
     # A year whose pupils don't match the money has no per-pupil figure to chart or compare, even from an older series.
     by_year = {y: dict(e, income_pp=None, spend_pp=None) if y in view.odd_pupils | view.federation_years else e
                for y, e in (view.s.get("pta") or _pta_by_year(view, charities)).items()}
@@ -1548,7 +1576,7 @@ def pta_section(item, view) -> str:
     watch = _watch(item, "ptfa")
     if watch:
         html += f'<p class="sp-watch">{watch.strip()} — a short video of these figures for your committee or newsletter.</p>'
-    return _section("ptfa", "Money raised by parents", html)
+    return _section("ptfa", "Money raised by parents", html + nearby_fundraising(item, view))
 
 
 # ----------------------------------------------------------------- profile, split, context, questions

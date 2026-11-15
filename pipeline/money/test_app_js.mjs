@@ -381,13 +381,13 @@ function boot({ storage = {}, data = {}, setup = () => {}, path = "/", globals =
   // flushTimers(); fixtures can be changed after boot (a failed request, then a good one).
   const document = new Doc();
   const memory = new Map(Object.entries(storage).map(([k, v]) => [k, JSON.stringify(v)]));
-  const calls = [], timers = [], replaced = [];
+  const calls = [], timers = [], replaced = [], urls = [];
   const fixtures = { "/assets/glossary.json": glossary, ...data };
   const url = new URL(path, "https://money.schoolsinreach.com/");
   const location = { href: url.href, search: url.search, pathname: url.pathname, replace: (u) => replaced.push(u) };
   const ctx = vm.createContext({
     document, console, URL, URLSearchParams, location, Node, ...globals,
-    history: { replaceState() {} },
+    history: { replaceState(_state, _title, path) { urls.push(path); const next = new URL(path, url); location.search = next.search; } },
     localStorage: { getItem: (k) => memory.get(k) ?? null, setItem: (k, v) => memory.set(k, String(v)) },
     setTimeout: (fn) => timers.push(fn), clearTimeout() {},
     fetch(u) {
@@ -401,7 +401,7 @@ function boot({ storage = {}, data = {}, setup = () => {}, path = "/", globals =
   ctx.innerHeight = 800;
   setup(document);
   vm.runInContext(appSource, ctx, { filename: "pipeline/money/assets/app.js" });
-  return { document, calls, memory, fixtures, location, replaced, flushTimers() { timers.splice(0).forEach((fn) => fn()); } };
+  return { document, calls, memory, fixtures, location, replaced, urls, flushTimers() { timers.splice(0).forEach((fn) => fn()); } };
 }
 
 test("a /data/sx/ drill fetches the SERIES file and shows its trend, breakdown and source", async () => {
@@ -876,7 +876,7 @@ test("Enter on a full URN goes straight to that school", async () => {
   assert.equal(h.location.href, "/");
 });
 
-test("typing a full postcode reads only the district file; nothing goes to postcodes.io", async () => {
+test("typing a full postcode reads local district and display data; nothing goes to postcodes.io", async () => {
   // Arrange
   const n16 = { district: "N16", lat: 51.56, lon: -0.075, schools: [{ id: "100003", name: "William Patten Primary School", lat: 51.5618, lon: -0.075, p: "/school/100003-x/" }] };
   const h = boot({ data: { "/data/postcodes/N16.json": n16 }, setup: searchBox, globals: {} });
@@ -884,7 +884,7 @@ test("typing a full postcode reads only the district file; nothing goes to postc
   typeInto(h, "N16 0NX");
   await settle();
   // Assert
-  assert.deepEqual(h.calls.filter((u) => !u.startsWith("/assets/")), ["/data/postcodes/N16.json"]);
+  assert.deepEqual(h.calls.filter((u) => !u.startsWith("/assets/")), ["/data/postcodes/N16.json", "/data/search.json", "/data/fundraising.json"]);
   assert.deepEqual(options(h.document), ["William Patten Primary School"]);
 });
 
@@ -1130,4 +1130,236 @@ test("the compare area table names the DSG measure in full with its year and den
   assert.match(out, /Dedicated Schools Grant balance \(all four blocks\)/);
   assert.match(out, /-£16\.2m \(2025-26, provisional; -£513 per pupil at the council's schools on this site\)/);
   assert.doesNotMatch(out, /high-needs|schools budget/i);
+});
+
+// Fundraising finder and search: realistic joined fixtures, exercising the rendered controls as well as ranking.
+const FIND_INDEX = [
+  { t: "council", id: "204", name: "Hackney", p: "/council/hackney/" },
+  { t: "council", id: "210", name: "Southwark", p: "/council/southwark/" },
+  { t: "school", id: "1", name: "Northwold School", sub: "Hackney", ph: 1, status: "healthy", p: "/school/1-northwold/" },
+  { t: "school", id: "2", name: "Mossbourne Academy", sub: "Hackney", ph: 2, status: "in_deficit", p: "/school/2-mossbourne/" },
+  { t: "school", id: "3", name: "Harris Academy", sub: "Peckham, Southwark", ph: 2, status: "healthy", p: "/school/3-harris/" },
+  { t: "school", id: "4", name: "St Mary's Primary", sub: "Islington", ph: 1, status: null, p: "/school/4-st-marys/" },
+  { t: "school", id: "5", name: "Park School", sub: "Hackney", ph: 1, status: "healthy", p: "/school/5-park/" },
+];
+const FUND_DATA = {
+  v: 1, columns: ["id", "c", "b", "lat", "lon", "income", "pp", "year", "charities", "flags"],
+  councils: { "204": ["Hackney", "London", 76], "210": ["Southwark", "London", null], "999": ["Far away", "North East", 10] },
+  year: "2024-25", england: 31,
+  rows: [
+    ["2", "204", 3, 51.55, -0.06, 20000, 20, "2024-25", ["111111"], 0],
+    ["3", "210", 1, 51.49, -0.07, 50000, null, "2025-26", ["222222"], 3],
+    ["4", "999", 5, 54, -1, 0, 0, "2024-25", ["333333"], 0],
+    ["5", "204", 2, 51.56, -0.06, 10000, 50, "2024-25", ["444444"], 0],
+  ],
+};
+const findData = { "/data/search.json": FIND_INDEX, "/data/fundraising.json": FUND_DATA };
+const searchSetup = (doc) => add(add(doc.body, "main"), "h1", {}, "Search");
+const finderSetup = (doc) => add(doc.body, "div", { id: "fundraising-controls" });
+const change = (node, value) => { node.value = value; node.dispatchEvent({ type: "change" }); };
+
+test("phase plus area includes the council and every matching phase; names with places still work", () => {
+  // Arrange
+  const queries = ["primary schools in hackney", "hackney secondary"];
+  // Act
+  const hits = queries.map((q) => M.searchMatches(FIND_INDEX, q, 50).rows);
+  // Assert
+  assert.deepEqual(hits[0].map((r) => r.id), ["204", "5", "1"]);
+  assert.deepEqual(hits[1].map((r) => r.id), ["204", "2"]);
+  assert.equal(M.searchMatches(FIND_INDEX, "harris peckham").rows[0].id, "3");
+  assert.equal(M.searchMatches(FIND_INDEX, "mossbourne hackney").rows[0].id, "2");
+  assert.deepEqual(M.queryIntent("secondary schools near E8").postcode, { district: "E8", inward: null, full: null });
+});
+
+test("fundraising keywords offer the finder first, including Friends of", () => {
+  // Arrange
+  const queries = ["pta", "ptfa", "pfa", "fundraising", "parents association", "parents’ association", "friends of"];
+  // Act / Assert
+  for (const q of queries) assert.equal(M.searchMatches(FIND_INDEX, q).rows[0].p, "/ptfa/#fundraising-finder", q);
+});
+
+test("dead ends identify a known area and offer names elsewhere, or a postcode hint and council browse", () => {
+  // Arrange / Act
+  const local = M.searchNextSteps(FIND_INDEX, "st marys hackney");
+  const unknown = M.searchNextSteps(FIND_INDEX, "zzzzzzzzz");
+  // Assert
+  assert.match(local.message, /Nothing called 'st marys' in Hackney/);
+  assert.equal(local.rows[0].p, "/council/hackney/");
+  assert.equal(local.rows[1].id, "4");
+  assert.match(unknown.message, /postcode/);
+  assert.equal(unknown.rows.at(-1).p, "/council/");
+});
+
+test("dropdown shows phase and PTA figures, total when suppressed, and helpful dead ends", async () => {
+  // Arrange
+  const h = boot({ data: findData, setup: searchBox });
+  assert.ok(!h.calls.includes("/data/fundraising.json"), "lazy until search");
+  // Act
+  typeInto(h, "harris peckham"); await settle();
+  // Assert
+  assert.match(h.document.querySelector("#q-list").textContent, /Secondary.*£50,000 total.*2025-26/);
+  assert.doesNotMatch(h.document.querySelector("#q-list").textContent, /£0 per pupil/);
+  // Act
+  typeInto(h, "st marys hackney"); await settle();
+  // Assert
+  assert.match(h.document.querySelector("#q-list").textContent, /Nothing called 'st marys' in Hackney/);
+  assert.ok(options(h.document).includes("St Mary's Primary"));
+  assert.ok(options(h.document).includes("Browse by council"));
+});
+
+test("phase near postcode filters before limiting, shows phase and fundraising, and stays on-site while typing", async () => {
+  // Arrange
+  const district = { lat: 51.55, lon: -0.06, schools: FIND_INDEX.filter((r) => r.t === "school").map((r) => ({ ...r, lat: 51.55, lon: -0.06 })) };
+  const h = boot({ data: { ...findData, "/data/postcodes/E8.json": district }, setup: searchBox });
+  // Act
+  typeInto(h, "secondary schools near E8"); await settle();
+  // Assert
+  assert.deepEqual(options(h.document), ["Mossbourne Academy", "Harris Academy"]);
+  assert.match(h.document.querySelector("#q-list").textContent, /£20 per pupil/);
+  assert.ok(h.calls.every((u) => u.startsWith("/")));
+});
+
+test("search filters honour all URL fields and apply before limiting, null incomes sort last", () => {
+  // Arrange
+  const rows = M.withFundraising(FIND_INDEX, M.fundraisingRows(FUND_DATA));
+  const state = M.searchState("?q=hackney&phase=primary&status=healthy&pta=1&sort=pp");
+  // Act
+  const hits = M.filterSearch(rows, state);
+  // Assert
+  assert.deepEqual(hits.map((r) => r.id), ["5"]);
+  assert.equal(M.stateQuery(state), "q=hackney&phase=primary&status=healthy&pta=1&sort=pp");
+  assert.deepEqual(M.filterSearch(rows, { sort: "pp" }).map((r) => r.id), ["5", "2", "4", "1", "3"]);
+  assert.deepEqual(M.filterSearch(rows, { status: "unknown" }).map((r) => r.id), ["4"]);
+});
+
+test("search page restores shareable filters, updates the URL, shows results without redirecting a unique name", async () => {
+  // Arrange
+  const h = boot({ path: "/search/?q=hackney&phase=primary&status=healthy&pta=1&sort=pp", data: findData, setup: searchSetup });
+  await settle();
+  // Assert
+  assert.equal(h.document.querySelector("#search-phase").value, "primary");
+  assert.equal(h.document.querySelector("#search-pta").value, "1");
+  assert.deepEqual(h.document.querySelectorAll(".results a").map((a) => a.textContent), ["Park School"]);
+  assert.deepEqual(h.replaced, []);
+  // Act
+  change(h.document.querySelector("#search-phase"), "secondary"); await settle();
+  // Assert
+  assert.match(h.urls.at(-1), /phase=secondary/);
+  assert.match(h.document.querySelector(".search-results").textContent, /Clear the filters/);
+});
+
+test("search results paginate after filtering, so a school beyond the old first 50 can be found", async () => {
+  // Arrange
+  const rows = Array.from({ length: 80 }, (_, i) => ({ t: "school", id: String(1000 + i), name: `Example School ${i}`, sub: "Hackney", ph: i === 79 ? 2 : 1, p: `/school/${1000 + i}/` }));
+  const h = boot({ path: "/search/?q=example&phase=secondary", data: { ...findData, "/data/search.json": rows }, setup: searchSetup });
+  // Act
+  await settle();
+  // Assert
+  assert.match(h.document.querySelector(".search-results").textContent, /Example School 79/);
+  // Act
+  change(h.document.querySelector("#search-phase"), ""); await settle();
+  h.document.querySelector(".more-results").click();
+  // Assert
+  assert.equal(h.document.querySelectorAll(".results a").length, 80);
+});
+
+test("fundraiser filters combine region, council, phase, band and radius; sort treats missing pp as unknown", () => {
+  // Arrange
+  const rows = M.withFundraising(FIND_INDEX, M.fundraisingRows(FUND_DATA));
+  // Act
+  const selected = M.filterFundraisers(rows, { region: "London", council: "204", phase: "primary", band: "2", sort: "pp" }, { lat: 51.55, lon: -0.06 }, FUND_DATA.councils);
+  const total = M.filterFundraisers(rows, { sort: "total" }, null, FUND_DATA.councils);
+  const pp = M.filterFundraisers(rows, { sort: "pp" }, null, FUND_DATA.councils);
+  // Assert
+  assert.deepEqual(selected.map((r) => r.id), ["5"]);
+  assert.deepEqual(total.map((r) => r.id), ["3", "2", "5", "4"]);
+  assert.deepEqual(pp.map((r) => r.id), ["5", "2", "4", "3"]);
+  assert.deepEqual(M.filterFundraisers(rows, {}, { lat: 51.55, lon: -0.06 }, FUND_DATA.councils).map((r) => r.id), ["3", "2", "5"]);
+});
+
+test("finder defaults to static lists; submitted controls show medians, school, charity and compare links", async () => {
+  // Arrange
+  const h = boot({ path: "/ptfa/", data: findData, setup: finderSetup });
+  await settle();
+  assert.equal(h.document.querySelector(".fund-results").textContent, "");
+  // Act
+  h.document.querySelector("#fund-council").value = "204";
+  h.document.querySelector("#fund-sort").value = "pp";
+  h.document.querySelector("form").dispatchEvent({ type: "submit" }); await settle();
+  // Assert
+  const box = h.document.querySelector(".fund-results");
+  assert.match(box.textContent, /England median: £31 per pupil. Hackney median: £76 per pupil \(2024-25\)/);
+  assert.equal(box.querySelector(".results a").href, "/school/5-park/");
+  assert.ok(box.querySelectorAll("a").some((a) => a.href.includes("regId=444444")));
+  assert.ok(box.querySelectorAll("a").some((a) => a.href === "/compare/?urns=5"));
+  assert.match(h.urls.at(-1), /council=204.*sort=pp/);
+});
+
+test("finder restores a council link, caps at 25 and reports unavailable medians", async () => {
+  // Arrange
+  const index = Array.from({ length: 30 }, (_, i) => ({ ...FIND_INDEX[4], id: String(100 + i), name: `Academy ${i}` }));
+  const data = { ...FUND_DATA, rows: index.map((r, i) => [r.id, "210", 1, 51.49, -0.07, 10000 + i, null, "2025-26", ["222222"], 0]) };
+  const h = boot({ path: "/ptfa/?council=210", data: { "/data/search.json": index, "/data/fundraising.json": data }, setup: finderSetup });
+  // Act
+  await settle();
+  // Assert
+  assert.equal(h.document.querySelector("#fund-council").value, "210");
+  assert.match(h.document.querySelector(".fund-results").textContent, /Showing 25 of 30/);
+  assert.equal(h.document.querySelectorAll(".results li").length, 25);
+  assert.match(h.document.querySelector(".fund-medians").textContent, /Southwark median: unavailable/);
+});
+
+test("finder uses the postcode district centre, validates input and recovers from load failure", async () => {
+  // Arrange
+  const h = boot({ path: "/ptfa/?postcode=E8+1AA", data: findData, setup: finderSetup });
+  await settle();
+  assert.match(h.document.querySelector(".fund-results").textContent, /district could not be loaded/);
+  h.fixtures["/data/postcodes/E8.json"] = { lat: 51.55, lon: -0.06 };
+  // Act
+  h.document.querySelector("form").dispatchEvent({ type: "submit" }); await settle();
+  // Assert
+  assert.match(h.document.querySelector(".fund-results").textContent, /Showing 3 of 3/);
+  assert.ok(h.calls.every((u) => !u.includes("postcodes.io")));
+  // Act
+  h.document.querySelector("#fund-postcode").value = "not a postcode";
+  h.document.querySelector("form").dispatchEvent({ type: "submit" }); await settle();
+  // Assert
+  assert.match(h.document.querySelector(".fund-results").textContent, /Enter a postcode or district/);
+});
+
+test("fundraising data failures leave search usable and can be retried", async () => {
+  // Arrange
+  const h = boot({ path: "/search/?q=mossbourne", data: { "/data/search.json": FIND_INDEX }, setup: searchSetup });
+  await settle();
+  assert.match(h.document.querySelector(".search-results").textContent, /Mossbourne Academy/);
+  h.fixtures["/data/fundraising.json"] = FUND_DATA;
+  // Act
+  h.document.querySelector(".search-results button").click(); await settle();
+  // Assert
+  assert.match(h.document.querySelector(".search-results").textContent, /£20 per pupil/);
+  assert.doesNotMatch(h.document.querySelector(".search-results").textContent, /could not be loaded/);
+});
+
+test("malformed fundraising data is rejected and the finder retries without hiding the static fallback", async () => {
+  // Arrange
+  const h = boot({ path: "/ptfa/", data: { ...findData, "/data/fundraising.json": { ...FUND_DATA, rows: [null] } }, setup: finderSetup });
+  await settle();
+  assert.match(h.document.querySelector("#fundraising-controls").textContent, /still browse the top lists/);
+  h.fixtures["/data/fundraising.json"] = FUND_DATA;
+  // Act
+  h.document.querySelector("button").click(); await settle();
+  // Assert
+  assert.ok(h.document.querySelector("#fund-council"));
+  assert.equal(h.calls.filter((u) => u === "/data/fundraising.json").length, 2);
+});
+
+test("clearing a preselected council survives a region change", async () => {
+  // Arrange
+  const h = boot({ path: "/ptfa/?council=204", data: findData, setup: finderSetup });
+  await settle();
+  // Act
+  h.document.querySelector("#fund-council").value = "";
+  change(h.document.querySelector("#fund-region"), "London");
+  // Assert
+  assert.equal(h.document.querySelector("#fund-council").value, "");
 });
