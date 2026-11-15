@@ -1,21 +1,21 @@
 # PTA matching report
 
-Generated 2026-11-07 by `pipeline/money/pta.py` (seed 1, 51s).
+Generated 2026-11-15 by `pipeline/money/pta.py` (seed 1, 71s).
 
-- Candidate charities (main, parents' association by name): 14,126
-- Wider-name candidates (Friends of X, P.T.A., Parent/Teacher, Families & Staff, Supporters of; rules f and d only): 6,638, of which 899 matched to 888 schools; 105 of the candidates are the activity-backed broad tier (a school fund or society)
-- Schools matched: 10,290
-- Charities matched: 10,954 (308 shared infant/junior attributions)
-- By method: address-town 4, council-unique 2,098, domain 270, objects 18, postcode 6,178, postcode-exact 1,647, predecessor 302, sector 370, website 67
-- Pass-2 rules agreeing (a charity can count under several): address-town 385, council-unique 2,347, domain 940, objects 445, postcode-exact 1,647, predecessor 382
+- Candidate charities (main, parents' association by name): 14,123
+- Wider-name candidates (Friends of X, P.T.A., Parent/Teacher, Families & Staff, Supporters of; rules f and d only): 6,629, of which 897 matched to 886 schools; 104 of the candidates are the activity-backed broad tier (a school fund or society)
+- Schools matched: 10,676
+- Charities matched: 11,423 (308 shared infant/junior attributions)
+- By method: address-town 4, council-unique 2,098, domain 270, llm 418, objects 18, postcode 6,178, postcode-exact 1,644, predecessor 302, sector 370, website 67, website-crawl 54
+- Pass-2 rules agreeing (a charity can count under several): address-town 385, council-unique 2,347, domain 939, objects 445, postcode-exact 1,644, predecessor 382
 - Pass-1 ambiguity rejections: 680
 - Ambiguous charities exported for adjudication: 1,447 (flagged_single_fit 442, partial_name 352, several_fit 433, single_fit_blocked 220)
-- Merged from the adjudicator (llm): 0; from the website crawl: 0
-- Adjudicator answers in pta_llm.json: 1,448, 640 accepted, 14 'shared:'; gate: no spot check recorded (pta_adjudicate.py sample, then spot-check)
-- Website crawl hits confirming an existing match (evidence gains 'website'): 0
-- Annual return Part A attached: 6,366 of 10,954 matched charities
-- history_status of matched charities: current 8,225, recent 443, historical 2,286
-- Schools by their most recent PTA: current 8,143, recent 396, historical 1,751 (current = income for a year ending 2024 or later, recent = since 2019)
+- Merged from the adjudicator (llm): 418; from the website crawl: 54
+- Adjudicator answers in pta_llm.json: 420, 420 accepted, 0 'shared:'; gate: open (spot check passed)
+- Website crawl hits confirming an existing match (evidence gains 'website'): 1
+- Annual return Part A attached: 6,580 of 11,423 matched charities
+- history_status of matched charities: current 8,378, recent 485, historical 2,560
+- Schools by their most recent PTA: current 8,295, recent 433, historical 1,948 (current = income for a year ending 2024 or later, recent = since 2019)
 
 ## 25 random `postcode` matches for review
 
@@ -111,31 +111,31 @@ Generated 2026-11-07 by `pipeline/money/pta.py` (seed 1, 51s).
 
 | school | charity | evidence |
 |---|---|---|
-| Seagrave Village Primary School | SEAGRAVE PTA (1175453) | postcode-exact LE127LU |
-| Spalding Grammar School | PARENTS AND FRIENDS ASSOCIATION OF SPALDING GRAMMAR SCHOOL (1192524) | postcode-exact PE112XH; domain spaldinggrammar.lincs.sch.uk (website) |
-| Swinderby All Saints Church of England Primary School | FRIENDS OF SWINDERBY SCHOOL (1092318) | postcode-exact LN69LU |
-| The Snaith School | The Snaith School Association (1064026) | postcode-exact DN149LB; domain thesnaithschool.org.uk (email) |
+| Harrogate, Bilton Grange Primary School | BILTON GRANGE PRIMARY SCHOOL PARENT TEACHER ASSOCIATION (1179913) | postcode-exact HG13BA |
+| Leigh Academy Bearsted | BEARSTED PRIMARY ACADEMY PTA (1193818) | postcode-exact ME145GA; domain bearstedprimaryacademy.org.uk (website) |
+| Emscote Infant School | THE EMSCOTE AND ALL SAINTS PARENT TEACHER ASSOCIATION (1105107) | postcode-exact CV345NH |
+| Stoke Hill Infant and Nursery School | FRIENDS OF STOKE HILL FIRST SCHOOL (1063836) | postcode-exact EX47DB; council-unique in Devon; address-town 'Exeter' unique in Devon |
+| Cove Junior School | COVE JUNIOR SCHOOL ASSOCIATION (1145697) | postcode-exact GU149SA; domain covejunior.co.uk (website); council-unique in Hampshire; address-town 'Farnborough' unique in Hampshire |
+| Courthouse Junior School | ALWYN AND COURTHOUSE SCHOOLS PARENT TEACHER ASSOCIATION (1014634) | postcode-exact SL65HE |
+| St Mary's CofE Primary School | THE FRIENDS OF ST. MARY'S SCHOOL PTA (1049292) | postcode-exact HR14PG |
+| Irlam Endowed Primary School | IRLAM ENDOWED PRIMARY SCHOOL PARENT TEACHER ASSOCIATION (1104941) | postcode-exact M446EE |
+| Lincoln Monks Abbey Primary School | FRIENDS OF MONKS ABBEY PRIMARY SCHOOL (1218175) | postcode-exact LN25PF |
+| Kirkburton CofE (VA) First School | FRIENDS OF KIRKBURTON FIRST SCHOOL (1158991) | postcode-exact HD80SG; domain kirkburtonfirst.co.uk (email) |
+| St Andrew's Church of England Primary School, Chinnor | ST ANDREW'S SCHOOL ASSOCIATION (1184358) | postcode-exact OX394PU |
+| Vale School, Worthing | Friends of Vale School (1149337) | postcode-exact BN140DB |
+| Lighthouse School Leeds | LIGHTHOUSE SCHOOL PTA (1174101) | postcode-exact LS166QB |
+| Benhall St Mary's Church of England Primary School | BENHALL PARENT TEACHER'S ASSOCIATION (1051663) | postcode-exact IP171HE; domain benhallschool.co.uk (email) |
+| Paulton Junior School | THE PARENT-TEACHER ASSOCIATION OF PAULTON SCHOOL (310207) | postcode-exact BS397QY; domain paultonjuniorschool.co.uk (website); council-unique in Bath and North East Somerset; address-town 'Bristol' unique in Bath and North East Somerset |
+| Olney Infant Academy | FRIENDS OF OLNEY INFANT ACADEMY (1076232) | postcode-exact MK465AD; domain olneyinfantacademy.co.uk (website) |
 | St Mary's Church of England Primary School | FRIENDS OF ST. MARY'S C OF E (AIDED) PRIMARY SCHOOL (PULBOROUGH) (1147547) | postcode-exact RH202AN; domain st-marys-pulborough.w-sussex.sch.uk (website) |
-| Harford Manor School, Norwich | FRIENDS OF HARFORD MANOR SCHOOL (1013842) | postcode-exact NR22LN; domain harfordmanor.norfolk.sch.uk (website) |
-| Markyate Village School and Nursery | FRIENDS OF MARKYATE SCHOOL (1048983) | postcode-exact AL38PT; domain markyate.herts.sch.uk (email) |
-| Thorneyholme Roman Catholic Primary School, Dunsop Bridge | FRIENDS OF THORNEYHOLME SCHOOL (1105010) | postcode-exact BB73BG |
-| Gosforth Academy | GOSFORTH ACADEMY PARENTS, TEACHERS AND FRIENDS ASSOCIATION (1218059) | postcode-exact NE32JH; domain gosforthacademy.org.uk (website) |
-| Christ's Church of England Comprehensive Secondary School | CHRIST'S SCHOOL PTA (1158685) | postcode-exact TW106HW; domain christs.richmond.sch.uk (website) |
-| St Michael's Church of England Infant School Maidstone | ST MICHAEL'S MAIDSTONE PTFA (1183459) | postcode-exact ME168ER; address-town 'Maidstone' unique in Kent |
-| St John the Baptist Catholic Primary School, Andover | FRIENDS OF ST JOHN THE BAPTIST SCHOOL (1149558) | postcode-exact SP103PF; domain sjbschool.co.uk (website) |
-| Portman Early Childhood Centre | PORTMAN NURSERY PARENTS AND TEACHERS ASSOCIATION (1174205) | postcode-exact NW88DE; domain portmancentre.co.uk (website) |
-| Thornton Cleveleys Baines Endowed Voluntary Controlled Primary School | THE FRIENDS OF BAINES' ENDOWED SCHOOL (THORNTON) (1050798) | postcode-exact FY55HY |
-| Springfield School | SPRINGFIELD SCHOOL, WITNEY, PARENT TEACHERS ASSOCIATION (309567) | postcode-exact OX281AR; domain springfield.oxon.sch.uk (website); objects name 'springfield school' |
-| Rokesly Junior School | ROKESLY PSA (1177109) | postcode-exact N88NH; council-unique in Haringey; address-town 'London' unique in Haringey |
-| Olney Middle School | FRIENDS OF OLNEY MIDDLE SCHOOL (1146347) | postcode-exact MK465DZ; domain olneymiddle.milton-keynes.sch.uk (website) |
-| Chalkwell Hall Junior School | CHALKWELL HALL INFANT JUNIOR PTA (1094927) | postcode-exact SS93NL; council-unique in Essex, Southend-on-Sea; address-town 'Leigh-on-Sea' unique in Southend-on-Sea |
-| St John the Evangelist RC Primary School, Bromley Cross, Bolton | THE FRIENDS OF ST JOHN'S SCHOOL (510093) | postcode-exact BL79HT; domain st-johns-bromley-cross.bolton.sch.uk (email) |
-| Bournes Green Junior School | The Parents Association of Bournes Green Schools (1184619) | postcode-exact SS13PS; address-town 'Southend-on-Sea' unique in Southend-on-Sea |
-| The King's School, Grantham | KING'S SCHOOL PARENTS, TEACHERS AND FRIENDS ASSOCIATION (1011173) | postcode-exact NG316RP; domain kings.lincs.sch.uk (website) |
-| Birchwood Grove Community Primary School, Burgess Hill | BIRCHWOOD GROVE SCHOOL PTA (1098076) | postcode-exact RH150DP |
-| Barrow Hall Orchard Church of England Primary School | HALL ORCHARD CE PRIMARY SCHOOL PTFA (1206987) | postcode-exact LE128HP; domain hall-orchard.leics.sch.uk (email) |
-| St Bartholomew's Church of England Voluntary Aided Primary School, Wigginton | WIGGINTON SCHOOL ASSOCIATION (1059065) | postcode-exact HP236EP; domain stbarts.herts.sch.uk (website) |
-| Everton Heath Primary School | EVERTON LOWER SCHOOL PARENT TEACHER ASSOCIATION (1049857) | postcode-exact SG192LE |
+| Tudor Grange Primary Academy Perdiswell | PERDISWELL PRIMARY SCHOOL PARENT TEACHER ASSOCIATION (1095862) | postcode-exact WR38QA; predecessor 'Perdiswell Primary School' unique in council area |
+| Rowan Park School | Friends of the Rowan Schools (511943) | postcode-exact L210DB |
+| Twickenham Primary Academy | Friends of Twickenham Primary Academy (1186147) | postcode-exact TW26QF |
+| Hexham First School | HEXHAM EAST COUNTY FIRST SCHOOL PARENT TEACHER ASSOCIATION (1011598) | postcode-exact NE461JD; domain hexhamfirst.northumberland.sch.uk (website) |
+| Morecambe Bay Academy | MORECAMBE HIGH SCHOOL PARENT TEACHER ASSOCIATION (1098407) | postcode-exact LA45BG; predecessor 'Morecambe Community High School' unique in council area |
+| St Philip's CofE Primary School, Atherton | ST PHILIPS CE PTA (1208132) | postcode-exact M469FD |
+| Tanners Wood Junior Mixed and Infant School | TANNERS WOOD SCHOOL ASSOCIATION (1059109) | postcode-exact WD50LG |
+| Kilby St Mary's Church of England Primary School | FRIENDS OF KILBY SCHOOL (1049906) | postcode-exact LE183TD; domain kilby.leics.sch.uk (website) |
 
 ## 25 random `domain` matches for review
 
@@ -259,65 +259,125 @@ Generated 2026-11-07 by `pipeline/money/pta.py` (seed 1, 51s).
 | Greenwood Primary and Nursery School | FRIENDS OF GREENWOOD INFANT AND NURSERY SCHOOL (F.O.G.I.N.S.) (1081801) | address-town 'Nottingham' unique in Nottinghamshire |
 | Mickleover Primary School | FRIENDS OF MICKLEOVER PRIMARY SCHOOL ASSOCIATION (1066771) | address-town 'Derby' unique in Derby |
 
+## 25 random `llm` matches for review
+
+| school | charity | evidence |
+|---|---|---|
+| The Clarendon Academy | THE FRIENDS OF CLARENDON SCHOOL (1067275) | Charity name and objects explicitly reference Clarendon School in Trowbridge, matching the location and name of The Clarendon Academy (formerly The Clarendon College) in Trowbridge. |
+| Christ Church (Erith) CofE Primary School | CHRIST CHURCH C OF E PRIMARY SCHOOL PARENTS ASSOCIATION, KENT (1011294) | The charity name matches the candidate school's name and location (Erith, Bexley) and phase (Primary). |
+| St Wilfrid's Catholic Primary School | ST WILFRID'S SCHOOL PARENT TEACHER ASSOCIATION (519571) | Charity name matches the candidate school's name and location (Sheffield) fits the council area of operation. |
+| The Priory Church of England School | THE FRIENDS OF THE PRIORY SCHOOL, DORKING, STAFF AND PARENTS ASSOCIATION (282794) | The charity name explicitly mentions 'The Priory School, Dorking', which matches the candidate's name and location, and the phase fits as a general association for a secondary school. |
+| Springwest Academy | FELTHAM COMMUNITY SCHOOL ASSOCIATION (1001996) | The charity name 'Feltham Community School Association' matches the candidate's former name 'Feltham Community College' and the location (Feltham, Hounslow) aligns perfectly. |
+| Newdigate CofE Endowed Aided Infant School | THE FRIENDS OF ST MICHAEL'S SCHOOL, MICKLEHAM (1081711) | Charity name and address match the former name and location of URN 125192 in Mickleham, Surrey. |
+| Lift Bexleyheath | BEXLEYHEATH SCHOOL PARENT TEACHER ASSOCIATION (274056) | Charity name matches the candidate's former name 'Bexleyheath School' and location fits Bexleyheath in Bexley. |
+| St James' Church of England Primary School | ST JAMES CE PRIMARY SCHOOL PTFA (1101797) | The charity name matches the candidate's name and the address in Hereford (HR2) aligns with the candidate's location in Hereford (HR1), whereas the other candidate is in Leominster. |
+| West Bretton Junior and Infant School | FRIENDS OF BRETTON SCHOOL (FOBS) (1211223) | The charity name 'Friends of Bretton School' and its address at West Bretton Junior & Infant School match the candidate school's name and location in Wakefield. |
+| Holy Trinity Church of England Primary Academy and Nursery | FRIENDS OF OSWESTRY INFANTS SCHOOL (1076615) | The charity name explicitly mentions Oswestry Infants School, which is a former name of the candidate school, and the location matches. |
+| Southam Primary School | FRIENDS OF SOUTHAM PRIMARY SCHOOL (1108571) | Charity name, address, and objects explicitly match Southam Primary School (URN 143906) in Southam, Warwickshire. |
+| The Frances Bardsley Academy for Girls | THE FRANCES BARDSLEY PARENT TEACHER ASSOCIATION (1023508) | Charity name matches the school's distinctive name 'Frances Bardsley' and location fits Romford/Havering. |
+| Alexander McLeod Primary School | ALEX MCLEOD PTA (1158485) | Charity name 'Alex McLeod PTA' matches the distinctive name of Alexander McLeod Primary School, and the area of benefit (Greenwich) aligns with the school's location in SE2. |
+| St John Fisher Catholic Primary School | THE ST JOHN FISHER PARENT TEACHER AND FRIENDS ASSOCIATION (701261) | Charity name matches the school name, and the council area (Knowsley) aligns with the school's location in Prescot. |
+| The Coopers' Company and Coborn School | COOPERS COBORN PARENTS' ASSOCIATION (270893) | Charity name matches the school's distinctive name and the council area (Havering) aligns with the school's location in Upminster. |
+| Greenfield Primary School | Greenfield Primary Parent Teacher Association (1103229) | Charity name matches Greenfield Primary School, and the address in Uppermill, Oldham (OL3) aligns with the candidate's location, distinct from the other Greenfield school. |
+| The Trinity Catholic Academy | FRIENDS OF MOTHER TERESA PRIMARY SCHOOL (1083134) | The charity name matches the former name 'Mother Teresa Catholic Primary School' of URN 149134, and the location fits Liverpool. |
+| Tadcaster Grammar School | TADCASTER GRAMMAR SCHOOL PARENTS'ASSOCIATION (1023605) | The charity name explicitly names Tadcaster Grammar School, which matches the candidate's name, location (Tadcaster, North Yorkshire), and phase (Secondary). |
+| St Paul's Catholic Primary School | FRIENDS OF ST. PAUL'S RC PRIMARY SCHOOL (1104047) | Charity name and area of benefit explicitly match the candidate school's name and location in Portsmouth. |
+| St. Oswald's CofE Primary School | ST OSWALD'S PRIMARY SCHOOL PARENTS AND FRIENDS GROUP (GUISELEY) (1173400) | The charity name explicitly matches St. Oswald's CofE Primary School, and the address in Guiseley (LS20) aligns with the candidate's location and phase. |
+| Our Lady Star of the Sea Catholic Primary School | OUR LADY'S INFANT SCHOOL PARENTS ASSOCIATION (1042394) | The charity name 'Our Lady's Infant School' matches the candidate's former name 'Our Lady's Catholic Infant School' and the location fits the Cheshire area. |
+| Newtown Primary School (High Peak Federation) | NEWTOWN SCHOOL PARENTS & FRIENDS ASSOCIATION (1065682) | Charity name and address in New Mills match the candidate school's location and name, with phase fitting a primary school. |
+| Emneth Academy | FRIENDS OF EMNETH ACADEMY (1205269) | The charity name 'Friends of Emneth Academy' and its address match the candidate school's name and location exactly. |
+| Pye Green Academy | PYE GREEN VALLEY PARENT TEACHER AND FRIEND ASSOCIATION (1121029) | Charity name matches the candidate's former name 'Pye Green Valley Primary School' and location matches Hednesford, Cannock. |
+| Philips High School | THE FRIENDS OF PHILIPS HIGH SCHOOL (703040) | Charity name matches the candidate school name exactly, and the council area of operation (Bury) aligns with the school's location in Manchester (M45 postcode is in the Bury/Metro area). |
+
+## 25 random `website-crawl` matches for review
+
+| school | charity | evidence |
+|---|---|---|
+| St Mark's Church of England Primary School | FRIENDS OF ST MARK'S, HATCH WARREN (1188879) | https://www.stmarksprimary.net/category/fosm/ |
+| Greenhill Primary School | FRIENDS OF GREENHILL SCHOOL (FROGS) (1044824) | https://www.greenhill.sheffield.sch.uk/parents-2/ |
+| Hanley Swan St Gabriel's with St Mary's CofE Primary School | PARENTS AND FRIENDS OF ST GABRIELS WITH ST MARYS SCHOOL (1020134) | https://www.hanleyswanprimaryschool.co.uk/pfa/ |
+| Charlton Kings Infants' School | CKIS PFA (1053722) | https://www.ckis.org.uk/pfa |
+| St Boniface RC Primary School | FRIENDS OF ST BONIFACE (1093939) | https://www.stboniface.wandsworth.sch.uk/Friends-of-St-Boniface-FoSB/ |
+| Totnes St John's Church of England Primary School | Totnes St John's Parents, Teachers and Friends Association (1029862) | https://www.totnesstjohnsprimary.org/ptfa |
+| Colebrook Junior School | COLEBROOK FRIENDS (1069651) | https://www.colebrook-jun.swindon.sch.uk/parents/friends |
+| Christ Church, Church of England Junior School, Downend | FRIENDS OF CHRIST CHURCH JUNIOR SCHOOL (1179138) | https://www.christchurchjuniors.co.uk/about-us/friends-of-ccj |
+| St Francis Catholic Primary School, Goosnargh | ST FRANCIS PTA (HILL CHAPEL) (1130638) | https://www.pta-events.co.uk/stfrancisptfa/ |
+| Morpeth All Saints Church of England First School | FRIENDS OF MORPETH ALL SAINTS (1046745) | https://mafs.cheviotlt.co.uk/friends-of-morpeth-all-saints-fomas/ |
+| Knaresborough St John's Church of England Primary School | FRIENDS OF KNARESBOROUGH ST JOHN'S (FOKSJ) (1086071) | https://www.ksjprimaryschool.org/parents/pta-1 |
+| St Peter's Eaton Square CofE Primary School | THE ST PETER'S PARENTS-TEACHERS ASSOCIATION (283529) | https://www.stpeaton.org.uk/page/?title=PTA+%26amp%3B+FUNDRAISING&pid=67 |
+| Netherhall Mead Academy | FRIENDS OF NETHER HALL ASSOCIATION (514527) | https://www.netherhall-tmet.uk/our-academy/friends-of-netherhall-mead-academy-fohna/ |
+| St Andrew's Church School | THE FRIENDS OF ST ANDREWS (1052031) | https://standrewsprimarybath.com/parents-carers/friends/ |
+| Normandy Village School | FRIENDS OF WYKE (1161242) | https://www.normandyvillageschool.org/page/?title=Friends+of+NVS+%28PTA%29&pid=83 |
+| St. George's School | FRIENDS OF ST GEORGE'S - COLCHESTER (1208195) | https://www.pta-events.com/friendsofstgeorges101/index.cfm?event=event&eventId=122165&fbclid=IwVERDUAUYugpwZG9mAWZkaWQWUOlUUyqk_H2GXf9b76VLC2VTHtmLFGV4dG4DYWVtAjExAHNydGMGYXBwX2lkCjY2Mjg1NjgzNzkAAR4i68T2ZOJG-TkoWAI8dOVQWzg2aB8V61CB40Z4C04MXZpm0zn2XIkKL3G-7Q_aem_eCw5A31M98E3xLMYlXgJpQ |
+| Altrincham Grammar School for Boys | AGSB PARENTS AND FRIENDS ASSOCIATION (1186631) | https://www.agsb.co.uk/page/?title=PFA&pid=62 |
+| Our Lady and St Patrick's Roman Catholic Primary School | FRIENDS OF OLSP PRIMARY SCHOOL (1171780) | https://www.pta-events.co.uk/friendsofolsp/index.cfm |
+| Sutton on the Forest Church of England Voluntary Controlled Primary School | FRIENDS OF SUTTON SCHOOL (1042254) | https://suttonontheforestschool.org/friends-of-sutton-school/friends-of-sutton-school/ |
+| St George's Junior School | WOODFIELD AND ST GEORGE'S PARENT, TEACHER AND FRIENDS ASSOCIATION (1201568) | https://stgeorgesjunior.org.uk/home/parents-area/useful-information/ptfa/ |
+| Christ Church Primary School, Hampstead | THE FRIENDS OF CHRISTCHURCH SCHOOL (1020144) | https://christchurchschool.co.uk/parents/friends/ |
+| Rathfern Primary School | FRIENDS OF RATHFERN (1086815) | https://www.rathfern.lewisham.sch.uk/Friends-of-Rathfern/ |
+| St Peter and St Paul Church of England Primary School, Eye | FRIENDS OF EYE PRIMARY SCHOOL ASSOCIATION (1109125) | https://www.stpeterandstpaulschool.co.uk/page/?title=Friends+of+Eye+School&pid=62 |
+| Histon and Impington Park Primary School | HI Park Primary PTFA (1096921) | https://www.parkprimary.co.uk/ptfa |
+| Sacred Heart of Mary Girls' School | THE UPMINSTER CONVENT SCHOOL PARENTS, TEACHERS AND FRIENDS ASSOCIATION (312643) | https://www.sacredheartofmary.net/for-parents/ptfa/ |
+
 ## 25 random wider-name `postcode-exact` matches for review
 
 | school | charity | evidence |
 |---|---|---|
-| Georgian Gardens Community Primary School | GEORGIAN GARDENS C.P. SCHOOL P.T.A. (1106660) | postcode-exact BN163JJ; wider name |
-| Rudyard Kipling Primary School & Nursery | RUDYARD KIPLING PARENT/TEACHER/FRIENDS ASSOCIATION (1026027) | postcode-exact BN26RH; wider name |
-| Lanterns Nursery School and Extended Services | FRIENDS OF LANTERNS (269085) | postcode-exact SO226AJ; wider name |
-| Orford Church of England Primary School and Nursery | ORFORD SCHOOL LEAGUE OF FRIENDS (1218633) | postcode-exact IP122LU; wider name |
-| Edmund Waller Primary School | EDMUND WALLER P.T.A (1031811) | postcode-exact SE145LY; domain edmundwaller.lewisham.sch.uk (website); wider name |
-| Ermington Primary School | ERMINGTON SCHOOL FUNDRAISING ASSOCIATION (1117752) | postcode-exact PL219NH; wider name |
-| Mossgate Primary School | MOSSGATE FRIENDS, FAMILIES AND STAFF (1215978) | postcode-exact LA32EE; domain mossgate.lancs.sch.uk (website); wider name |
-| Applegarth Primary School | FRIENDS OF APPLEGARTH (1153754) | postcode-exact DL78QF; domain applegarth.n-yorks.sch.uk (email); wider name |
-| Watling Park School | FRIENDS OF WATLING  PARK (1211577) | postcode-exact HA89YA; domain watlingparkschool.org.uk (website); wider name |
-| Lowtown Primary School | PUDSEY LOWTOWN WISEOWL PARENT, TEACHER AND FRIENDS ASSOCIATION (1111080) | postcode-exact LS289BB; domain pudseylowtown.org.uk (website); wider name |
-| Floreat Montague Park Primary School and Nursery | FRIENDS OF FLOREAT MONTAGUE PARK (1171956) | postcode-exact RG401BG; wider name |
-| Manorbrook Primary School | FRIENDS OF MANORBROOK (1052125) | postcode-exact BS351JW; domain manorbrook.org.uk (website); wider name |
-| Somerdale Educate Together Primary Academy | FRIENDS OF SOMERDALE EDUCATE TOGETHER (1197992) | postcode-exact BS312FF; wider name |
-| Mulberry West St Leonards Primary | FRIENDS OF WEST ST. LEONARDS (1213539) | postcode-exact TN388BX; wider name |
-| Yattendon School | FRIENDS OF YATTENDON (1159383) | postcode-exact RH67BZ; domain yattendon.org (website); wider name |
-| John Jamieson School | JOHN JAMIESON AND HOSPITAL SCHOOLS' FRIENDS GROUP (1119800) | postcode-exact LS82PW; domain eastsilc.org (email); wider name |
-| Burnt Ash Primary School | BURNT ASH PRIMARY SCHOOL P.T.A (1052481) | postcode-exact BR14QX; domain burntash.bromley.sch.uk (website); wider name |
-| Lime Tree Primary School and Nursery | FRIENDS OF LIME TREE (1163208) | postcode-exact RH13LH; wider name |
-| Barton Clough Primary School | FRIENDS OF BARTON CLOUGH (1203390) | postcode-exact M329TG; wider name |
-| Threshfield Primary School | THRESHFIELD SCHOOL FUND (1048079) | postcode-exact BD235NP; wider name |
-| Sandfield Primary School | FRIENDS OF SANDFIELD (1106505) | postcode-exact GU14DT; domain sandfield.surrey.sch.uk (website); wider name |
-| Hospital and Outreach Education | HOSPITAL AND OUTREACH EDUCATION PARENT, TEACHER AND FRIENDS ASSOCIATION (1210331) | postcode-exact NN48EN; wider name |
-| Oaklands School | FRIENDS OF OAKLANDS (1183493) | postcode-exact ME50QS; wider name |
-| Rogate CofE Primary School | ROGATE SCHOOL FAMILY AND FRIENDS (1089746) | postcode-exact GU315HH; wider name |
-| Barrow Hall Community Primary School | FRIENDS OF BARROW HALL (1207243) | postcode-exact WA53TX; domain barrowhall.co.uk (website); wider name |
+| Pashley Down Infant School | THE FRIENDS OF PASHLEY (1180438) | postcode-exact BN208NX; domain pashley.e-sussex.sch.uk (email); wider name |
+| Littleport Community Primary School | Littleport Community Primary Friends Association (1124089) | postcode-exact CB61JT; wider name |
+| Towers Infant School | FRIENDS OF TOWERS FUNDRAISING ASSOCIATION (1037283) | postcode-exact RM111PD; wider name |
+| Marner Primary School | FRIENDS OF MARNER (1217039) | postcode-exact E33LL; domain marnerprimary.com (website); wider name |
+| Howick Church Endowed Primary School | FRIENDS OF HOWICK (1194866) | postcode-exact PR10NB; wider name |
+| Manor High School | FRIENDS OF MANOR HIGH (1157833) | postcode-exact LE24FU; domain manorhigh.leics.sch.uk (website); wider name |
+| Bettridge School | FRIENDS OF BETTRIDGE (270831) | postcode-exact GL513AT; wider name |
+| The Link School | THE LINK ASSOCIATION OF PARENTS, STAFF & FRIENDS (1103045) | postcode-exact CR04PG; wider name |
+| Poverest Primary School | FRIENDS OF POVEREST (1163062) | postcode-exact BR52JD; wider name |
+| St Norbert's Catholic Voluntary Academy | THE FRIENDS OF ST NORBERT'S (1096557) | postcode-exact DN174HL; domain stnorbertscrowle.co.uk (email); wider name |
+| St Crispin's School | ST CRISPIN'S PARENT/TEACHER ASSOCIATION (800021) | postcode-exact RG401SS; domain crispins.co.uk (website); wider name |
+| Surrey Hills All Saints Primary School | FRIENDS AT SURREY HILLS SCHOOL (1137546) | postcode-exact RH43QF; domain surreyhillsprimaryschool.org.uk (website); wider name |
+| The Disraeli School | FRIENDS OF DISRAELI (1181622) | postcode-exact HP135JS; domain disraeli.bucks.sch.uk (email); wider name |
+| Cold Harbour Church of England School | FRIENDS OF COLD HARBOUR (1210621) | postcode-exact MK37PD; wider name |
+| Foxmoor Primary School | FRIENDS OF FOXMOOR (1112143) | postcode-exact GL54UJ; wider name |
+| Brentside High School | FRIENDS @ BRENTSIDE (1184493) | postcode-exact W71JJ; wider name |
+| Chirbury CofE VC Primary School & Busy Bees Nursery | Chirbury School Friends (1043533) | postcode-exact SY156BN; wider name |
+| Icknield Community College | FRIENDS OF ICKNIELD (1146108) | postcode-exact OX495RB; domain icknield.oxon.sch.uk (website); wider name |
+| Manor Farm Junior School | MANOR FARM COMMUNITY JUNIOR SCHOOL FUND (1071627) | postcode-exact HP157PH; domain manorfarmschool.org (website); wider name |
+| Springfield House Community Special School | FRIENDS OF SPRINGFIELD HOUSE (1207281) | postcode-exact B930AJ; wider name |
+| The Castle School | CASTLE SCHOOL FRIENDS (1105569) | postcode-exact BS351HT; wider name |
+| Woodton Primary School | WOODTON C.P. SCHOOL P.T.A. (1078164) | postcode-exact NR352LL; wider name |
+| Five Acre Wood School | FRIENDS OF FIVE ACRE WOOD AND GROW 19 (1153151) | postcode-exact ME159QF; wider name |
+| Eastlands Primary School | EASTLANDS PARENTS AND STAFF ASSOCIATION (1149366) | postcode-exact CV213RY; domain eastlandsprimaryschool.co.uk (website); wider name |
+| Abbots Farm Junior School | ABBOTS FARM FRIENDS (1096659) | postcode-exact CV214AP; wider name |
 
 ## 25 random wider-name `domain` matches for review
 
 | school | charity | evidence |
 |---|---|---|
-| Netherthong Primary School | FRIENDS OF NETHERTHONG (1152439) | domain netherthongprimary.co.uk (email); wider name |
-| Fordwater School, Chichester | FORDWATER PARENTS AND TEACHERS ASSOCIATION (801784) | domain fordwatersch.co.uk (website); wider name |
-| All Saints CofE Academy Denstone | FRIENDS OF ALL SAINTS, DENSTONE (1102403) | domain allsaints-denstone.staffs.sch.uk (website); wider name |
-| Doubletrees School | FRIENDS OF DOUBLETREES (1027045) | domain doubletrees.org.uk (website); wider name |
-| Simon de Senlis Primary School | FRIENDS OF SIMON DE SENLIS (1056298) | domain simondesenlis.org (website); wider name |
-| Dovedale Community Primary School | FRIENDS OF DOVEDALE (516176) | domain dovedaleprimary.co.uk (website); wider name |
-| Benhurst Primary School | FRIENDS OF BENHURST ASSOCIATION (1106626) | domain benhurst.havering.sch.uk (email); wider name |
-| St James's Church of England High School | ST JAMES C OF E SCHOOL APPEALS ASSOCIATION (1003076) | domain st-james.bolton.sch.uk (email); wider name |
-| Kingfisher Community Primary School | FRIENDS OF KINGFISHER (1003585) | domain kingfisher-gst.org (website); wider name |
-| Middleton Primary School | FRIENDS OF MIDDLETON (1105240) | domain middletonschool.org (website); wider name |
-| Ashford Oaks Community Primary School | FRIENDS OF ASHFORD OAKS (1218471) | domain ashfordoaks.kent.sch.uk (website); wider name |
+| Mandeville Primary School | FRIENDS OF MANDEVILLE, ST ALBANS (1108457) | domain mandeville.herts.sch.uk (website); wider name |
+| St Paul's Infant School | FRIENDS OF ST PAUL'S AND NORTH BOROUGH (1218344) | domain stpaulsmaidstone.co.uk (website); wider name |
+| Shoreside Primary School | Shoreside P.T.F.A (1143040) | domain shoresideprimary.co.uk (website); wider name |
+| St Michael's Primary School and Nursery, Colchester | FRIENDS OF ST MICHAEL'S, COLCHESTER, ESSEX (1100336) | domain stmichaelsprimary.co.uk (email); wider name |
+| Shenstone School | FRIENDS OF SHENSTONE AND SVF (284108) | domain shenstone-tkat.org (email); wider name |
 | St Denys Primary School | ST DENYS SCHOOL SUPPORTERS (1177241) | domain stdenysprimary.co.uk (website); wider name |
-| St Bede's Catholic Primary School | FRIENDS OF ST BEDE'S COMMUNITY GROUP (1149272) | domain stbedescatholicprimary.co.uk (website); wider name |
-| Morland Church of England Primary School | FRIENDS OF MORLAND (1206049) | domain morlandprimary.com (email); wider name |
-| Weston-on-Trent CofE (VA) Primary School | WESTON ON TRENT PARENTS, STAFF AND FRIENDS ASSOCIATION (1072087) | domain westoncofe.derbyshire.sch.uk (email); wider name |
-| Northbourne Church of England Primary School | FRIENDS OF NORTHBOURNE (1028822) | domain northbourne-cep.kent.sch.uk (website); wider name |
-| Woolgrove School, Special Needs Academy | FOW FRIENDS OF WOOLGROVE (1198782) | domain woolgrove.herts.sch.uk (website); wider name |
-| St Andrew's CofE High School | FRIENDS OF ST ANDREW'S (FOSTA) (297007) | domain sta-worthing.com (website); wider name |
-| Norton St Nicholas CofE (VA) Primary School | ST NICHOLAS ASSOCIATION OF PARENTS AND STAFF. (1060846) | domain nortonstnicholas.co.uk (website); wider name |
-| St Agnes' Catholic Primary School | FRIENDS OF ST AGNES (F.O.S.A) (1171612) | domain stagnesnw2.co.uk (website); wider name |
-| Roseberry Academy | ROSEBERRY ACADEMY FRIENDS AND TEACHERS (1040735) | domain roseberryacademy.org (email); wider name |
-| Ivy Lane Primary School | FRIENDS OF IVY LANE (FOILS) (1187727) | domain ivylane.wilts.sch.uk (website); wider name |
-| St Teresa's Catholic Primary School, Colchester | FRIENDS OF ST TERESA’S, COLCHESTER (1206040) | domain st-teresas.essex.sch.uk (email); wider name |
-| St Michael's Church of England Primary School, Alkrington | ST MICHAEL'S ALKRINGTON PARENT, TEACHERS AND FRIENDS ASSOCIATION (1130140) | domain stmichaelscemidd.rochdale.sch.uk (website); wider name |
 | Pinewood Infant and Nursery School | FRIENDS OF PINEWOOD ASSOCIATION (1051426) | domain pinewood.notts.sch.uk (email); wider name |
+| The Elms Academy | FRIENDS OF THE ELMS (1220103) | domain theelmsacademy.org.uk (website); wider name |
+| Morland Church of England Primary School | FRIENDS OF MORLAND (1206049) | domain morlandprimary.com (email); wider name |
+| Holy Trinity CofE (C) Primary School | FRIENDS OF HOLY TRINITY (1030797) | domain holytrinity.staffs.sch.uk (email); wider name |
+| Ely St John's Community Primary School | FRIENDS OF ELY ST JOHN'S (1117367) | domain elystjohns.cambs.sch.uk (website); wider name |
+| Netherthong Primary School | FRIENDS OF NETHERTHONG (1152439) | domain netherthongprimary.co.uk (email); wider name |
+| Simon de Senlis Primary School | FRIENDS OF SIMON DE SENLIS (1056298) | domain simondesenlis.org (website); wider name |
+| St Mary's Church of England VA Primary School, Welham Green | FRIENDS OF NORTH MYMMS ST MARY'S (1087462) | domain stmarys565.herts.sch.uk (email); wider name |
+| Hampton High | Friends of Hampton High (1015209) | domain hamptonhigh.org.uk (website); wider name |
+| West Lancashire Community High School | PARENTS, TEACHERS AND FAMILY OF WEST LANCS COMMUNITY HIGH (1136088) | domain westlancs.lancs.sch.uk (website); wider name |
+| Mora Primary School | FRIENDS OF MORA ASSOCIATION (1201034) | domain mora.brent.sch.uk (website); wider name |
+| Harewood Junior School | THE FRIENDS OF HAREWOOD (1116560) | domain harewoodjunior.co.uk (email); wider name |
+| Birchwood Avenue Primary School | FRIENDS OF BIRCHWOOD (1197564) | domain birchwoodavenue.herts.sch.uk (email); wider name |
+| Avonmouth Church of England Primary School and Nursery | THE FRIENDS OF AVONMOUTH (1178945) | domain avonmouthp.co.uk (website); wider name |
+| St Joseph's Catholic Primary School, Otley | FRIENDS OF ST JOSEPHS OTLEY (1200981) | domain stjosephsotley.org (email); wider name |
+| Heltwate School | FRIENDS OF HELTWATE (1180923) | domain heltwate.co.uk (website); wider name |
+| The Highway Primary School | FRIENDS OF THE HIGHWAY (802304) | domain highway.bromley.sch.uk (website); wider name |
+| Hall Mead School | HALL MEAD FRIENDS' ASSOCIATION (299496) | domain hallmeadschool.com (website); wider name |
+| Freethorpe Community Primary and Nursery School | FRIENDS OF FREETHORPE (1172962) | domain freethorpe.norfolk.sch.uk (website); wider name |
 
 ## Pass-1 ambiguity rejections (680)
 
