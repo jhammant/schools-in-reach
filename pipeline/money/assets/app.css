@@ -433,3 +433,16 @@ ul.audiences { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap
 ul.audiences li { flex: 1 1 12rem; min-width: 0; padding: 8px 14px 12px; border-left: 5px solid var(--aud, var(--accent)); border-radius: var(--radius-s);
   background: var(--aud-soft, var(--accent-soft)); }
 ul.audiences a { display: flex; align-items: center; min-height: var(--tap); color: var(--aud, var(--accent)); }
+/* fundraising finder and search */
+.find-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: .8rem; align-items: end; margin: 1rem 0; }
+.find-field { display: grid; gap: .3rem; min-width: 0; }
+.find-field label { font-weight: 600; }
+.find-field input, .find-field select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; padding: .5rem; font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line-strong); border-radius: .3rem; }
+.find-filters button { min-height: 44px; }
+.find-filters :focus-visible, .search-panel :focus-visible, #fundraising-finder :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.search-panel .results li, .fund-results .results li { overflow-wrap: anywhere; margin-bottom: .8rem; }
+.search-panel .sub, .fund-results .sub { display: block; }
+.fund-results .charity-link { display: inline-block; margin: .3rem 1rem .3rem 0; }
+.fund-medians { font-weight: 600; }
+.nearby-fundraising { padding-left: 1.3rem; }
+.nearby-fundraising li { margin-bottom: .4rem; overflow-wrap: anywhere; }

@@ -42,7 +42,7 @@ import tempfile
 import time
 import xml.etree.ElementTree as ET
 
-from pipeline.money import charts, status as health
+from pipeline.money import charts, fundraising, status as health
 from pipeline.money.charts import STATUS_LABELS, STATUS_ORDER, badge, esc, money
 from pipeline.seo.build_pages import NS, HeadMetadata, closed, shorten, slug, table
 
@@ -2016,6 +2016,7 @@ def school_ctx(item, shared):
            "sir_url": _shell().BASE_SIR + item["site_path"]}
     if (item.get("nearby") or {}).get("schools"):
         ctx["nearby"] = item["nearby"]
+    ctx["nearby_fundraising"] = item.get("nearby_fundraising") or []
     return ctx
 
 
@@ -2167,7 +2168,7 @@ def search_index(councils, schools, trusts):
     index = []
     for i in schools:
         index.append({"t": "school", "id": i["urn"], "name": i["name"], "sub": ", ".join(x for x in (i["school"].get("town"), i["council"]["name"]) if x),
-                      "status": i["status"]["status"] if i["status"] else None, "p": i["path"]})
+                      "status": i["status"]["status"] if i["status"] else None, "p": i["path"], "ph": fundraising.phase_code(i["phase"])})
     for c in councils:
         if c["schools"]:
             index.append({"t": "council", "id": c["code"], "name": c["name"], "sub": c.get("region") or "", "status": None, "p": c["path"]})
@@ -2537,6 +2538,21 @@ def add_nearby(schools, n=NEARBY_N, max_mi=NEARBY_MAX_MI):
         s["nearby"] = nearby_doc(s, neighbours, facts)
 
 
+def add_nearby_fundraising(schools):
+    """Up to eight same-phase registered associations within 30 miles, including for schools without one."""
+    grids = defaultdict(lambda: defaultdict(list))
+    for item in schools:
+        if item.get("fundraising") is not None and _located(item):
+            grids[fundraising.phase_code(item["phase"])][_cell(item["lat"], item["lon"])].append(item)
+    bounds = {phase: _bounds(grid) for phase, grid in grids.items()}
+    for item in schools:
+        phase = fundraising.phase_code(item["phase"])
+        grid = grids.get(phase)
+        neighbours = _nearest(grid, item, bounds=bounds[phase]) if grid and _located(item) else []
+        item["nearby_fundraising"] = [dict(other["fundraising"], name=other["name"], p=other["path"], mi=round(mi, 1))
+                                       for mi, other in neighbours]
+
+
 def write_urlset(path, entries, base=BASE_MONEY, index=False):
     """A sitemap (or sitemap index) whose locs sit on `base`; entries = [(path, lastmod)]."""
     ET.register_namespace("", NS)
@@ -2579,6 +2595,8 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
     data_root = site / "data"
     today = date.today().isoformat()
     built, areas_error = build_area_doc(schools, pta_doc, dsg, data_root)
+    fundraising_doc = fundraising.build_data(schools, built)
+    add_nearby_fundraising(schools)
     shared = {"areas": built, "ifs": ifs, "dsg": dsg, "sen_q3": sen_share_q3(schools)}
     dashboards = area_pages is not None and bool(built)
     urls, school_sizes, skipped = [], [], []
@@ -2740,6 +2758,7 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
                 raise ValueError(f"Unsafe area id {ident!r}")
             (data / "a" / f"{ident}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         (data / "search.json").write_text(json.dumps(search_index(councils, schools, trusts), ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        (data / "fundraising.json").write_text(fundraising.encode(fundraising_doc), encoding="utf-8")
         (data / "postcodes").mkdir()
         for district, doc in postcode_index(schools).items():
             (data / "postcodes" / f"{district}.json").write_text(json.dumps(doc, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
