@@ -23,7 +23,7 @@ from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
-from pipeline.money import charts, site
+from pipeline.money import charts, pta_accounts_view, site
 from pipeline.money import status as health
 from pipeline.money.charts import badge
 
@@ -1540,6 +1540,61 @@ def pta_change_html(change) -> str:
             f'data-year="since {esc(change["year"])}">{text}</span>')
 
 
+def pta_accounts_details(record) -> str:
+    """An account's own figures, never allocated to pupils or added to school donations."""
+    if (record.get("extracted") is not True or not isinstance(record.get("facts"), dict)
+            or not pta_accounts_view.register_source(record.get("source_url"))):
+        return ""
+    facts = record["facts"]
+    year = record.get("reporting_year") or facts.get("year_end") or "undated"
+    title = f"How {record.get('name') or 'the association'} raised it ({year} accounts)"
+    parts = [f'<details class="sp-accounts"><summary>{esc(title)}</summary>',
+             '<p>These are figures for the whole association in these accounts. '
+             'They may cover more than one school.</p>']
+
+    def figure(value, key, label):
+        return site.money_figure(key, value, None, year, label=label)
+
+    def entries(values, field, key):
+        lines = []
+        for entry in values or []:
+            if not isinstance(entry, dict) or not entry.get(field):
+                continue
+            label = str(entry[field])
+            value = _num(entry.get("amount"))
+            amount = " — " + figure(value, key, label) if value is not None else " (amount not given)"
+            lines.append(f'<li>{esc(label)}{amount}</li>')
+        return '<ul>' + ''.join(lines) + '</ul>' if lines else ""
+
+    raised = entries(facts.get("how_raised"), "method", "pta_income")
+    coverage = _num(record.get("coverage"))
+    if raised:
+        heading = "Some of the ways it raised money:" if coverage is None or coverage < 0.6 else "Ways it raised money:"
+        parts.append(f'<p>{heading}</p>{raised}')
+    else:
+        parts.append('<p>The automatic reading did not identify how it raised money.</p>')
+    for field, label, key in (("gift_aid", "Gift Aid", "pta_income"), ("given_to_school", "Given to the school", "pta_spending")):
+        value = _num(facts.get(field))
+        if value is not None:
+            parts.append(f'<p>{label}: {figure(value, key, label)}.</p>')
+    paid = entries(facts.get("paid_for"), "item", "pta_spending")
+    if paid:
+        parts.append(f'<p>What it paid for:</p>{paid}')
+    platforms = [esc(p) for p in facts.get("platforms") or [] if isinstance(p, str) and p.strip()]
+    if platforms:
+        parts.append(f'<p>Platforms named in the accounts: {", ".join(platforms)}.</p>')
+    parts.append('<p class="small muted">Read automatically from the '
+                 f'<a href="{esc(record["source_url"])}">accounts the charity filed with the Charity Commission</a>, '
+                 'so check the original before relying on a figure.</p></details>')
+    return "".join(parts)
+
+
+def pta_accounts_for(item, accounts) -> str:
+    """Use the current school-to-charity matches, never the extraction's cached URN list alone."""
+    numbers = dict.fromkeys(str(c.get("charity_number")) for c in item.get("pta") or [] if not c.get("review"))
+    return "".join(pta_accounts_details(accounts[number]) for number in numbers if number in accounts)
+
+
 def pta_section(item, view) -> str:
     charities = [c for c in item.get("pta") or [] if not c.get("review")]
     if not charities:
@@ -1590,6 +1645,7 @@ def pta_section(item, view) -> str:
     if len(years) > PTA_ROWS:
         html += f'<p class="small muted">Returns go back to {esc(years[0])}; the older ones are in the chart and on the Charity Commission register.</p>'
     html += '<ul class="sp-charities">' + "".join(_charity_line(c, view) for c in charities) + "</ul>"
+    html += pta_accounts_for(item, view.ctx.get("pta_accounts") or {})
     html += ('<p class="small muted">Each return is placed in the school year that holds the end of the charity\'s financial year, '
              'and per-pupil figures use that year\'s pupils. Change compares income with the previous school year, for the same charities. '
              'A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
@@ -1894,6 +1950,9 @@ def federation_note(item, view) -> str:
 def _plain_page(item, view, lead) -> dict:
     body = (f'<h1>{esc(item["name"])}: school finances</h1><p class="lead">{lead}</p>'
             f'<p>Check at source: <a href="{esc(view.check)}">DfE benchmarking page for this school</a>.</p>')
+    accounts = pta_accounts_for(item, view.ctx.get("pta_accounts") or {})
+    if accounts:
+        body += _section("ptfa", "Money raised by parents", accounts)
     return {"title": shorten(f"{item['name']} finances | School Money", 70),
             "description": shorten(f"Finance returns for {item['name']}, from published DfE data.", 160),
             "body": body, "indexable": False}

@@ -6,6 +6,7 @@ Inputs are local and rebuilt by pipelines; no network:
 - site/data (school register and council index, from pipeline/dfe/build.py)
 - pipeline/.cache/dfe/gias/links.csv (GIAS links: a converted academy's predecessor URN)
 - pipeline/.cache/money/pta.json from pipeline/money/pta.py (optional)
+- pipeline/.cache/money/pta_accounts.json (optional; needs a human spot check of >= 10 accounts, none wrong)
 - pipeline/money/data/la_dsg.json (councils' Dedicated Schools Grant balances, all four blocks, committed)
 
 Writes site_money/, served at https://money.schoolsinreach.com: national, England, region, council,
@@ -17,6 +18,13 @@ universities gets a page. Long tables continue on /2/, /3/… pages sized agains
 so pages stay under AREA_PAGE_TARGET where they can and always under PAGE_BUDGET (SCHOOL_PAGE_BUDGET
 for /school/ pages; the first page of a council's or constituency's schools also gets AREA_TABLE_ALLOWANCE,
 so it lists AREA_TABLE_ROWS of them). pipeline/seo/build_pages.py reads /data/status.json to link school pages here.
+
+--pta-accounts overrides the optional accounts file. Publication requires a top-level
+spot_check object with integer n >= 10 and integer wrong == 0, recorded after a person checks
+the PDFs. Missing, unreadable or unchecked input hides both account notes and method counts;
+the build logs why. Account figures cover the whole association in its own reporting year,
+never feed school totals or per-pupil comparisons, and stay out of the search index. Method
+counts group clear keyword variants once per charity in this selected sample, not per school.
 
 Pages are wrapped by pipeline/money/site.py (the app shell) when it is present, else by a
 minimal fallback below with the same signatures. The other modules are optional too, each through a
@@ -42,7 +50,7 @@ import tempfile
 import time
 import xml.etree.ElementTree as ET
 
-from pipeline.money import charts, fundraising, status as health
+from pipeline.money import charts, fundraising, pta_accounts_view, status as health
 from pipeline.money.charts import STATUS_LABELS, STATUS_ORDER, badge, esc, money
 from pipeline.seo.build_pages import NS, HeadMetadata, closed, shorten, slug, table
 
@@ -1151,8 +1159,9 @@ def pta_html(item):
                    'Per-pupil figures use the pupils on roll in the school year each return falls in.</p>')
 
 
-def render_school(item, metadata):
+def render_school(item, metadata, accounts_html=""):
     s, st = item["school"], item["status"]
+    accounts_head = SCHOOL_HEAD if accounts_html else ""
     council = item["council"]
     crumbs = [("School Money", "/"), (council["name"], council["path"]), (item["name"], item["path"])]
     src = fbit_school(item)
@@ -1162,27 +1171,28 @@ def render_school(item, metadata):
         lead_html = school_link(lead) if lead else "the lead school"
         body = (f'<h1>{esc(item["name"])}: school finances</h1><p class="lead">This school is part of a federation. Its money is reported '
                 f'in one combined return made by {lead_html}, so its figures and status are shown on that school\'s page.</p>'
-                f'<p>Check at source: {check}.</p>' + sources())
+                f'<p>Check at source: {check}.</p>' + accounts_html + sources())
         return page(shorten(f"{item['name']} finances | School Money", 70),
                     shorten(f"{item['name']} reports its finances jointly with its federation. See the federation's combined figures.", 160),
-                    item["path"], body, crumbs, metadata, indexable=False)
+                    item["path"], body, crumbs, metadata, indexable=False, extra_head=accounts_head)
     if not st and item.get("independent"):
         body = (f'<h1>{esc(item["name"])}: school finances</h1>' + tags_line(item.get("profile"))
                 + '<p class="lead">Independent schools don\'t publish accounts to the DfE, so there are no income, spending or reserve figures to show here.</p>'
                 '<p>Many independent schools are charities: their accounts may be on the '
                 '<a href="https://register-of-charities.charitycommission.gov.uk/charity-search">Charity Commission register</a>.</p>'
                 f'<p><a href="{BASE_SIR}{esc(item["site_path"])}">Admissions and inspections for {esc(item["name"])}</a> · '
-                f'<a href="{esc(council["path"])}">All {esc(council["name"])} school finances</a></p>' + sources(compact=True))
+                f'<a href="{esc(council["path"])}">All {esc(council["name"])} school finances</a></p>' + accounts_html + sources(compact=True))
         return page(shorten(f"{item['name']} | School Money", 70),
                     shorten(f"{item['name']} is an independent school. Independent schools don't publish accounts to the DfE.", 160),
-                    item["path"], body, crumbs, metadata, indexable=False)
+                    item["path"], body, crumbs, metadata, indexable=False, extra_head=accounts_head)
     if not st:
         why = ("usually because it opened, converted to an academy or changed trust part-way through the year"
                if item["rows"] else "and no finance return for it is in the DfE's published data")
         body = (f'<h1>{esc(item["name"])}: school finances</h1>' + tags_line(item.get("profile"))
-                + f'<p class="lead">No full-year finance return is published for this school yet, {why}.</p><p>Check at source: {check}.</p>' + sources())
+                + f'<p class="lead">No full-year finance return is published for this school yet, {why}.</p><p>Check at source: {check}.</p>'
+                + accounts_html + sources())
         return page(shorten(f"{item['name']} finances | School Money", 70), shorten(f"Finance returns for {item['name']}.", 160),
-                    item["path"], body, crumbs, metadata, indexable=False)
+                    item["path"], body, crumbs, metadata, indexable=False, extra_head=accounts_head)
     latest, years = item["latest"], item["years"]
     pupils, year = pupils_of_row(latest), year_label(latest)
     basis = reserve_basis(item["rows"])
@@ -1270,7 +1280,7 @@ def render_school(item, metadata):
             rows.append(["Pupil premium", '<span class="muted">not reported in academy accounts</span>'])
         body += f'<h2 id="income">Where the money comes from, {esc(year)}</h2>' + table(["Source", "Amount"], rows)
     if item["pta"]:
-        body += "<h2>Money raised by parents</h2>" + pta_html(item)
+        body += "<h2>Money raised by parents</h2>" + pta_html(item) + accounts_html
     qs = questions(item, cmp)
     if qs:
         body += "<h2>Questions to ask the school</h2><p>Useful for parents, governors and PTA committees.</p><ul>" + "".join(f"<li>{q}</li>" for q in qs) + "</ul>"
@@ -1283,7 +1293,7 @@ def render_school(item, metadata):
     body += sources(pta_source, compact=True)
     title = shorten(f"{item['name']} finances: {st['label']} | School Money", 70)
     description = shorten(f"{item['name']}: {st['reason']} Income, spending and reserves {span}, compared with similar schools.", 160)
-    return page(title, description, item["path"], body, crumbs, metadata)
+    return page(title, description, item["path"], body, crumbs, metadata, extra_head=accounts_head)
 
 
 def row_weights(headers, rows):
@@ -2017,6 +2027,7 @@ def school_ctx(item, shared):
            "similar": similar, "similar_series": similar_series, "similar_meta": similar_meta(item),
            "council": (doc.get("councils") or {}).get(item["council"]["code"]) if doc else None,
            "england": doc.get("england") if doc else None, "pta_national": doc.get("pta") if doc else None,
+           "pta_accounts": shared.get("pta_accounts") or {},
            "ifs": shared.get("ifs") or {}, "real_label": real_label(), "check_url": fbit_school(item),
            "sir_url": _shell().BASE_SIR + item["site_path"]}
     if (item.get("nearby") or {}).get("schools"):
@@ -2050,7 +2061,10 @@ def school_page_html(item, metadata, shared):
             if page_bytes(html) < SCHOOL_PAGE_BUDGET:
                 break
         return html, indexable, ctx["series"]
-    return render_school(item, metadata), bool(item["status"]), None
+    accounts = school_page.pta_accounts_for(item, shared["pta_accounts"]) if school_page is not None and shared.get("pta_accounts") else ""
+    if accounts and not item["status"]:
+        accounts = '<section id="ptfa"><h2>Money raised by parents</h2>' + accounts + '</section>'
+    return render_school(item, metadata, accounts), bool(item["status"]), None
 
 
 # ----------------------------------------------------------------- area dashboards
@@ -2065,9 +2079,12 @@ def area_ctx(shared, councils, schools, trust_path):
     by_name = {i["constituency"]: i["constituency_path"] for i in schools if i["constituency"]}
     constituency = {code: by_name[a["name"]] for code, a in (doc.get("constituencies") or {}).items() if a.get("name") in by_name}
     regions = {c["region"] for c in councils if c.get("region")}
-    return {"ifs": shared.get("ifs") or {}, "dsg": shared.get("dsg") or {}, "real_label": real_label(), "areas": doc,
-            "paths": {"council": {c["code"]: c["path"] for c in councils}, "region": {r: f"/areas/{slug(r)}/" for r in regions},
-                      "constituency": constituency, "trust": dict(trust_path)}}
+    ctx = {"ifs": shared.get("ifs") or {}, "dsg": shared.get("dsg") or {}, "real_label": real_label(), "areas": doc,
+           "paths": {"council": {c["code"]: c["path"] for c in councils}, "region": {r: f"/areas/{slug(r)}/" for r in regions},
+                     "constituency": constituency, "trust": dict(trust_path)}}
+    if shared.get("pta_accounts"):
+        ctx["pta_accounts"] = shared["pta_accounts"]
+    return ctx
 
 
 def area_result_pages(path, crumbs, result, metadata, first_rows=0):
@@ -2621,7 +2638,8 @@ def write_sitemaps(out, urls, today, limit=45_000):
 
 # ----------------------------------------------------------------- build
 
-def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "pipeline/money/data/la_dsg.json"):
+def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "pipeline/money/data/la_dsg.json",
+          pta_accounts_path=None):
     started = time.perf_counter()
     site = Path(site).resolve()
     out = Path(out) if out else ROOT / "site_money"
@@ -2634,12 +2652,13 @@ def build(site, history_path, links_path, pta_path, out=None, dsg_path=ROOT / "p
     dsg = load_dsg(dsg_path)
     ifs = load_ifs()
     pta_doc = json.loads(pta_path.read_text(encoding="utf-8")) if pta_path and pta_path.exists() else {}
+    accounts = pta_accounts_view.load(pta_accounts_path)
     data_root = site / "data"
     today = date.today().isoformat()
     built, areas_error = build_area_doc(schools, pta_doc, dsg, data_root)
     fundraising_doc = fundraising.build_data(schools, built)
     add_nearby_fundraising(schools)
-    shared = {"areas": built, "ifs": ifs, "dsg": dsg, "sen_q3": sen_share_q3(schools)}
+    shared = {"areas": built, "ifs": ifs, "dsg": dsg, "sen_q3": sen_share_q3(schools), "pta_accounts": accounts}
     dashboards = area_pages is not None and bool(built)
     urls, school_sizes, skipped = [], [], []
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -2841,11 +2860,13 @@ def main():
     parser.add_argument("--history", type=Path, default=ROOT / "pipeline/.cache/dfe/finance_history.jsonl")
     parser.add_argument("--links", type=Path, default=ROOT / "pipeline/.cache/dfe/gias/links.csv")
     parser.add_argument("--pta", type=Path, default=ROOT / "pipeline/.cache/money/pta.json")
+    parser.add_argument("--pta-accounts", type=Path, default=ROOT / "pipeline/.cache/money/pta_accounts.json",
+                        help="optional extracted accounts; hidden until a human spot check passes")
     parser.add_argument("--dsg", type=Path, default=ROOT / "pipeline/money/data/la_dsg.json")
     parser.add_argument("--out", type=Path, default=ROOT / "site_money")
     args = parser.parse_args()
     try:
-        summary = build(args.site_dir, args.history, args.links, args.pta, args.out, args.dsg)
+        summary = build(args.site_dir, args.history, args.links, args.pta, args.out, args.dsg, args.pta_accounts)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         parser.exit(1, f"Money build failed: {exc}\n")
     print(f"School Money: {summary['pages']:,} indexable pages in {summary['out']}; {summary['schools']:,} schools ({summary['with_status']:,} with a status), "
