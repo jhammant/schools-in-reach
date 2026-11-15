@@ -21,12 +21,16 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import html
 import json
 import re
 import subprocess
 import tempfile
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -88,8 +92,9 @@ def save_json(path, data):
 
 # ---------------------------------------------------------------- list
 
-def top_associations(n: int) -> list[dict]:
-    """The n matched, registered associations with the largest latest income, one entry per charity."""
+def top_associations(n: int, min_income: float = 25_000) -> list[dict]:
+    """The matched, registered associations with the largest latest income, one entry per charity: the top n, or
+    (n == 0) every one whose latest income is over min_income, the level above which a charity must file accounts."""
     schools = (load_json(PTA) or {}).get("schools") or {}
     seen = {}
     for urn, charities in schools.items():
@@ -100,7 +105,8 @@ def top_associations(n: int) -> list[dict]:
                                                            "latest_income": ch["latest_income"], "urns": []})
             entry["urns"].append(urn)
     ranked = sorted(seen.values(), key=lambda e: -e["latest_income"])
-    return [e for e in ranked if e["latest_income"] <= 500_000][:n]   # pta.py holds larger ones back as likely mismatches
+    ranked = [e for e in ranked if e["latest_income"] <= 500_000]   # pta.py holds larger ones back as likely mismatches
+    return ranked[:n] if n else [e for e in ranked if e["latest_income"] > min_income]
 
 
 def organisation_numbers(numbers: set[int]) -> dict[int, int]:
@@ -118,18 +124,21 @@ def organisation_numbers(numbers: set[int]) -> dict[int, int]:
 # ---------------------------------------------------------------- download
 
 _last = [0.0]
+_fetch_lock = threading.Lock()
 
 
 def fetch(url: str) -> bytes:
-    wait = REQUEST_GAP - (time.time() - _last[0])
-    if wait > 0:
-        time.sleep(wait)
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return r.read()
-    finally:
-        _last[0] = time.time()
+    """One request to the register at a time, REQUEST_GAP apart, however many workers are reading."""
+    with _fetch_lock:
+        wait = REQUEST_GAP - (time.time() - _last[0])
+        if wait > 0:
+            time.sleep(wait)
+        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.read()
+        finally:
+            _last[0] = time.time()
 
 
 def newest_accounts_url(org: int) -> tuple[str | None, str | None]:
@@ -187,6 +196,73 @@ def extract(pages: list[str]) -> dict:
     return json.loads(match.group(0)) if match else {}
 
 
+NUMBER = re.compile(r"(?<![\d.])\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?(?![\d,])|(?<![\d.,])\d+(?:\.\d{1,2})?(?![\d,.]\d)")
+
+
+def numbers_in(pages: list[str]) -> set[float]:
+    """Every whole number written in the pages ("1,776.30", "25,000", "145"), as values, so a figure only counts as
+    stated when it is a number on the page, not digits inside a bigger one ("5000" in "25,000")."""
+    found = set()
+    for match in NUMBER.finditer("\n".join(pages)):
+        try:
+            found.add(round(float(match.group(0).replace(",", "")), 2))
+        except ValueError:
+            continue
+    return found
+
+
+COMMON = {"income", "costs", "cost", "from", "other", "total", "funds", "fund", "with", "and", "for", "the", "school",
+          "including", "received", "paid", "expenses", "events", "event"}
+
+
+def label_words(label) -> list[str]:
+    """The distinctive words of a line's label ("Xmas fair costs" -> ["xmas", "fair"]): an amount for that line must
+    appear on a line of the accounts carrying one of them, so a stray number elsewhere ("section 145") can't vouch
+    for it (on_a_line_with allows three lines either side, for scans). A label with no distinctive word is checked by the number alone."""
+    words = re.findall(r"[a-z]{3,}", str(label or "").lower())
+    return [w[:5] for w in words if w not in COMMON]
+
+
+def verify_amounts(facts: dict, pages: list[str]) -> dict:
+    """Keep only the amounts that are written as numbers in the pages. The model is told never to add lines up or
+    estimate, but it sometimes does (Belleville's two spending lines summed into £189,709; Brodetsky's gifts to two
+    schools summed into one 'given to school'). Any amount not on the page becomes null and is listed under
+    'dropped', so a figure on the site is always one the charity's own accounts state."""
+    stated = numbers_in(pages)
+    lines = [(line.lower(), numbers_in([line])) for page in pages for line in page.splitlines()]
+    dropped = []
+
+    def on_a_line_with(value: float, words: list[str], reach: int = 3) -> bool:
+        """The amount is on a line within `reach` lines of one carrying a label word: scans read by the vision model
+        often put a label and its amount on neighbouring lines."""
+        for i, (_, nums) in enumerate(lines):
+            if value in nums and any(any(w in text for w in words) for text, _ in lines[max(0, i - reach): i + reach + 1]):
+                return True
+        return False
+
+    def keep(label, value, words=None):
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return value
+        value_r = round(float(value), 2)
+        if value_r in stated and (not words or on_a_line_with(value_r, words)):
+            return value
+        dropped.append({"field": label, "amount": value})
+        return None
+
+    for key in ("total_income", "total_spending", "gift_aid"):
+        if key in facts:
+            facts[key] = keep(key, facts[key])
+    if "given_to_school" in facts:     # a sum the model passed off as one gift fails here: it must sit by "school"
+        facts["given_to_school"] = keep("given_to_school", facts["given_to_school"], ["schoo"])
+    for key, name in (("how_raised", "method"), ("paid_for", "item")):
+        for entry in facts.get(key) or []:
+            if isinstance(entry, dict) and "amount" in entry:
+                entry["amount"] = keep(f"{key}: {entry.get(name)}", entry["amount"], label_words(entry.get(name)))
+    if dropped:
+        facts["dropped"] = (facts.get("dropped") or []) + dropped
+    return facts
+
+
 def coverage(facts: dict) -> float | None:
     """Share of total income that the listed fundraising lines account for (None when it can't be worked out).
     The site lists the methods either way, but only calls them a breakdown when they cover most of the income."""
@@ -199,8 +275,105 @@ def coverage(facts: dict) -> float | None:
 
 # ---------------------------------------------------------------- run
 
-def run(n: int, log=print) -> dict:
+RECHECK_DAYS = 14          # an association with no accounts online yet is looked at again after this long
+LOCK = CACHE / "run.lock"
+DONE = CACHE / "complete.json"
+
+
+def stop_time(text: str | None, now: datetime | None = None) -> datetime | None:
+    """The moment to stop handing out work: 'HH:MM' is its next occurrence after now, else an ISO date-time."""
+    if not text:
+        return None
+    now = now or datetime.now()
+    if re.fullmatch(r"\d{1,2}:\d{2}", text):
+        h, m = map(int, text.split(":"))
+        at = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        return at if at > now else at + timedelta(days=1)
+    return datetime.fromisoformat(text)
+
+
+def take_lock() -> bool:
+    """One run at a time: a lock file holding the pid, taken over when that process has gone."""
     CACHE.mkdir(parents=True, exist_ok=True)
+    try:
+        pid = int(LOCK.read_text().strip())
+        os.kill(pid, 0)
+        return False                      # still running
+    except (OSError, ValueError):
+        pass
+    LOCK.write_text(str(os.getpid()))
+    return True
+
+
+LMS = Path.home() / ".lmstudio/bin/lms"
+
+
+def loaded() -> set[str]:
+    """Model identifiers LM Studio has loaded, asked of LM Studio's own CLI (works under launchd too)."""
+    try:
+        out = subprocess.run([str(LMS), "ps", "--json"], capture_output=True, text=True, timeout=60).stdout
+        return {m.get("identifier") or m.get("modelKey") for m in json.loads(out or "[]")}
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return set()
+
+
+def models(action: str, log=print) -> bool:
+    """Load or unload the two local models. Loading goes through local-llm (admission-checked) first; under launchd
+    local-llm has refused with "unknown size", so LM Studio's own CLI is the fallback (the two need about 22 GB of
+    the 84 GB budget). Returns whether both are loaded after a load, so a night isn't spent failing extractions."""
+    for model in (VISION_MODEL, TEXT_MODEL):
+        if action == "load" and model in loaded():
+            log(f"{model}: already loaded"); continue
+        out = subprocess.run(["local-llm", action, model], capture_output=True, text=True)
+        log(f"local-llm {action} {model}: {(out.stdout or out.stderr).strip().splitlines()[-1:] or ['ok']}")
+        if action == "load" and model not in loaded():
+            out = subprocess.run([str(LMS), "load", model, "--yes"], capture_output=True, text=True, timeout=600)
+            log(f"lms load {model}: {(out.stdout or out.stderr).strip().splitlines()[-1:] or ['ok']}")
+    return action != "load" or {VISION_MODEL, TEXT_MODEL} <= loaded()
+
+
+def due(record: dict | None) -> bool:
+    if not record:
+        return True
+    if record.get("extracted"):
+        return False
+    checked = record.get("checked")
+    return not checked or datetime.fromisoformat(checked) < datetime.now() - timedelta(days=RECHECK_DAYS)
+
+
+def read_one(t: dict, org: int | None, records: dict, save, log, label: str):
+    num = str(t["charity_number"])
+    if not org:
+        log(f"{label} {t['name']}: no organisation number"); return
+    pdf = CACHE / f"{num}.pdf"
+    meta = load_json(CACHE / f"{num}.meta.json", {}) or {}
+    try:
+        if not pdf.exists():
+            url, year = newest_accounts_url(org)
+            if not url:
+                save(num, {"name": t["name"], "urns": t["urns"], "status": "no accounts online",
+                           "checked": datetime.now().isoformat(timespec="seconds")})
+                log(f"{label} {t['name']}: no accounts online"); return
+            pdf.write_bytes(fetch(url))
+            meta = {"source_url": url, "reporting_year": year, "organisation_number": org}
+            save_json(CACHE / f"{num}.meta.json", meta)
+        pages_file = CACHE / f"{num}.pages.json"
+        pages = load_json(pages_file)
+        if pages is None:
+            t0 = time.time(); pages = read_pages(pdf); save_json(pages_file, pages)
+            log(f"{label} {t['name']}: read {len(pages)} pages in {time.time() - t0:.0f}s")
+        t0 = time.time()
+        facts = verify_amounts(extract(pages), pages)
+        save(num, {"name": t["name"], "urns": t["urns"], **meta, "facts": facts, "extracted": True, "coverage": coverage(facts),
+                   "models": {"vision": VISION_MODEL, "text": TEXT_MODEL}, "extracted_at": time.strftime("%Y-%m-%d")})
+        log(f"{label} {t['name']}: extracted in {time.time() - t0:.0f}s, "
+            f"{len(facts.get('how_raised') or [])} methods, {len(facts.get('paid_for') or [])} items")
+    except Exception as err:   # one charity's failure never stops the run; it is retried next time
+        log(f"{label} {t['name']}: {type(err).__name__}: {err}")
+
+
+def run(n: int, *, workers: int = 4, stop_at: datetime | None = None, log=print) -> dict:
+    """Read every due association, `workers` at a time, handing out no new one after stop_at."""
     targets = top_associations(n)
     orgs = load_json(CACHE / "orgs.json", {}) or {}
     missing = {t["charity_number"] for t in targets if str(t["charity_number"]) not in orgs}
@@ -208,50 +381,82 @@ def run(n: int, log=print) -> dict:
         log(f"looking up {len(missing)} organisation numbers in the register extract")
         orgs.update({str(k): v for k, v in organisation_numbers(missing).items()})
         save_json(CACHE / "orgs.json", orgs)
+    lock = threading.Lock()
     records = load_json(OUT, {}) or {}
-    for i, t in enumerate(targets, 1):
-        num = str(t["charity_number"])
-        if num in records and records[num].get("extracted"):
-            continue
-        org = orgs.get(num)
-        if not org:
-            log(f"{i}/{len(targets)} {t['name']}: no organisation number"); continue
-        pdf = CACHE / f"{num}.pdf"
-        meta = load_json(CACHE / f"{num}.meta.json", {}) or {}
-        try:
-            if not pdf.exists():
-                url, year = newest_accounts_url(org)
-                if not url:
-                    records[num] = {"name": t["name"], "urns": t["urns"], "status": "no accounts filed"}
-                    save_json(OUT, records); log(f"{i}/{len(targets)} {t['name']}: no accounts to download"); continue
-                pdf.write_bytes(fetch(url))
-                meta = {"source_url": url, "reporting_year": year, "organisation_number": org}
-                save_json(CACHE / f"{num}.meta.json", meta)
-            pages_file = CACHE / f"{num}.pages.json"
-            pages = load_json(pages_file)
+    todo = [t for t in targets if due(records.get(str(t["charity_number"])))]
+    log(f"{len(targets)} associations, {len(todo)} still to read" + (f", stopping at {stop_at:%a %d %b %H:%M}" if stop_at else ""))
+
+    def save(num, record):
+        with lock:
+            current = load_json(OUT, {}) or {}   # another writer (a spot check) may have added keys since
+            current[num] = record
+            records.clear(); records.update(current)
+            save_json(OUT, current)
+
+    def job(i_t):
+        i, t = i_t
+        if stop_at and datetime.now() >= stop_at:
+            return "stopped"
+        read_one(t, orgs.get(str(t["charity_number"])), records, save, log, f"{i}/{len(todo)}")
+        return "done"
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(pool.map(job, enumerate(todo, 1)))
+    left = [t for t in targets if due((load_json(OUT, {}) or {}).get(str(t["charity_number"])))]
+    if not left:
+        save_json(DONE, {"completed": datetime.now().isoformat(timespec="seconds"), "associations": len(targets)})
+        log("every association has been read")
+    elif "stopped" in results:
+        log(f"stopped at {datetime.now():%H:%M} with {len(left)} still to read")
+    return load_json(OUT, {}) or {}
+
+
+def reverify(log=print) -> int:
+    """Re-run verify_amounts on every saved record from its cached pages (after the check changes); returns how many
+    records changed. Amounts dropped earlier stay dropped: only what is still shown is re-checked."""
+    with _fetch_lock:
+        records = load_json(OUT, {}) or {}
+        changed = 0
+        for num, record in records.items():
+            if not (isinstance(record, dict) and record.get("extracted")):
+                continue
+            pages = load_json(CACHE / f"{num}.pages.json")
             if pages is None:
-                t0 = time.time(); pages = read_pages(pdf); save_json(pages_file, pages)
-                log(f"{i}/{len(targets)} {t['name']}: read {len(pages)} pages in {time.time() - t0:.0f}s")
-            t0 = time.time()
-            facts = extract(pages)
-            records[num] = {"name": t["name"], "urns": t["urns"], **meta, "facts": facts, "extracted": True,
-                            "coverage": coverage(facts),
-                            "models": {"vision": VISION_MODEL, "text": TEXT_MODEL}, "extracted_at": time.strftime("%Y-%m-%d")}
-            save_json(OUT, records)
-            log(f"{i}/{len(targets)} {t['name']}: extracted in {time.time() - t0:.0f}s, "
-                f"{len(facts.get('how_raised') or [])} methods, {len(facts.get('paid_for') or [])} items")
-        except Exception as err:   # one charity's failure never stops the run; it is retried next time
-            log(f"{i}/{len(targets)} {t['name']}: {type(err).__name__}: {err}")
-    return records
+                continue
+            before = json.dumps(record["facts"], sort_keys=True)
+            record["facts"] = verify_amounts(record["facts"], pages)
+            record["coverage"] = coverage(record["facts"])
+            changed += json.dumps(record["facts"], sort_keys=True) != before
+        save_json(OUT, records)
+    log(f"re-verified {sum(1 for r in records.values() if isinstance(r, dict) and r.get('extracted'))} records, {changed} changed")
+    return changed
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--top", type=int, default=100, help="how many of the largest associations to read")
+    parser.add_argument("--top", type=int, default=0, help="read the n largest associations (0: every one that files accounts)")
+    parser.add_argument("--workers", type=int, default=4, help="associations read at once (the models take 4 each)")
+    parser.add_argument("--stop-at", help="stop handing out work at HH:MM (its next occurrence) or an ISO date-time")
+    parser.add_argument("--manage-models", action="store_true", help="load the two models at the start, unload them at the end")
+    parser.add_argument("--reverify", action="store_true", help="only re-check saved records' amounts against their pages")
     args = parser.parse_args(argv)
-    records = run(args.top)
-    done = sum(1 for r in records.values() if r.get("extracted"))
-    print(f"{done} of {len(records)} associations extracted; wrote {OUT}")
+    log = lambda msg: print(f"{datetime.now():%Y-%m-%d %H:%M:%S} {msg}", flush=True)
+    if args.reverify:
+        reverify(log); return
+    if DONE.exists() and not args.top:
+        log(f"already complete ({load_json(DONE)}); nothing to do"); return
+    if not take_lock():
+        log("another run is already reading; leaving it to finish"); return
+    try:
+        if args.manage_models and not models("load", log):
+            log("the models would not load; stopping so the night isn't spent on failures"); return
+        records = run(args.top, workers=args.workers, stop_at=stop_time(args.stop_at), log=log)
+        done = sum(1 for r in records.values() if isinstance(r, dict) and r.get("extracted"))
+        log(f"{done} associations extracted in all; {OUT}")
+    finally:
+        if args.manage_models:
+            models("unload", log)
+        LOCK.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
