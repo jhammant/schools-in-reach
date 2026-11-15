@@ -44,14 +44,16 @@ ASSETS = Path(__file__).with_name("assets")
 
 NAV = [
     ("Find a school", "/"),
-    ("Videos", "/video/"),
-    ("Map", "/map/"),
-    ("Areas", "/areas/"),
-    ("Trusts", "/trust/"),
-    ("PTFA", "/ptfa/"),
-    ("Debts", "/debts/"),
+    ("PTFA fundraising", "/ptfa/"),
     ("Compare", "/compare/"),
+    ("Areas", "/areas/"),
     ("Guides", "/guides/"),
+]
+MORE_NAV = [
+    ("Map", "/map/"),
+    ("Trusts", "/trust/"),
+    ("Debts", "/debts/"),
+    ("Videos", "/video/"),
     ("Tools", "/tools/"),
 ]
 
@@ -116,27 +118,27 @@ def _trail(crumbs):
 
 
 def _nav(path):
-    links = []
-    for label, href in NAV:
+    def link(label, href):
         current = ' aria-current="page"' if href == path or (href != "/" and path.startswith(href)) else ""
         extra = ' <span class="count" data-pin-count>0</span>' if href == "/compare/" else ""
-        links.append(f'<a href="{esc(href)}"{current}>{esc(label)}{extra}</a>')
-    return "".join(links)
+        return f'<a href="{esc(href)}"{current}>{esc(label)}{extra}</a>'
+    return ("".join(link(*entry) for entry in NAV)
+            + '<details class="nav-more"><summary>More</summary><div class="more-links">'
+            + "".join(link(*entry) for entry in MORE_NAV) + '</div></details>')
 
 
-AUDIENCE_LEGEND = "Show me what matters to a"
+AUDIENCE_LEGEND = "Show me useful links. I'm a…"
 # Runs in <head> before first paint: html.js shows the picker (without JavaScript its chips would do nothing), and the
-# reader chosen on an earlier page (app.js's localStorage key) sets html[data-reader], so audience.css reserves the
-# panel's space and tags the sections from the start instead of moving the page when app.js runs.
+# reader chosen on an earlier page (app.js's localStorage key) sets html[data-reader]. app.css reserves the slim
+# strip's space and audience.css tags the relevant sections before app.js runs.
 AUDIENCE_BOOT = ('<script>!function(h){h.classList.add("js");try{var r=JSON.parse(localStorage.getItem("moneyAudience"));'
                  '/^(' + "|".join(key for key, _ in AUDIENCES) + ')$/.test(r)&&h.setAttribute("data-reader",r)}catch(e){}}'
                  '(document.documentElement)</script>')
 
 
 def _audience():
-    """The reader picker, on its own row under the header's: a chip per reader (app.js presses the chosen one and
-    shows its links in #for-you), then Clear, outside the scrolling row so a phone always shows it."""
-    buttons = "".join(f'<button type="button" data-audience="{key}" aria-pressed="false">{esc(label)}</button>' for key, label in AUDIENCES)
+    """Home-page reader choices; old moneyAudience values remain unchanged."""
+    buttons = "".join(f'<button type="button" data-audience="{key}" aria-pressed="false">{esc("PTFA member" if key == "ptfa" else label)}</button>' for key, label in AUDIENCES)
     return (f'<div class="aud-bar"><fieldset class="audience"><legend>{AUDIENCE_LEGEND}</legend><span class="aud-chips">{buttons}</span>'
             '<button type="button" class="aud-clear">Clear</button></fieldset></div>')
 
@@ -243,14 +245,16 @@ def page(title, description, path, body, crumbs, *, og_image=None, indexable=Tru
               'constituencies and trusts</label><input id="q" name="q" type="search" placeholder="School, council, trust or postcode" '
               'autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="q-list"><button type="submit">Search</button>'
               '<ul id="q-list" class="listbox" role="listbox" aria-label="Suggestions" hidden></ul></form>')
-    # On a phone the nav sits behind MENU_BUTTON (app.js opens and closes it); without JavaScript the button is hidden and
-    # the nav shows. The home page has its own finder, so app.css drops the header search there on a phone.
+    # Home has one large finder in its body. Every other page keeps the unchanged header search contract.
+    if path == "/":
+        search = ""
     header = (f'<header class="top{" home" if path == "/" else ""}"><div class="wrap"><a class="brand" href="/">{MARK}'
               f'<span class="name">{SITE_NAME}</span></a><a class="tagline" href="{BASE_SIR}">by Schools in Reach</a>{search}'
-              f'{MENU_BUTTON}<nav class="main-nav" id="main-nav" aria-label="Main">{_nav(path)}</nav></div>{_audience()}</header>')
+              f'{MENU_BUTTON}<nav class="main-nav" id="main-nav" aria-label="Main">{_nav(path)}</nav></div></header>')
+    quick_links = '<div id="for-you"></div>' if path != "/" else ""
     return (f'<!doctype html>\n<html lang="en-GB" data-audience="parent"><head><meta charset="utf-8">'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n{chr(10).join(head)}\n</head>'
-            f'<body><a class="skip" href="#main">Skip to content</a>{header}<div id="for-you"></div>'
+            f'<body><a class="skip" href="#main">Skip to content</a>{header}{quick_links}'
             f'<main id="main" class="wrap"><nav class="crumbs" aria-label="Breadcrumb">{_trail(crumbs)}</nav>{body}</main>'
             f'{_footer()}</body></html>\n')
 

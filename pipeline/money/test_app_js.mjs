@@ -335,6 +335,7 @@ class Node {
   contains(n) { return this === n || this.childNodes.some((c) => c.contains(n)); }
   get offsetParent() { return this.parentNode; }
   getBoundingClientRect() { return { left: 0, top: 0, right: 10, bottom: 10, width: 10, height: 10 }; }
+  scrollIntoView() {}
   addEventListener(type, fn) { if (!this.listeners.has(type)) this.listeners.set(type, []); this.listeners.get(type).push(fn); }
   dispatchEvent(e) {
     e.target ??= this;
@@ -600,19 +601,22 @@ test("every reader gets three to five different links on every kind of page", ()
   }
 });
 
-function readerPage(doc, { slot = true } = {}) {
-  // The shell's picker (site.py) and panel slot, then an empty <main>.
-  const fieldset = add(add(doc.body, "header", { class: "top" }), "fieldset", { class: "audience" });
-  add(fieldset, "legend", {}, "Show me what matters to a");
-  const chips = add(fieldset, "span", { class: "aud-chips" });
-  for (const r of M.READERS) add(chips, "button", { type: "button", "data-audience": r, "aria-pressed": "false" }, r);
-  add(fieldset, "button", { type: "button", class: "aud-clear" }, "Clear");
-  if (slot) add(doc.body, "div", { id: "for-you" });
-  return add(doc.body, "main", { id: "main" });
+function readerPage(doc, { slot = true, picker = true } = {}) {
+  // The home picker and panel slot, or the strip alone on another page.
+  const main = add(doc.body, "main", { id: "main" });
+  if (picker) {
+    const fieldset = add(main, "fieldset", { class: "audience" });
+    add(fieldset, "legend", {}, "Show me what matters to a");
+    const chips = add(fieldset, "span", { class: "aud-chips" });
+    for (const r of M.READERS) add(chips, "button", { type: "button", "data-audience": r, "aria-pressed": "false" }, r);
+    add(fieldset, "button", { type: "button", class: "aud-clear" }, "Clear");
+  }
+  if (slot) add(picker ? main : doc.body, "div", { id: "for-you" });
+  return main;
 }
 const schoolPin = JSON.stringify({ type: "school", id: "100001", name: "Example Primary", p: "/school/100001-example-primary/" });
 
-test("choosing a reader presses its chip, saves it and shows that reader's links under the header", () => {
+test("choosing a reader presses its chip, saves it and shows that reader's quick links", () => {
   // Arrange
   const h = boot({ path: "/school/100001-example-primary/", setup(doc) {
     const main = readerPage(doc);
@@ -636,7 +640,7 @@ test("choosing a reader presses its chip, saves it and shows that reader's links
   assert.equal(panel.querySelector(".fy-sub").textContent, "Quick links for Example Primary");
   assert.deepEqual(panel.querySelectorAll("a").map((a) => a.getAttribute("href")),
     ["/deck/?urn=100001&view=governors", "#spending", "#questions", "/tools/budget-check/", "#reserve"]);
-  assert.equal(h.document.querySelector('[role="status"]').textContent, "For governors: 5 quick links below the header");
+  assert.equal(h.document.querySelector('[role="status"]').textContent, "For governors: 5 quick links below");
   // Act: another chip, then the chosen chip again
   chip("pupil").click();
   assert.equal(panel.querySelector(".fy-title").textContent, "For pupils");
@@ -1130,4 +1134,95 @@ test("the compare area table names the DSG measure in full with its year and den
   assert.match(out, /Dedicated Schools Grant balance \(all four blocks\)/);
   assert.match(out, /-£16\.2m \(2025-26, provisional; -£513 per pupil at the council's schools on this site\)/);
   assert.doesNotMatch(out, /high-needs|schools budget/i);
+});
+
+// ---------------------------------------------------------------- header and audience flow
+test("every legacy audience survives navigation to a page without a picker; Close clears it and restores focus", () => {
+  for (const reader of M.READERS) {
+    // Arrange
+    const setup = (doc) => {
+      add(doc.body, "input", { id: "q", type: "search" });
+      const main = readerPage(doc, { picker: false });
+      for (const id of ["status", "spending", "reserve", "ptfa", "questions", "split"]) add(main, "section", { id });
+    };
+    const path = "/school/100001-example-primary/";
+    // Act
+    const h = boot({ storage: { moneyAudience: reader }, path, setup });
+    // Assert
+    assert.equal(h.document.querySelector("fieldset.audience"), null);
+    assert.equal(h.document.documentElement.getAttribute("data-reader"), reader);
+    assert.equal(h.document.querySelector(".fy-title").textContent, M.READER_TITLES[reader]);
+    assert.equal(h.memory.get("moneyAudience"), JSON.stringify(reader));
+    assert.ok(h.document.querySelectorAll("#for-you a").length >= 4);
+    // Act
+    const close = h.document.querySelector(".fy-close");
+    close.focus();
+    close.click();
+    const next = boot({ storage: { moneyAudience: JSON.parse(h.memory.get("moneyAudience")) }, path, setup });
+    // Assert
+    assert.equal(h.document.activeElement, h.document.getElementById("q"));
+    assert.equal(h.document.getElementById("for-you").children.length, 0);
+    assert.equal(next.document.getElementById("for-you").children.length, 0);
+    assert.equal(next.document.documentElement.getAttribute("data-reader"), null);
+  }
+});
+
+test("a first visit has no quick links until a home audience choice is made", () => {
+  // Arrange
+  const h = boot({ path: "/", setup: (doc) => readerPage(doc) });
+  // Act
+  const before = h.document.getElementById("for-you").children.length;
+  h.document.querySelector('button[data-audience="ptfa"]').click();
+  // Assert
+  assert.equal(before, 0);
+  assert.equal(h.memory.get("moneyAudience"), '"ptfa"');
+  assert.ok(h.document.querySelectorAll("#for-you a").some(a => a.getAttribute("href") === "/guides/ptfa/"));
+});
+
+test("Escape closes More before the phone menu and restores focus to its disclosure", () => {
+  // Arrange
+  const h = boot({ setup(doc) {
+    const header = add(doc.body, "header");
+    add(header, "button", { class: "menu-toggle", "aria-expanded": "true", "aria-controls": "main-nav" });
+    const more = add(add(header, "nav", { id: "main-nav" }), "details", { class: "nav-more", open: "" });
+    add(more, "summary", {}, "More");
+    add(more, "a", { href: "/map/" }, "Map");
+  } });
+  const more = h.document.querySelector("details");
+  more.querySelector("a").focus();
+  // Act
+  h.document.dispatchEvent({ type: "keydown", key: "Escape" });
+  // Assert
+  assert.equal(more.hasAttribute("open"), false);
+  assert.equal(h.document.activeElement, more.querySelector("summary"));
+  assert.equal(h.document.querySelector(".menu-toggle").getAttribute("aria-expanded"), "true");
+  // Act
+  h.document.dispatchEvent({ type: "keydown", key: "Escape" });
+  // Assert
+  assert.equal(h.document.querySelector(".menu-toggle").getAttribute("aria-expanded"), "false");
+  assert.equal(h.document.activeElement, h.document.querySelector(".menu-toggle"));
+});
+
+test("the single home finder still loads suggestions and opens a school with the keyboard", async () => {
+  // Arrange
+  const h = boot({ data: { "/data/search.json": INDEX }, path: "/", setup(doc) {
+    const form = add(doc.body, "form", { class: "finder home-search", action: "/search/", role: "search" });
+    add(form, "input", { id: "find", name: "q", type: "search", autocomplete: "off" });
+  } });
+  const input = h.document.getElementById("find");
+  // Act
+  input.focus();
+  input.value = "william patten";
+  input.dispatchEvent({ type: "input" });
+  h.flushTimers();
+  await settle();
+  input.dispatchEvent({ type: "keydown", key: "ArrowDown" });
+  // Assert
+  assert.equal(h.document.getElementById("q"), null);
+  assert.equal(input.getAttribute("aria-expanded"), "true");
+  assert.equal(input.getAttribute("aria-activedescendant"), "find-opt-0");
+  // Act
+  input.dispatchEvent({ type: "keydown", key: "Enter" });
+  // Assert
+  assert.equal(h.location.href, INDEX.find(row => row.id === "100003").p);
 });

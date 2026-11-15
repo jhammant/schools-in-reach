@@ -118,15 +118,14 @@ class PageTest(unittest.TestCase):
         self.assertEqual(data[0]["itemListElement"][0]["item"], site.BASE_MONEY + "/")
 
     def test_nav_search_audience_footer(self):
-        for label, href in site.NAV:
+        for label, href in site.NAV + site.MORE_NAV:
             self.assertIn(f'href="{href}"', self.html)
             self.assertIn(f">{label}", self.html)
         self.assertIn('<span class="count" data-pin-count>0</span>', self.html)
         self.assertIn('<input id="q" name="q" type="search"', self.html)
         self.assertIn('<form class="search" role="search" action="/search/">', self.html)
-        for aud in ("parent", "governor", "ptfa", "leader", "pupil"):
-            self.assertIn(f'data-audience="{aud}"', self.html)
-        self.assertIn('<fieldset class="audience">', self.html)
+        self.assertNotIn('<fieldset class="audience">', self.html)
+        self.assertNotIn('class="aud-bar"', self.html)
         for source in ("Financial Benchmarking", "Get Information about Schools", "Charity Commission", "GDP deflators", "IFS, Annual report"):
             self.assertIn(source, self.html)
         self.assertIn('href="/about/#sources"', self.html)
@@ -152,6 +151,42 @@ class PageTest(unittest.TestCase):
     def test_relative_path_rejected(self):
         with self.assertRaises(ValueError):
             site.page("t", "d", "school/1/", "", [("School Money", "/")])
+
+
+class FlowEntryTest(unittest.TestCase):
+    def test_five_primary_links_and_native_more_keep_every_destination(self):
+        # Arrange
+        destinations = {"/", "/ptfa/", "/compare/", "/areas/", "/guides/", "/map/", "/trust/", "/debts/", "/video/", "/tools/"}
+        # Act
+        html = site._nav("/map/")
+        primary, more = html.split('<details class="nav-more">')
+        # Assert
+        self.assertEqual(re.findall(r'href="([^"]+)"', primary), ["/", "/ptfa/", "/compare/", "/areas/", "/guides/"])
+        self.assertTrue(more.startswith('<summary>More</summary>'))
+        self.assertEqual(set(re.findall(r'href="([^"]+)"', html)), destinations)
+        self.assertIn('<a href="/map/" aria-current="page">Map</a>', more)
+        self.assertEqual(parse(html).errors, [])
+
+    def test_home_has_one_search_and_three_next_step_cards(self):
+        # Arrange
+        from pipeline.money.build_money import render_home
+        # Act
+        html = render_home([], None, None)
+        cards = re.search(r'<nav class="home-next".*?</nav>', html).group()
+        # Assert
+        self.assertEqual(html.count('type="search"'), 1)
+        self.assertIn('<input id="find" name="q" type="search"', html)
+        self.assertNotIn('id="q"', html)
+        self.assertEqual(re.findall(r'href="([^"]+)"', cards), ["#find", "/ptfa/", "/compare/"])
+        for label in ("Look up a school", "See what parents' associations raise", "Compare schools near you"):
+            self.assertIn(label, cards)
+        self.assertLess(html.index('class="home-next"'), html.index("Your school in 30 seconds"))
+        self.assertLess(html.index('class="home-next"'), html.index("England at a glance"))
+        self.assertIn("School finances in England | School Money", html)
+        self.assertIn("funded, what they spend and their reserves", html)
+        parsed = parse(html)
+        self.assertEqual(parsed.errors, [])
+        self.assertEqual(len(parsed.ids), len(set(parsed.ids)))
 
 
 class MoneyFigureTest(unittest.TestCase):
@@ -297,20 +332,26 @@ class AppJsTest(unittest.TestCase):
 
 
 class AudiencePickerTest(unittest.TestCase):
-    """The "Show me what matters to a" picker, the panel slot under the header and the head script that restores a choice."""
+    """Home owns the picker; other pages keep only the optional quick-links slot."""
 
     def setUp(self):
         # Arrange
         self.html = site.page("t", "d", "/school/100001-example-primary/", "<h1>Body</h1>", [("School Money", "/")])
 
     def test_picker_wording_chips_and_clear(self):
+        # Arrange
+        from pipeline.money.build_money import render_home
+        # Act
+        html = render_home([], None, None)
         # Assert
-        self.assertIn("<legend>Show me what matters to a</legend>", self.html)
-        chips = re.findall(r'<button type="button" data-audience="([a-z]+)" aria-pressed="(true|false)">', self.html)
+        self.assertIn(f"<legend>{site.AUDIENCE_LEGEND}</legend>", html)
+        chips = re.findall(r'<button type="button" data-audience="([a-z]+)" aria-pressed="(true|false)">', html)
         self.assertEqual(chips, [(key, "false") for key, _ in site.AUDIENCES])  # nothing chosen until the reader picks
-        self.assertIn('</span><button type="button" class="aud-clear">Clear</button></fieldset>', self.html)
-        # its own row under the header's grid, so the search box keeps its width
-        self.assertIn('</nav></div><div class="aud-bar"><fieldset class="audience">', self.html)
+        self.assertIn('</span><button type="button" class="aud-clear">Clear</button></fieldset>', html)
+        self.assertGreater(html.index('<fieldset class="audience">'), html.index('<main id="main"'))
+        self.assertEqual(html.count('id="for-you"'), 1)
+        self.assertIn('PTFA member</button>', html)
+        self.assertNotIn('<fieldset', self.html)
 
     def test_panel_slot_follows_the_header_and_assets_load_after_app_css(self):
         # Assert
@@ -338,15 +379,16 @@ class AudiencePickerTest(unittest.TestCase):
         # Arrange
         css = (site.ASSETS / "audience.css").read_text(encoding="utf-8")
         rules = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+        picker_rules = css_rules("app.css").split(".home-intro", 1)[1]
         # Assert
         self.assertIn("audience.css", {p.name for p in site.asset_files()})
         self.assertIsNone(re.search(r"#[0-9a-fA-F]{3,8}\b|rgba?\(", rules), "colours come from app.css's tokens")
-        for token in ("var(--accent)", "var(--accent-soft)", "var(--accent-ink)", "var(--ink)", "var(--card)"):
-            self.assertIn(token, rules)
+        for token in ("var(--accent)", "var(--accent-soft)", "var(--ink)", "var(--card)"):
+            self.assertIn(token, rules + picker_rules)
         for key, _ in site.AUDIENCES:
             self.assertIn(f'html[data-reader="{key}"] .sp-sec[data-readers~="{key}"] > h2::after', rules)
-            self.assertIn(f'html[data-reader="{key}"] header.top button[data-audience="{key}"]', rules)
-        self.assertIn("html:not(.js) .aud-bar { display: none; }", rules)
+        self.assertIn('fieldset.audience button[aria-pressed="true"]::before', picker_rules)
+        self.assertIn("html:not(.js) .aud-bar { display: none; }", picker_rules)
 
 
 def css_rules(name):
@@ -405,14 +447,12 @@ class PhoneHeaderTest(unittest.TestCase):
     def test_menu_rules_show_the_nav_without_javascript_and_hide_it_behind_the_button_on_a_phone(self):
         # Arrange
         phone = media_block(self.css, "max-width: 600px")
-        outside = self.css.replace(phone, "")
         # Assert: hidden everywhere by default (so no JavaScript, no button) and only ever shown under html.js on a phone
-        self.assertIn(".menu-toggle { display: none;", outside)
-        self.assertNotIn("+ nav.main-nav", outside, "only a phone ever hides the nav")
+        self.assertIn(".menu-toggle { display: none;", self.css)
         self.assertIn("html.js .menu-toggle { display: inline-flex; }", phone)
         self.assertIn('html.js .menu-toggle[aria-expanded="false"] + nav.main-nav { display: none; }', phone)
-        self.assertIn("header.top.home form.search { display: none; }", phone)
-        self.assertIn('grid-template-areas: "brand menu" "tag tag" "search search" "nav nav"', phone)
+        self.assertNotIn('<form class="search"', self.home)
+        self.assertIn('grid-template-areas: "brand menu" "search search" "nav nav"', phone)
 
     def test_sort_controls_replace_clipped_header_buttons_on_a_phone(self):
         # Arrange
@@ -432,11 +472,13 @@ class PhoneHeaderTest(unittest.TestCase):
         self.assertIn(".statusbar .seg:focus-visible { outline: 3px solid var(--ink);", self.css)
         self.assertIn("table[data-sortable] th button.sort:focus-visible", self.css)
 
-    def test_picker_is_compact_on_a_phone(self):
+    def test_picker_has_full_touch_targets_and_quick_links_scroll_in_one_row(self):
         # Arrange
-        phone = media_block(css_rules("audience.css"), "max-width: 600px")
+        rules = css_rules("app.css")
         # Assert
-        self.assertIn("header.top fieldset.audience button { min-height: 36px;", phone)
+        self.assertIn("fieldset.audience button { min-height: var(--tap);", rules)
+        self.assertRegex(rules, r'\.fy ul \{[^}]*overflow-x: auto;')
+        self.assertNotIn("nth-child(n+5)", css_rules("audience.css"))
 
 
 class HeldByTrustStatusTest(unittest.TestCase):

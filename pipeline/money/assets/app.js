@@ -529,9 +529,15 @@
   (function menu() {
     var button = $("button.menu-toggle"), nav = button && document.getElementById(button.getAttribute("aria-controls") || "");
     if (!button || !nav) return;
+    var more = $("details.nav-more", nav);
     function open() { return button.getAttribute("aria-expanded") === "true"; }
     button.addEventListener("click", function () { button.setAttribute("aria-expanded", open() ? "false" : "true"); });
     document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && more && more.hasAttribute("open")) {
+        more.removeAttribute("open");
+        if (more.contains(document.activeElement)) $("summary", more).focus();
+        return;
+      }
       if (e.key !== "Escape" || !open()) return;
       var inside = document.activeElement === button || nav.contains(document.activeElement);
       button.setAttribute("aria-expanded", "false");
@@ -540,9 +546,9 @@
   })();
 
   // ---------------------------------------------------------------- audience
-  // The chosen reader sets html[data-reader] (the panel's space, the pressed chip and the section tags in
-  // audience.css; site.page's head script sets it before first paint) and html[data-audience] (which [data-for]
-  // copy shows: the reader, else "parent"). The panel goes in #for-you, under the header.
+  // The chosen reader sets html[data-reader] (the strip's space and section tags; the head script restores it
+  // before first paint) and html[data-audience] (which [data-for]
+  // copy shows: the reader, else "parent"). The picker lives on home; other pages show one dismissible strip.
   (function audience() {
     var html = document.documentElement, slot = document.getElementById("for-you"), picker = $("fieldset.audience"), live = null;
     var page = pageOf(typeof location !== "undefined" ? location.pathname : "/");
@@ -579,6 +585,10 @@
       });
       box.appendChild(head);
       box.appendChild(list);
+      var close = el("button", "aud-clear fy-close", "Close");
+      close.type = "button";
+      close.setAttribute("aria-label", "Close quick links and clear audience choice");
+      box.appendChild(close);
       slot.appendChild(box);
       return links.length;
     }
@@ -602,9 +612,12 @@
       storeSet(KEY_AUD, next);
       var shown = apply(next);
       if (live) live.textContent = !next ? "Choice cleared"
-        : READER_TITLES[next] + (shown ? ": " + shown + " quick links below the header" : " chosen");
-      // Clear hides itself once nothing is chosen, so keep the keyboard in the picker.
-      if (!next && b.classList.contains("aud-clear")) { var first = $("button[data-audience]", picker); if (first) first.focus(); }
+        : READER_TITLES[next] + (shown ? ": " + shown + " quick links below" : " chosen");
+      // The close control disappears. Return focus to a useful, visible control on this page.
+      if (!next && b.classList.contains("aud-clear")) {
+        var first = picker ? $("button[data-audience]", picker) : document.getElementById("q");
+        if (first) first.focus();
+      }
     });
   })();
 

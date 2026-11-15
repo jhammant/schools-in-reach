@@ -2128,22 +2128,30 @@ def render_constituency_index(constituencies, metadata):
 
 
 def render_home(schools, metadata, england):
-    """'/' with the area dashboards: search, the five audience entry points and England's headline."""
+    """One school search, three next steps, then optional reader links and England's headline."""
     assessed = [i for i in schools if i["status"]]
-    body = ('<h1>School money: how England\'s schools are funded, what they spend and what they hold in reserve</h1>'
-            f'<p class="lead">Published DfE figures for {len(assessed):,} state schools, explained for the people who care about them. '
-            'Figures are a starting point for a conversation with a school, not a verdict on it.</p>'
-            '<form class="finder" action="/search/" role="search"><label for="find">Find a school</label>'
-            '<input id="find" name="q" type="search" placeholder="School name, town or postcode" autocomplete="off"><button type="submit">Find</button></form>'
-            '<p class="home-video"><a class="watch" href="/video/"><span aria-hidden="true">▶</span> Your school in 30 seconds</a> '
-            'A short video of any school\'s money, and its PTFA\'s, to watch and share.</p>'
-            '<h2>Start here</h2><ul class="audiences">'
-            + "".join(f'<li><a href="{esc(p)}"><strong>{esc(who)}</strong></a> {esc(why)}</li>' for who, p, why in AUDIENCE_LINKS) + "</ul>"
+    body = ('<section class="home-intro"><h1>See how your school\'s money is doing</h1>'
+            '<p class="lead">School funding, spending and reserves, explained for parents. '
+            'Find your school to see its figures and what its parents\' association raises.</p>'
+            '<form class="finder home-search" action="/search/" role="search"><label for="find">Find your school</label>'
+            '<input id="find" name="q" type="search" placeholder="School name, town or postcode" autocomplete="off"><button type="submit">Search</button></form>'
+            '</section><nav class="home-next" aria-label="Next steps">'
+            '<a href="#find"><strong>Look up a school</strong><span>Start with its name, town or postcode.</span></a>'
+            '<a href="/ptfa/"><strong>See what parents\' associations raise</strong><span>Explore PTFA fundraising across England.</span></a>'
+            '<a href="/compare/"><strong>Compare schools near you</strong><span>Put schools side by side.</span></a></nav>'
+            '<section class="home-readers" aria-label="Links for you">'
+            + (shell._audience() if shell else "") + '<div id="for-you"></div></section>'
+            '<section class="home-explore"><h2>Your school in 30 seconds</h2>'
+            '<p>A short video of any school\'s money, and its PTFA\'s, to watch and share. '
+            '<a href="/video/">Choose a school video</a></p>'
             '<h2>England at a glance</h2>' + (area_pages.headline(england) if england else "")
-            + '<p><a class="button" href="/england/">England\'s schools in detail</a></p>'
+            + '<p><a href="/england/">England\'s schools in detail</a></p>'
+            '<details class="home-guides"><summary>Guides for every reader</summary><ul>'
+            + "".join(f'<li><a href="{esc(p)}">{esc(who)}</a>: {esc(why)}</li>' for who, p, why in AUDIENCE_LINKS) + '</ul></details>'
             '<p><a href="/areas/">Regions</a> · <a href="/council/">Councils</a> · <a href="/constituency/">Constituencies</a> · <a href="/trust/">Academy trusts</a> · '
             '<a href="/debts/">Debts</a> · <a href="/ptfa/">PTFA</a> · <a href="/map/">Map</a> · <a href="/compare/">Compare schools</a> · <a href="/about/">How it works</a></p>'
-            + sources())
+            f'<p class="muted">Published DfE figures for {len(assessed):,} state schools. Figures are a starting point for a conversation '
+            'with a school, not a verdict on it.</p></section>' + sources())
     description = shorten(f"How {len(assessed):,} English state schools are funded, what they spend and their reserves, from DfE returns, for parents, governors and PTFAs.", 160)
     return page("School finances in England | School Money", description, "/", body, [("School Money", "/")], metadata, extra_head=area_head())
 
