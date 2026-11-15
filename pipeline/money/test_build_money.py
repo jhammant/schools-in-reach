@@ -231,7 +231,8 @@ class BuildMoneyTest(unittest.TestCase):
             self.assertTrue(parsed.canonical and parsed.canonical.startswith(BASE_MONEY + "/"), (page, parsed.canonical))
             self.assertRegex(html, r'href="/assets/app\.css\?v=[0-9a-f]{10}"')  # versioned at write time
             self.assertRegex(html, r'src="/assets/app\.js\?v=[0-9a-f]{10}"')
-            self.assertIn('id="q"', html)
+            # Home keeps its one large finder; other pages keep the header combobox.
+            self.assertIn('id="find"' if page == self.out / "index.html" else 'id="q"', html)
             self.assertIn("data-pin-count", html)
         stub = self.read("search")
         self.assertIn("noindex", stub)

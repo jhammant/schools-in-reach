@@ -1244,6 +1244,109 @@ class ReaderTagsTest(unittest.TestCase):
         # Assert
         self.assertEqual(used, keys)
 
+class AtAGlanceTest(unittest.TestCase):
+    def summary(self, body):
+        return re.search(r'<section class="sp-glance">.*?</section>', body).group()
+
+    def test_summary_is_immediately_after_name_and_links_four_real_sections(self):
+        # Arrange
+        item, ctx = cfr_school()
+        # Act
+        body = school_page.render(item, ctx)["body"]
+        summary = self.summary(body)
+        # Assert
+        self.assertTrue(body.startswith(f'<h1>{item["name"]}</h1>{summary}'))
+        self.assertIn('<h2>At a glance</h2>', summary)
+        self.assertIn(item["status"]["label"], summary)
+        self.assertEqual(re.findall(r'href="#([^"]+)"', summary), ["status", "spending", "reserve", "ptfa"])
+        for target in ["status", "spending", "reserve", "ptfa"]:
+            self.assertIn(f'id="{target}"', body)
+        self.assertIn('data-mf="spend_pp"', summary)
+        self.assertIn('Similar schools:', summary)
+        self.assertIn('data-v="6000"', summary)
+        self.assertIn('data-mf="revenue_reserve"', summary)
+        self.assertIn('data-mf="pta_income" data-v="48547"', summary)
+        self.assertIn('Raised in 2024-25', summary)
+        self.assertIn('<strong>On this page</strong>', body)
+        self.assertIn('href="#ptfa">PTFA fundraising</a>', body)
+
+    def test_no_registered_association_does_not_imply_no_fundraising(self):
+        # Arrange
+        item, ctx = cfr_school(pta=[])
+        # Act
+        summary = self.summary(school_page.render(item, ctx)["body"])
+        # Assert
+        self.assertIn('None found on the register', summary)
+        self.assertIn('A group may still be active.', summary)
+        self.assertIn('href="#ptfa"', summary)
+        self.assertNotIn('data-mf="pta_income"', summary)
+
+    def test_missing_income_is_not_zero_and_review_matches_are_not_used(self):
+        # Arrange
+        for pta, wording in [([charity()], 'No income return available'),
+                             ([charity(review=True)], 'None found on the register')]:
+            with self.subTest(wording=wording):
+                item, ctx = cfr_school(pta=pta)
+                # Act
+                summary = self.summary(school_page.render(item, ctx)["body"])
+                # Assert
+                self.assertIn(wording, summary)
+                self.assertNotIn('data-mf="pta_income"', summary)
+
+    def test_summary_keeps_shared_and_uncertain_pta_caveats(self):
+        # Arrange
+        item, ctx = cfr_school(pta=[charity(history=returns(('2025-08', 20_000, 10_000)),
+                                          shared_with=['100002'], match={'confidence': 'medium'})])
+        # Act
+        summary = self.summary(school_page.render(item, ctx)["body"])
+        # Assert
+        self.assertIn('data-mf="pta_income" data-v="10000"', summary)
+        self.assertIn('Shared charity income split between schools.', summary)
+        self.assertIn('Match uncertain: check with the school.', summary)
+
+    def test_summary_withholds_suspect_spending_and_mismatched_pupil_comparisons(self):
+        # Arrange
+        for suspect in (["pupils"], ["total_expenditure"]):
+            with self.subTest(suspect=suspect):
+                item, ctx = cfr_school()
+                ctx["series"]["flags"]["suspect"] = {"2025-26": suspect, "2024-25": suspect}
+                # Act
+                summary = self.summary(school_page.render(item, ctx)["body"])
+                # Assert
+                self.assertIn('Per-pupil figure unavailable', summary)
+                self.assertNotIn('Similar schools:', summary)
+                if suspect == ["pupils"]:
+                    self.assertNotIn('data-pp=', summary)
+
+    def test_federation_pta_is_a_total_and_held_reserve_is_not_presented_as_zero(self):
+        # Arrange
+        item, ctx = cfr_school()
+        ctx["series"]["flags"]["federation_years"] = ['2024-25']
+        item["status"]["status"] = health.HELD_BY_TRUST
+        item["status"]["label"] = health.LABELS[health.HELD_BY_TRUST]
+        item["status"]["reserve"] = 0
+        # Act
+        summary = self.summary(school_page.render(item, ctx)["body"])
+        # Assert
+        pta = figures(summary, "pta_income")
+        self.assertEqual(len(pta), 1)
+        self.assertNotIn('data-pp', pta[0])
+        self.assertIn('Held by the trust', summary)
+        self.assertNotIn('data-mf="revenue_reserve"', summary)
+
+    def test_summary_survives_all_lighter_bodies_within_the_school_budget(self):
+        # Arrange
+        from pipeline.money.build_money import SCHOOL_PAGE_BUDGET
+        item, ctx = big_school()
+        # Act
+        result = school_page.render(item, ctx)
+        # Assert
+        for body in [result['body'], *result['lighter']]:
+            html = site.page(result['title'], result['description'], item['path'], body,
+                             [('School Money', '/'), (item['name'], item['path'])], extra_head=school_page.EXTRA_HEAD)
+            self.assertIn('At a glance', html)
+            self.assertLess(len(html.encode('utf-8')), SCHOOL_PAGE_BUDGET)
+
 
 if __name__ == "__main__":
     unittest.main()

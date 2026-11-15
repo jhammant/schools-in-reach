@@ -1781,10 +1781,52 @@ def check_section(item, view) -> str:
 
 def _toc(body) -> str:
     names = [("status", "Status"), ("funding", "Funding vs spending"), ("reserve", "Reserves"), ("income", "Income"),
-             ("spending", "Spending"), ("nearby", "Nearby"), ("pupils", "Pupils"), ("trust-central", "Trust"), ("ptfa", "PTA"),
+             ("spending", "Spending"), ("nearby", "Nearby"), ("pupils", "Pupils"), ("trust-central", "Trust"), ("ptfa", "PTFA fundraising"),
              ("questions", "Questions"), ("check", "Check")]
     links = "".join(f'<li><a href="#{i}">{n}</a></li>' for i, n in names if f'id="{i}"' in body)
-    return f'<nav class="sp-toc" aria-label="On this page"><ul>{links}</ul></nav>'
+    return f'<nav class="sp-toc" aria-label="On this page"><strong>On this page</strong><ul>{links}</ul></nav>'
+
+
+def _at_a_glance(item, view) -> str:
+    """Signposts using the same status, clean spending and PTA series as the sections below."""
+    st, year = item["status"], view.latest
+    status_year = str(st.get("year") or year or "").replace("/", "-")
+    spend = view.clean(SPEND, year, "pp")
+    spending = "Per-pupil figure unavailable"
+    if spend is not None:
+        spending = exact_figure("spend_pp", spend, year) + f' per pupil <small>{esc(year)}</small>'
+        median = view.similar(SPEND, year)
+        meta = similar_meta(view)
+        if median is not None and (meta is None or meta["year"] == year):
+            spending += '<small>Similar schools: ' + exact_figure("spend_pp", median, year) + ' (median)</small>'
+        else:
+            spending += '<small>Similar-school comparison unavailable</small>'
+    reserve = status_reserve_figure(item, view) or "Not reported"
+    if st["status"] == health.HELD_BY_TRUST:
+        reserve = "Held by the trust"
+    reserve_label = "Reserve (including trust share)" if st.get("trust_share_included") else "Reserve"
+
+    charities = [c for c in item.get("pta") or [] if not c.get("review")]
+    raised = "None found on the register<small>A group may still be active.</small>"
+    if charities:
+        by_year = view.s.get("pta") or _pta_by_year(view, charities)
+        years = sorted(y for y, row in by_year.items() if _num(row.get("income")) is not None)
+        raised = "No income return available"
+        if years:
+            y = years[-1]
+            raised = site.money_figure("pta_income", by_year[y]["income"], view.pta_pupils_for(y), y) + f'<small>Raised in {esc(y)}</small>'
+        if any(_low_confidence(c) for c in charities):
+            raised += '<small>Match uncertain: check with the school.</small>'
+        if any(c.get("shared_with") for c in charities):
+            raised += '<small>Shared charity income split between schools.</small>'
+        if all(_history_status(c)[0] == "historical" for c in charities):
+            raised += '<small>Historical association</small>'
+    entries = [("status", "Money status", f'<strong>{esc(st["label"])}</strong><small>{esc(status_year)}</small>'),
+               ("spending", "Spending", spending), ("reserve", reserve_label, reserve),
+               ("ptfa", "Parents' association", raised)]
+    return ('<section class="sp-glance"><h2>At a glance</h2><ul>'
+            + "".join(f'<li><a href="#{ident}">{esc(label)}</a><p>{value}</p></li>' for ident, label, value in entries)
+            + '</ul></section>')
 
 
 def _intro(item, view) -> str:
@@ -1846,7 +1888,7 @@ def render(item, ctx) -> dict:
     after = "".join([pupils_section(item, view), pass_through_section(item, view), trust_section(item, view), pta_section(item, view),
                      intake_section(item, view), split_section(item, view), context_section(item, view),
                      questions_section(item, view), check_section(item, view)])
-    head = f'<h1>{esc(item["name"])}: school finances</h1>{_intro(item, view)}'
+    head = f'<h1>{esc(item["name"])}</h1>{_at_a_glance(item, view)}{_intro(item, view)}'
     nearby = dict.fromkeys([nearby_section(item, view, level) for level in NEARBY_LEVELS] + [""])
     bodies = [f"{head}{_toc(before + n + after)}{before}{n}{after}" for n in nearby]
     st = item["status"]
