@@ -1520,6 +1520,26 @@ def nearby_fundraising(item, view) -> str:
     return html + f'<p><a href="{esc(url)}">Find fundraisers in this council</a></p>'
 
 
+def pta_change_html(change) -> str:
+    if not change:
+        return '<small>No change figure: income unavailable</small>'
+    if change["reason"]:
+        return f'<small>No change figure: {esc(_series.PTA_CHANGE_REASONS[change["reason"]])}</small>'
+
+    def movement(value):
+        return f'{"Up" if value > 0 else "Down"} £{abs(value):,}' if value else "No change (£0)"
+
+    text = movement(change["value"])
+    pct = change["pct"]
+    text += f' ({pct:+g}%)' if pct is not None and pct else ' (0%)' if pct == 0 else ' (percentage unavailable: previous income was zero or below)'
+    text += f' on {esc(change["year"])}'
+    if change["pp"] is not None:
+        text += f'<br><small>{movement(change["pp"])} per pupil</small>'
+    pp = f' data-pp="{change["pp"]}"' if change["pp"] is not None else ""
+    return (f'<span class="mf" data-mf="pta_income_change" data-v="{change["value"]}"{pp} data-signed="1" '
+            f'data-year="since {esc(change["year"])}">{text}</span>')
+
+
 def pta_section(item, view) -> str:
     charities = [c for c in item.get("pta") or [] if not c.get("review")]
     if not charities:
@@ -1531,6 +1551,11 @@ def pta_section(item, view) -> str:
     by_year = {y: dict(e, income_pp=None, spend_pp=None) if y in view.odd_pupils | view.federation_years else e
                for y, e in (view.s.get("pta") or _pta_by_year(view, charities)).items()}
     years = sorted(by_year)
+    national = (view.ctx.get("pta_national") or {}).get("by_year") or {}
+    complete = max(_pta_covered(national)) if national else None
+    counts = {y: view.pta_pupils_for(y) for y in years}
+    changes = (_series.pta_changes(charities, item.get("rows") or [], counts, by_year, latest_complete=complete)
+               if _series is not None else {})
     html = ""
     chart_years = [y for y in years if _num(by_year[y].get("income_pp")) is not None or _num(by_year[y].get("spend_pp")) is not None]
     if len(chart_years) >= 2:
@@ -1557,15 +1582,17 @@ def pta_section(item, view) -> str:
         low = ' <small>matched with lower confidence</small>' if e.get("confidence") == "medium" else ""
         to = ", ".join(_month_year(pe) for pe in sorted(ends.get(y, ())))
         to = f'<br><small class="muted">year to {esc(to)}</small>' if to else ""
-        rows.append(f'<tr><th scope="row">{esc(y)}{to}</th><td data-label="Raised">{inc}{low}</td><td data-label="Spent">{exp}</td></tr>')
+        rows.append(f'<tr><th scope="row">{esc(y)}{to}</th><td data-label="Raised">{inc}{low}</td><td data-label="Spent">{exp}</td>'
+                    f'<td data-label="Change">{pta_change_html(changes.get(y))}</td></tr>')
     if rows:
         html += ('<table class="sp-pta"><caption>Each school year\'s returns, newest first</caption><thead><tr><th scope="col">School year</th>'
-                 f'<th scope="col">Raised</th><th scope="col">Spent</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
+                 f'<th scope="col">Raised</th><th scope="col">Spent</th><th scope="col">Change</th></tr></thead><tbody>{"".join(rows)}</tbody></table>')
     if len(years) > PTA_ROWS:
         html += f'<p class="small muted">Returns go back to {esc(years[0])}; the older ones are in the chart and on the Charity Commission register.</p>'
     html += '<ul class="sp-charities">' + "".join(_charity_line(c, view) for c in charities) + "</ul>"
     html += ('<p class="small muted">Each return is placed in the school year that holds the end of the charity\'s financial year, '
-             'and per-pupil figures use that year\'s pupils. A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
+             'and per-pupil figures use that year\'s pupils. Change compares income with the previous school year, for the same charities. '
+             'A parents\' association\'s money is its own and isn\'t in the school\'s accounts above. '
              f'{esc(OVERLAP)}</p>')
     if view.odd_pupils & set(by_year):
         html += f'<p class="small muted">{esc(odd_pupils_note(view))}</p>'

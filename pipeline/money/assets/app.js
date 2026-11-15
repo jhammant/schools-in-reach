@@ -170,10 +170,20 @@
     return { phase: phase, text: text, postcode: parsePostcode(text) };
   }
   function rowPhase(r) { return PHASES[r.ph] || "other"; }
+  var FUND_COLUMNS = "id,c,b,lat,lon,income,pp,year,charities,flags,change";
+  var CHANGE_REASONS = ["", "only one year filed", "previous school year missing", "unusual year", "latest year still being filed", "different charities filed", "income unavailable"];
+  var SCHOOL_SORTS = ["name", "total", "pp", "change", "change_pct", "pupils"];
+  function defaultDirection(sort) { return sort === "name" || sort === "distance" ? "asc" : "desc"; }
+  function direction(state) { return state.dir === "asc" || state.dir === "desc" ? state.dir : defaultDirection(state.sort); }
   function fundraisingRows(doc) {
-    if (!doc || doc.v !== 1 || !Array.isArray(doc.columns) || !Array.isArray(doc.rows) || !doc.councils
-        || doc.columns.join() !== "id,c,b,lat,lon,income,pp,year,charities,flags"
-        || doc.rows.some(function (r) { return !Array.isArray(r) || r.length !== 10 || !Array.isArray(r[8]); })) return null;
+    if (!doc || doc.v !== 2 || !Array.isArray(doc.columns) || !Array.isArray(doc.rows) || !doc.councils || !doc.pupils
+        || doc.columns.join() !== FUND_COLUMNS
+        || doc.rows.some(function (r) {
+          if (!Array.isArray(r) || r.length !== 11 || !Array.isArray(r[8])) return true;
+          var c = r[10];
+          return Array.isArray(c) ? c.length !== 3 || !isNum(c[0]) || c.slice(1).some(function (n) { return n !== null && !isNum(n); })
+            : !Number.isInteger(c) || c < 1 || c >= CHANGE_REASONS.length;
+        })) return null;
     var out = Object.create(null);
     doc.rows.forEach(function (values) {
       var r = {};
@@ -182,21 +192,35 @@
     });
     return out;
   }
-  function withFundraising(rows, data) {
-    return rows.map(function (r) { return Object.assign({}, r, { fund: data && data[String(r.id)] }); });
+  function withFundraising(rows, data, pupils) {
+    return rows.map(function (r) { return Object.assign({}, r, { fund: data && data[String(r.id)], pupils: pupils && pupils[String(r.id)] }); });
   }
-  function moneyOrder(a, b, sort) {
-    var key = sort === "pp" ? "pp" : "income", av = a.fund && a.fund[key], bv = b.fund && b.fund[key];
-    return (av == null ? 1 : 0) - (bv == null ? 1 : 0) || (bv || 0) - (av || 0);
+  function sortValue(r, sort, point) {
+    var f = r.fund || {};
+    if (sort === "name") return r.name ? r.name : null;
+    if (sort === "pupils") return isNum(r.pupils) ? r.pupils : null;
+    if (sort === "distance") return point && isNum(f.lat) && isNum(f.lon) ? milesBetween(point, f) : null;
+    if (sort === "change" || sort === "change_pct") return Array.isArray(f.change) ? f.change[sort === "change" ? 0 : 1] : null;
+    var value = f[sort === "pp" ? "pp" : "income"];
+    return isNum(value) ? value : null;
+  }
+  function schoolOrder(a, b, state, point) {
+    var av = sortValue(a, state.sort, point), bv = sortValue(b, state.sort, point);
+    // Missing values stay last independently of direction; ties keep their input order.
+    if (av == null || bv == null) return (av == null ? 1 : 0) - (bv == null ? 1 : 0);
+    var order = typeof av === "string" ? av.localeCompare(bv, "en", { sensitivity: "base" }) : av - bv;
+    return direction(state) === "asc" ? order : -order;
   }
   function filterSearch(rows, state) {
-    var active = state.phase || state.status || state.pta === "1" || state.sort === "pp" || state.sort === "total";
+    var sorted = SCHOOL_SORTS.indexOf(state.sort) !== -1;
+    var active = state.phase || state.status || state.pta === "1" || sorted;
     var out = rows.filter(function (r) {
       return (!active || r.t === "school") && (!state.phase || rowPhase(r) === state.phase)
         && (!state.status || (state.status === "unknown" ? !r.status : r.status === state.status))
         && (state.pta !== "1" || !!r.fund);
     });
-    if (state.sort === "pp" || state.sort === "total") out.sort(function (a, b) { return moneyOrder(a, b, state.sort); });
+    if (sorted) out.sort(function (a, b) { return schoolOrder(a, b, state); });
+    else if (direction(state) === "asc") out.reverse();
     return out;
   }
   function filterFundraisers(rows, state, point, councils) {
@@ -207,14 +231,30 @@
         && (!state.band || String(f.b) === state.band)
         && (!point || (isNum(f.lat) && isNum(f.lon) && milesBetween(point, f) <= 10));
     });
-    return out.sort(function (a, b) { return moneyOrder(a, b, state.sort) || a.name.localeCompare(b.name); });
+    return out.sort(function (a, b) { return schoolOrder(a, b, state, point); });
   }
   function searchState(query) {
     var params = new URLSearchParams(query), state = {};
-    ["q", "phase", "status", "pta", "sort"].forEach(function (k) { state[k] = (params.get(k) || "").trim(); });
+    ["q", "phase", "status", "pta", "sort", "dir"].forEach(function (k) { state[k] = (params.get(k) || "").trim(); });
     // A sort the page doesn't offer (an old or mistyped link) falls back to relevance rather than a blank select.
-    if (["relevance", "pp", "total"].indexOf(state.sort) === -1) state.sort = "";
+    if (["relevance"].concat(SCHOOL_SORTS).indexOf(state.sort) === -1) state.sort = "";
+    state.dir = direction(state);
     return state;
+  }
+  function finderState(query) {
+    var params = new URLSearchParams(query), state = {};
+    ["region", "council", "phase", "band", "postcode", "sort", "dir"].forEach(function (k) { state[k] = (params.get(k) || "").trim(); });
+    if (SCHOOL_SORTS.concat(["distance"]).indexOf(state.sort) === -1 || (state.sort === "distance" && !parsePostcode(state.postcode))) state.sort = "total";
+    state.dir = direction(state);
+    return state;
+  }
+  function incomeChangeText(f) {
+    var c = f.change;
+    if (!Array.isArray(c)) return "No change figure: " + (CHANGE_REASONS[c] || "income unavailable");
+    function movement(n) { return n ? (n > 0 ? "Up " : "Down ") + fmtExact(Math.abs(n)) : "No change (£0)"; }
+    var start = parseInt(f.year, 10) - 1, previous = start + "-" + String((start + 1) % 100).padStart(2, "0");
+    var percent = c[1] == null ? "percentage unavailable: previous income was zero or below" : (c[1] > 0 ? "+" : "") + c[1] + "%";
+    return movement(c[0]) + " (" + percent + ") on " + previous + (c[2] == null ? "" : " · " + movement(c[2]) + " per pupil");
   }
   function stateQuery(state) {
     var params = new URLSearchParams();
@@ -548,7 +588,8 @@
     fmtMoney: fmtMoney, perPupil: perPupil, parsePostcode: parsePostcode, rankSearch: rankSearch,
     milesBetween: milesBetween, nearestRows: nearestRows, schoolsNear: schoolsNear,
     searchMatches: searchMatches, fold: fold, editDistance: editDistance,
-    queryIntent: queryIntent, searchNextSteps: searchNextSteps, searchState: searchState, stateQuery: stateQuery,
+    queryIntent: queryIntent, searchNextSteps: searchNextSteps, searchState: searchState, finderState: finderState, stateQuery: stateQuery,
+    incomeChangeText: incomeChangeText,
     fundraisingRows: fundraisingRows, withFundraising: withFundraising, filterSearch: filterSearch, filterFundraisers: filterFundraisers,
     pinLimits: pinLimits, togglePin: togglePin, importShortlist: importShortlist, postcodeLookup: postcodeLookup,
     slugify: slugify, unitOf: unitOf, fmtUnit: fmtUnit, seriesDrill: seriesDrill, parseTags: parseTags,
@@ -1086,7 +1127,7 @@
     return Promise.all([schoolsNear(pc, 1000, districtOnly), loadIndex(), loadFundraising()]).then(function (values) {
       var near = values[0], index = Object.create(null);
       (values[1] || []).forEach(function (r) { if (r.t === "school") index[r.id] = r; });
-      near.rows = withFundraising(near.rows.map(function (r) { return Object.assign({}, index[r.id], r); }), values[2] && values[2].rows)
+      near.rows = withFundraising(near.rows.map(function (r) { return Object.assign({}, index[r.id], r); }), values[2] && values[2].rows, values[2] && values[2].doc.pupils)
         .filter(function (r) { return !phase || rowPhase(r) === phase; }).slice(0, limit);
       near.fundraisingAvailable = !!values[2];
       return near;
@@ -1336,6 +1377,16 @@
     return input;
   }
   function phaseChoices() { return [["", "All phases"]].concat(PHASES.map(function (p, i) { return [p, PHASE_NAMES[i]]; })); }
+  function sortChoices(search) {
+    return (search ? [["relevance", "Relevance"]] : []).concat([
+      ["name", "School name"], ["total", "Parents’ association total income"], ["pp", "Income per pupil"],
+      ["change", "Change in income (£)"], ["change_pct", "Change in income (%)"], ["pupils", "Pupils (school size)"]
+    ], search ? [] : [["distance", "Distance from postcode district centre"]]);
+  }
+  function sortDirection(form, prefix, controls, state) {
+    controls.dir = field(form, prefix + "-dir", "Direction", [["desc", "Descending"], ["asc", "Ascending"]], direction(state));
+    controls.sort.addEventListener("change", function () { controls.dir.value = defaultDirection(controls.sort.value); });
+  }
   function resultList(box, rows) {
     var ul = el("ul", "results");
     rows.forEach(function (r) {
@@ -1344,6 +1395,8 @@
       li.appendChild(el("span", "kind", r.t || "")); li.appendChild(a);
       if (r.status && LABELS[r.status]) li.appendChild(badge(r.status));
       if (searchDetail(r)) li.appendChild(el("span", "sub", searchDetail(r)));
+      if (r.fund) li.appendChild(el("span", "sub income-change", incomeChangeText(r.fund)));
+      if (isNum(r.pupils)) li.appendChild(el("span", "sub", r.pupils.toLocaleString("en-GB") + " pupils (latest full school return)"));
       ul.appendChild(li);
     });
     box.appendChild(ul);
@@ -1365,7 +1418,8 @@
     controls.phase = field(form, "search-phase", "Phase", phaseChoices(), state.phase);
     controls.status = field(form, "search-status", "Money status", [["", "All money statuses"]].concat(Object.keys(LABELS).map(function (k) { return [k, LABELS[k]]; }), [["unknown", "No money status available"]]), state.status);
     controls.pta = field(form, "search-pta", "Parents’ association", [["", "All schools"], ["1", "Has a registered parents’ association"]], state.pta);
-    controls.sort = field(form, "search-sort", "Sort by", [["relevance", "Relevance"], ["pp", "Parents’ association income per pupil"], ["total", "Parents’ association total income"]], state.sort || "relevance");
+    controls.sort = field(form, "search-sort", "Sort by", sortChoices(true), state.sort || "relevance");
+    sortDirection(form, "search", controls, state);
     var submit = el("button", "button", "Search"); submit.type = "submit"; form.appendChild(submit);
     panel.appendChild(form);
     var box = el("section", "search-results"); box.setAttribute("aria-live", "polite"); panel.appendChild(box);
@@ -1405,7 +1459,7 @@
       paint();
     }
     function find() {
-      var turn = ++sequence, q = state.q, filters = state.phase || state.status || state.pta || state.sort === "pp" || state.sort === "total";
+      var turn = ++sequence, q = state.q, filters = state.phase || state.status || state.pta || SCHOOL_SORTS.indexOf(state.sort) !== -1;
       if (!q && !filters) { box.textContent = "Enter a school, place or postcode, or choose a filter."; return; }
       box.textContent = "Searching…";
       var intent = queryIntent(q), pc = intent.postcode;
@@ -1426,15 +1480,15 @@
         if (!index) { unavailable(); return; }
         var m = q ? searchMatches(index, q, index.length) : { rows: index.filter(function (r) { return r.t === "school"; }) };
         if (m.urn && !filters) { location.replace(m.rows[0].p); return; }
-        var rows = filterSearch(withFundraising(m.rows, fund && fund.rows), state);
+        var rows = filterSearch(withFundraising(m.rows, fund && fund.rows, fund && fund.doc.pupils), state);
         show(rows, m.fuzzy ? "Close matches for “" + q + "”" : q ? "Results for “" + q + "”" : "Schools");
         if (!m.rows.length) {
           var next = searchNextSteps(index, q); box.appendChild(el("p", null, next.message));
-          resultList(box, withFundraising(next.rows, fund && fund.rows));
+          resultList(box, withFundraising(next.rows, fund && fund.rows, fund && fund.doc.pupils));
         } else if (!rows.length) {
           box.appendChild(el("p", null, "No schools match these filters. Clear the filters to see the name or place matches."));
           retryButton(box, "Clear filters", function () {
-            ["phase", "status", "pta"].forEach(function (k) { controls[k].value = ""; }); controls.sort.value = "relevance"; update();
+            ["phase", "status", "pta"].forEach(function (k) { controls[k].value = ""; }); controls.sort.value = "relevance"; controls.dir.value = "desc"; update();
           });
           resultList(box, BROWSE);
         } else if (m.fuzzy) {
@@ -1446,7 +1500,7 @@
     }
     function fundWarning(available) {
       if (available) return;
-      box.appendChild(el("p", "muted", "Fundraising figures could not be loaded. Association filters and income sorting may be incomplete."));
+      box.appendChild(el("p", "muted", "Fundraising figures and pupil counts could not be loaded. Association filters and sorting by income, change or pupils may be incomplete."));
       retryButton(box, "Retry fundraising figures", find);
     }
     find();
@@ -1455,8 +1509,7 @@
   (function fundraisingFinder() {
     var host = document.getElementById("fundraising-controls");
     if (!host) return;
-    var params = new URLSearchParams(location.search), state = {}, controls = {}, sequence = 0;
-    ["region", "council", "phase", "band", "postcode", "sort"].forEach(function (k) { state[k] = params.get(k) || ""; });
+    var state = finderState(location.search), controls = {}, sequence = 0;
     function initialise() {
       host.textContent = "Loading fundraising filters…";
       Promise.all([loadIndex(), loadFundraising()]).then(function (values) {
@@ -1466,7 +1519,7 @@
           host.appendChild(el("p", null, "The finder could not load. You can still browse the top lists below."));
           retryButton(host, "Try again", initialise); return;
         }
-        var rows = withFundraising(index.filter(function (r) { return r.t === "school"; }), fund.rows), councils = fund.doc.councils;
+        var rows = withFundraising(index.filter(function (r) { return r.t === "school"; }), fund.rows, fund.doc.pupils), councils = fund.doc.councils;
         var form = el("form", "find-filters"); form.action = "/ptfa/"; form.method = "get";
         var regions = Array.from(new Set(Object.keys(councils).map(function (c) { return councils[c][1]; }).filter(Boolean))).sort();
         controls.region = field(form, "fund-region", "Region", [["", "All regions"]].concat(regions.map(function (r) { return [r, r]; })), state.region);
@@ -1485,13 +1538,21 @@
         controls.band = field(form, "fund-band", "Intake band", [["", "All intakes"], ["1", "1 – more affluent"], ["2", "2"], ["3", "3"], ["4", "4"], ["5", "5 – less affluent"]], state.band);
         controls.postcode = field(form, "fund-postcode", "Near a postcode", null, state.postcode);
         controls.postcode.setAttribute("aria-describedby", "fund-distance-note");
-        controls.sort = field(form, "fund-sort", "Sort by", [["total", "Total income"], ["pp", "Income per pupil"]], state.sort || "total");
+        controls.sort = field(form, "fund-sort", "Sort by", sortChoices(false), state.sort);
+        sortDirection(form, "fund", controls, state);
+        function distanceOption() {
+          var available = !!parsePostcode(controls.postcode.value);
+          controls.sort.querySelectorAll("option").forEach(function (o) { if (o.value === "distance") o.disabled = !available; });
+          if (!available && controls.sort.value === "distance") { controls.sort.value = "total"; controls.dir.value = "desc"; }
+        }
+        controls.postcode.addEventListener("input", distanceOption);
+        distanceOption();
         var submit = el("button", "button", "Find fundraisers"); submit.type = "submit"; form.appendChild(submit); host.appendChild(form);
         var note = el("p", "small muted", "Near a postcode means within 10 miles of its district centre. Intake bands use free school meals and neighbourhood deprivation: 1 is more affluent, 5 less affluent.");
         note.id = "fund-distance-note"; host.appendChild(note);
         var box = el("div", "fund-results"); box.setAttribute("aria-live", "polite"); host.appendChild(box);
         form.addEventListener("submit", function (e) {
-          e.preventDefault(); Object.keys(controls).forEach(function (k) { state[k] = controls[k].value.trim(); });
+          e.preventDefault(); distanceOption(); Object.keys(controls).forEach(function (k) { state[k] = controls[k].value.trim(); });
           history.replaceState(null, "", "/ptfa/?" + stateQuery(state) + "#fundraising-finder"); run();
         });
         function run() {
@@ -1509,7 +1570,7 @@
             var local = councils[state.council], year = fund.doc.year || "year unavailable";
             box.appendChild(el("p", "fund-medians", "England median: " + (fund.doc.england != null ? fmtExact(fund.doc.england) + " per pupil" : "unavailable")
               + (local ? ". " + local[0] + " median: " + (local[2] != null ? fmtExact(local[2]) + " per pupil" : "unavailable (too few comparable returns)") : "") + " (" + year + ")."));
-            box.appendChild(el("p", "small muted", "Medians use the published, well-covered year and do not change with these filters. Results use each association’s latest available return; years may differ. Per-pupil figures need a reliable pupil count for that year. Figures start a conversation, not a verdict."));
+            box.appendChild(el("p", "small muted", "Medians use the published, well-covered year and do not change with these filters. Results use each association’s latest school year; years may differ. Change compares income with the previous school year, for the same charities. Per-pupil changes need reliable pupil counts in both years. Figures start a conversation, not a verdict."));
             if (!shown.length) { box.appendChild(el("p", null, "Try a wider area, a different phase, or clear the intake or postcode filter. The top lists below are still available.")); return; }
             var list = resultList(box, shown);
             list.querySelectorAll("li").forEach(function (li, i) {
@@ -1524,7 +1585,14 @@
             });
           });
         }
-        if (Object.keys(state).some(function (k) { return !!state[k]; })) run();
+        if (root.addEventListener) root.addEventListener("popstate", function () {
+          state = finderState(location.search);
+          controls.region.value = state.region;
+          councilOptions(state.council);
+          Object.keys(controls).forEach(function (k) { if (k !== "council") controls[k].value = state[k]; });
+          distanceOption(); run();
+        });
+        if (location.search) run();
       });
     }
     initialise();
@@ -1665,6 +1733,7 @@
     select.id = "sort-" + n;
     label.setAttribute("for", select.id);
     dir.type = "button";
+    dir.setAttribute("aria-label", "Direction: Ascending. Change to descending");
     said.setAttribute("role", "status");
     var none = el("option", null, "Table order");
     none.value = "";
@@ -1679,6 +1748,7 @@
       rows.forEach(function (r) { body.appendChild(r); });
       select.value = col < 0 ? "" : String(col);
       dir.textContent = asc ? "Ascending" : "Descending";
+      dir.setAttribute("aria-label", "Direction: " + dir.textContent + ". Change to " + (asc ? "descending" : "ascending"));
       said.textContent = col < 0 ? "In table order" : "Sorted by " + names[col] + ", " + (asc ? "ascending" : "descending");
     }
     // Puts th's own content in a button (once); returns false for an empty header.
@@ -1714,6 +1784,7 @@
       if (state.col >= 0) { sortTo(state.col, !state.asc); return; }
       state.asc = !state.asc;
       dir.textContent = state.asc ? "Ascending" : "Descending";
+      dir.setAttribute("aria-label", "Direction: " + dir.textContent + ". Change to " + (state.asc ? "descending" : "ascending"));
     });
     controls.appendChild(label);
     controls.appendChild(select);

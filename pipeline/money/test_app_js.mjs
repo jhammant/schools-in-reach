@@ -1014,6 +1014,7 @@ test("sortable headers become native buttons with a plain label copy, and no th 
   const controls = h.document.querySelector(".sort-controls");
   assert.equal(controls.querySelector("select").value, "1");
   assert.equal(controls.querySelector(".sort-dir").textContent, "Descending");
+  assert.equal(controls.querySelector(".sort-dir").getAttribute("aria-label"), "Direction: Descending. Change to ascending");
   assert.match(controls.querySelector('[role="status"]').textContent, /Sorted by Reserve, descending/);
 });
 
@@ -1147,20 +1148,158 @@ const FIND_INDEX = [
   { t: "school", id: "5", name: "Park School", sub: "Hackney", ph: 1, status: "healthy", p: "/school/5-park/" },
 ];
 const FUND_DATA = {
-  v: 1, columns: ["id", "c", "b", "lat", "lon", "income", "pp", "year", "charities", "flags"],
+  v: 2, columns: ["id", "c", "b", "lat", "lon", "income", "pp", "year", "charities", "flags", "change"],
+  pupils: { "1": 300, "2": 1000, "4": 100, "5": 200 },
   councils: { "204": ["Hackney", "London", 76], "210": ["Southwark", "London", null], "999": ["Far away", "North East", 10] },
   year: "2024-25", england: 31,
   rows: [
-    ["2", "204", 3, 51.55, -0.06, 20000, 20, "2024-25", ["111111"], 0],
-    ["3", "210", 1, 51.49, -0.07, 50000, null, "2025-26", ["222222"], 3],
-    ["4", "999", 5, 54, -1, 0, 0, "2024-25", ["333333"], 0],
-    ["5", "204", 2, 51.56, -0.06, 10000, 50, "2024-25", ["444444"], 0],
+    ["2", "204", 3, 51.55, -0.06, 20000, 20, "2024-25", ["111111"], 0, [4200, 26.6, 4]],
+    ["3", "210", 1, 51.49, -0.07, 50000, null, "2025-26", ["222222"], 3, 4],
+    ["4", "999", 5, 54, -1, 0, 0, "2024-25", ["333333"], 0, [0, null, 0]],
+    ["5", "204", 2, 51.56, -0.06, 10000, 50, "2024-25", ["444444"], 0, [-1000, -9.1, -5]],
   ],
 };
 const findData = { "/data/search.json": FIND_INDEX, "/data/fundraising.json": FUND_DATA };
 const searchSetup = (doc) => add(add(doc.body, "main"), "h1", {}, "Search");
 const finderSetup = (doc) => add(doc.body, "div", { id: "fundraising-controls" });
 const change = (node, value) => { node.value = value; node.dispatchEvent({ type: "change" }); };
+
+for (const sort of ["name", "total", "pp", "change", "change_pct", "pupils", "distance"]) {
+  for (const dir of ["asc", "desc"]) {
+    test(`${sort} ${dir}: search and finder order values before missing values, including zero and negatives`, () => {
+      // Arrange: input deliberately puts the missing value first; a separate row has no association.
+      const point = { lat: 51.5, lon: 0 };
+      const make = (id, name, value, lat) => ({ t: "school", id, name, pupils: value,
+        fund: { income: value, pp: value, change: value == null ? 1 : [value, value, value], lat, lon: 0 } });
+      const rows = [make("missing", "", null, null), make("zero", "Bee", 0, 51.51),
+        make("negative", "Aye", -10, 51.5), make("positive", "See", 20, 51.52)];
+      const expected = dir === "asc" ? ["negative", "zero", "positive", "missing"] : ["positive", "zero", "negative", "missing"];
+      // Act
+      const finder = M.filterFundraisers(rows, { sort, dir }, sort === "distance" ? point : null, {});
+      const search = M.filterSearch(rows, { sort, dir });
+      // Assert: distance's existing radius filter leaves unlocated schools out.
+      assert.deepEqual(finder.map((r) => r.id), sort === "distance" ? expected.slice(0, 3) : expected);
+      if (sort !== "distance") assert.deepEqual(search.map((r) => r.id), expected);
+      assert.equal(rows[0].id, "missing", "input not mutated");
+    });
+  }
+}
+
+test("relevance direction reverses the ranked results without including non-matches", () => {
+  // Arrange
+  const ranked = M.rankSearch(FIND_INDEX, "hackney", 100);
+  // Act
+  const desc = M.filterSearch(ranked, { sort: "relevance", dir: "desc" });
+  const asc = M.filterSearch(ranked, { sort: "relevance", dir: "asc" });
+  // Assert
+  assert.deepEqual(desc, ranked);
+  assert.deepEqual(asc, ranked.slice().reverse());
+});
+
+test("all sorts and directions round-trip through URLs, with sensible defaults and fallbacks", () => {
+  // Arrange
+  const sorts = ["relevance", "name", "total", "pp", "change", "change_pct", "pupils", "distance"];
+  for (const sort of sorts) {
+    for (const dir of ["asc", "desc"]) {
+      // Act
+      const query = M.stateQuery({ sort, dir, postcode: "E8" });
+      const search = M.searchState(query), finder = M.finderState(query);
+      // Assert
+      assert.equal(search.sort, sort === "distance" ? "" : sort);
+      assert.equal(finder.sort, sort === "relevance" ? "total" : sort);
+      assert.equal(search.dir, dir);
+      assert.equal(finder.dir, dir);
+    }
+  }
+  assert.equal(M.searchState("?sort=name&dir=nonsense").dir, "asc");
+  assert.equal(M.searchState("?sort=change").dir, "desc");
+  assert.equal(M.finderState("?sort=distance&postcode=E8").dir, "asc");
+  assert.equal(M.finderState("?sort=distance").sort, "total");
+  assert.equal(M.searchState("?sort=unknown").sort, "");
+});
+
+test("change words cover gains, falls, zero, zero baseline and every withheld reason", () => {
+  // Arrange
+  const f = { year: "2024-25", change: [4200, 12, -3] };
+  // Act / Assert
+  assert.equal(M.incomeChangeText(f), "Up £4,200 (+12%) on 2023-24 · Down £3 per pupil");
+  assert.equal(M.incomeChangeText({ ...f, change: [-4200, -12, null] }), "Down £4,200 (-12%) on 2023-24");
+  assert.equal(M.incomeChangeText({ ...f, change: [0, 0, 0] }), "No change (£0) (0%) on 2023-24 · No change (£0) per pupil");
+  assert.match(M.incomeChangeText({ ...f, change: [4200, null, null] }), /percentage unavailable: previous income was zero or below/);
+  for (const reason of [1, 2, 3, 4, 5, 6]) assert.match(M.incomeChangeText({ ...f, change: reason }), /^No change figure: /);
+});
+
+test("search restores direction, changes sort defaults, and sorts pupils without requiring an association", async () => {
+  // Arrange
+  const h = boot({ path: "/search/?sort=pupils&dir=desc", data: findData, setup: searchSetup });
+  await settle();
+  // Act / Assert
+  assert.deepEqual(h.document.querySelectorAll(".results li").map((li) => li.querySelector("a").textContent),
+    ["Mossbourne Academy", "Northwold School", "Park School", "St Mary's Primary", "Harris Academy"]);
+  assert.match(h.document.querySelector(".search-results").textContent, /Up £4,200/);
+  assert.equal(h.document.querySelector('label[for="search-dir"]').textContent, "Direction");
+  change(h.document.querySelector("#search-sort"), "name"); await settle();
+  assert.equal(h.document.querySelector("#search-dir").value, "asc");
+  assert.match(h.urls.at(-1), /sort=name&dir=asc/);
+  change(h.document.querySelector("#search-dir"), "desc"); await settle();
+  assert.equal(h.document.querySelector(".results a").textContent, "St Mary's Primary");
+  assert.match(h.urls.at(-1), /sort=name&dir=desc/);
+});
+
+test("finder distance needs a postcode, uses ascending by default, and preserves the submitted direction", async () => {
+  // Arrange
+  const h = boot({ path: "/ptfa/", data: { ...findData, "/data/postcodes/E8.json": { lat: 51.55, lon: -0.06 } }, setup: finderSetup });
+  await settle();
+  const sort = h.document.querySelector("#fund-sort"), dir = h.document.querySelector("#fund-dir");
+  const distance = sort.querySelectorAll("option").find((o) => o.value === "distance");
+  assert.equal(distance.disabled, true);
+  // Act
+  const postcode = h.document.querySelector("#fund-postcode"); postcode.value = "E8"; postcode.dispatchEvent({ type: "input" });
+  change(sort, "distance");
+  h.document.querySelector("form").dispatchEvent({ type: "submit" }); await settle();
+  // Assert
+  assert.equal(distance.disabled, false);
+  assert.equal(dir.value, "asc");
+  assert.equal(h.document.querySelector(".results a").textContent, "Mossbourne Academy");
+  assert.match(h.urls.at(-1), /sort=distance&dir=asc/);
+  // Act
+  change(dir, "desc"); h.document.querySelector("form").dispatchEvent({ type: "submit" }); await settle();
+  // Assert
+  assert.equal(h.document.querySelector(".results a").textContent, "Harris Academy");
+  assert.match(h.urls.at(-1), /sort=distance&dir=desc/);
+  assert.equal(h.document.querySelector('label[for="fund-dir"]').textContent, "Direction");
+});
+
+test("browser history restores the sort and direction on search and finder", async () => {
+  for (const prefix of ["search", "fund"]) {
+    // Arrange
+    const events = {};
+    const path = prefix === "search" ? "/search/?sort=total" : "/ptfa/?sort=total";
+    const h = boot({ path, data: findData, setup: prefix === "search" ? searchSetup : finderSetup,
+      globals: { addEventListener: (type, fn) => { events[type] = fn; } } });
+    await settle();
+    // Act
+    h.location.search = "?sort=name&dir=desc";
+    events.popstate(); await settle();
+    // Assert
+    assert.equal(h.document.querySelector("#" + prefix + "-sort").value, "name");
+    assert.equal(h.document.querySelector("#" + prefix + "-dir").value, "desc");
+    assert.equal(h.document.querySelector(".results a").textContent, "St Mary's Primary");
+  }
+});
+
+test("distance without a point has no values to rank; malformed changes are rejected", () => {
+  // Arrange
+  const rows = M.withFundraising(FIND_INDEX, M.fundraisingRows(FUND_DATA));
+  // Act / Assert
+  for (const dir of ["asc", "desc"]) {
+    assert.deepEqual(M.filterFundraisers(rows, { sort: "distance", dir }, null, FUND_DATA.councils).map((r) => r.id), ["2", "3", "4", "5"]);
+  }
+  for (const bad of [null, [], [1, null], [null, 10, 5], [1, "10", 5], 0, 7]) {
+    const doc = structuredClone(FUND_DATA); doc.rows[0][10] = bad;
+    assert.equal(M.fundraisingRows(doc), null);
+  }
+});
 
 test("phase plus area includes the council and every matching phase; names with places still work", () => {
   // Arrange
@@ -1231,7 +1370,7 @@ test("search filters honour all URL fields and apply before limiting, null incom
   const hits = M.filterSearch(rows, state);
   // Assert
   assert.deepEqual(hits.map((r) => r.id), ["5"]);
-  assert.equal(M.stateQuery(state), "q=hackney&phase=primary&status=healthy&pta=1&sort=pp");
+  assert.equal(M.stateQuery(state), "q=hackney&phase=primary&status=healthy&pta=1&sort=pp&dir=desc");
   assert.deepEqual(M.filterSearch(rows, { sort: "pp" }).map((r) => r.id), ["5", "2", "4", "1", "3"]);
   assert.deepEqual(M.filterSearch(rows, { status: "unknown" }).map((r) => r.id), ["4"]);
 });
@@ -1313,7 +1452,7 @@ test("finder defaults to static lists; submitted controls show medians, school, 
 test("finder restores a council link, caps at 25 and reports unavailable medians", async () => {
   // Arrange
   const index = Array.from({ length: 30 }, (_, i) => ({ ...FIND_INDEX[4], id: String(100 + i), name: `Academy ${i}` }));
-  const data = { ...FUND_DATA, rows: index.map((r, i) => [r.id, "210", 1, 51.49, -0.07, 10000 + i, null, "2025-26", ["222222"], 0]) };
+  const data = { ...FUND_DATA, rows: index.map((r, i) => [r.id, "210", 1, 51.49, -0.07, 10000 + i, null, "2025-26", ["222222"], 0, 4]) };
   const h = boot({ path: "/ptfa/?council=210", data: { "/data/search.json": index, "/data/fundraising.json": data }, setup: finderSetup });
   // Act
   await settle();

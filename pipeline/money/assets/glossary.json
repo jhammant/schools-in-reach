@@ -300,6 +300,12 @@
     "how": "Expenditure reported to the Charity Commission by the parents' association charities matched to this school, placed in the school year that contains the end of the charity's financial year.",
     "source": "Charity Commission register of charities, OGL v3"
   },
+  "pta_income_change": {
+    "label": "Change in parents' association income",
+    "plain": "How much more or less the same parents' association charities raised than in the previous school year.",
+    "how": "This school year's income minus the previous school year's income. Distinct returns in a school year are added and shared charities are split equally. The percentage divides the change by the earlier income; it is unavailable when that income was zero or below. The per-pupil change subtracts each year's income divided by its own reliable pupil count. No comparison is made across a gap, between different charities, for an unusual year, or for a newest year still being filed. Figures are in cash, without adjusting for inflation.",
+    "source": "Charity Commission register and the school's finance returns"
+  },
   "pta_per_pupil": {
     "label": "PTA income per pupil",
     "plain": "How much the parent-teacher association raised for each pupil in the school.",

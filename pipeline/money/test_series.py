@@ -517,6 +517,110 @@ class PtaSeriesTest(unittest.TestCase):
         self.assertEqual(series.school_series([row("2023-24")], [])["pta"], {})
 
 
+class PtaChangesTest(unittest.TestCase):
+    def test_adjacent_years_use_unrounded_totals_and_each_years_pupils(self):
+        # Arrange
+        rows = [row("2023-24", pupils=100), row("2024-25", pupils=200)]
+        charities = [charity(1, [("2024-08", 35000, 1), ("2025-08", 39200, 1)])]
+        # Act
+        changes = series.pta_changes(charities, rows, series.pta_pupils(rows))
+        # Assert: total rises, but per pupil falls because the school grew.
+        self.assertEqual(changes["2024-25"], {"year": "2023-24", "value": 4200, "pct": 12,
+                                             "pp": -154, "reason": 0})
+
+    def test_a_gap_is_not_compared_with_an_older_return(self):
+        # Arrange
+        one = [charity(1, [("2025-08", 20000, 1)])]
+        gap = [charity(1, [("2023-08", 10000, 1), ("2025-08", 20000, 1)])]
+        # Act
+        single = series.pta_changes(one, [], {})["2024-25"]
+        missing = series.pta_changes(gap, [], {})["2024-25"]
+        # Assert
+        self.assertEqual((single["value"], single["reason"]), (None, 1))
+        self.assertEqual((missing["pct"], missing["reason"]), (None, 2))
+
+    def test_either_unusual_year_withholds_every_change(self):
+        for index in (0, 1):
+            # Arrange
+            c = charity(1, [("2024-08", 10000, 1), ("2025-08", 20000, 1)])
+            c["history"][index]["unusual"] = True
+            # Act
+            change = series.pta_changes([c], [], {"2023-24": 100, "2024-25": 100})["2024-25"]
+            # Assert
+            self.assertEqual((change["value"], change["pct"], change["pp"], change["reason"]), (None, None, None, 3))
+
+    def test_filing_year_uses_existing_coverage_cutoff_and_explicit_flag(self):
+        # Arrange
+        c = charity(1, [("2024-08", 10000, 1), ("2025-08", 20000, 1)])
+        # Act
+        coverage = series.pta_changes([c], [], {}, latest_complete="2023-24")["2024-25"]
+        c["history"][-1]["still_filing"] = True
+        flagged = series.pta_changes([c], [], {})["2024-25"]
+        # Assert
+        self.assertEqual((coverage["value"], coverage["reason"]), (None, 4))
+        self.assertEqual(flagged, coverage)
+
+    def test_income_flags_withhold_changes_without_changing_the_original_series(self):
+        # Arrange
+        c = charity(1, [("2024-08", 10000, 1), ("2025-08", 20000, 1)])
+        original = series._pta([c], [], {})
+        c["history"][0]["suspect"] = ["income"]
+        # Act
+        change = series.pta_changes([c], [], {})["2024-25"]
+        flagged = series._pta([c], [], {})
+        # Assert
+        self.assertEqual((change["value"], change["reason"]), (None, 3))
+        self.assertEqual(flagged, original)
+
+    def test_shared_charity_is_split_before_comparing(self):
+        # Arrange
+        c = charity(1, [("2024-08", 10000, 1), ("2025-08", 22600, 1)], shared_with=["100002", "100003"])
+        # Act
+        change = series.pta_changes([c], [], {"2023-24": 100, "2024-25": 100})["2024-25"]
+        # Assert
+        self.assertEqual((change["value"], change["pct"], change["pp"]), (4200, 126, 42))
+
+    def test_distinct_returns_are_summed_and_duplicate_return_counted_once(self):
+        # Arrange
+        c = charity(1, [("2024-08", 10000, 1), ("2025-03", 6000, 1), ("2025-08", 8200, 1), ("2025-08", 8200, 1)])
+        # Act
+        change = series.pta_changes([c], [], {})["2024-25"]
+        # Assert
+        self.assertEqual((change["value"], change["pct"]), (4200, 42))
+
+    def test_replacement_or_partly_filed_charities_are_never_compared(self):
+        for current in ([charity(2, [("2025-08", 20000, 1)])],
+                        [charity(1, [("2025-08", 20000, 1)]), charity(2, [("2025-08", 1000, 1)])]):
+            # Arrange
+            charities = [charity(1, [("2024-08", 10000, 1)])] + current
+            # Act
+            change = series.pta_changes(charities, [], {})["2024-25"]
+            # Assert
+            self.assertEqual((change["value"], change["reason"]), (None, 5))
+
+    def test_missing_income_is_not_zero_and_zero_baseline_has_no_percentage(self):
+        for old, new, value, pct, reason in ((None, 100, None, None, 6), (100, None, None, None, 6),
+                                             (0, 100, 100, None, 0), (100, 0, -100, -100, 0), (100, 100, 0, 0, 0)):
+            # Arrange
+            c = charity(1, [("2024-08", old, 1), ("2025-08", new, 1)])
+            # Act
+            change = series.pta_changes([c], [], {})["2024-25"]
+            # Assert
+            self.assertEqual((change["value"], change["pct"], change["reason"]), (value, pct, reason))
+
+    def test_unreliable_pupils_in_either_year_only_withhold_per_pupil_change(self):
+        for index in (0, 1):
+            for flag in ({"suspect": ["pupils"]}, {"federated": "Lead school"}, {"pupils": 4}, {"pupils": None}):
+                # Arrange
+                rows = [row("2023-24"), row("2024-25")]
+                rows[index].update(flag)
+                charities = [charity(1, [("2024-08", 10000, 1), ("2025-08", 20000, 1)])]
+                # Act
+                change = series.pta_changes(charities, rows, series.pta_pupils(rows))["2024-25"]
+                # Assert
+                self.assertEqual((change["value"], change["pct"], change["pp"]), (10000, 100, None))
+
+
 class HelpersTest(unittest.TestCase):
     def test_sparkline_values(self):
         # Arrange

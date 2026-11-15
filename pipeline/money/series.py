@@ -274,8 +274,8 @@ def _school_source(period_end: str, rows: list[dict]) -> str:
     return nearest["source"]
 
 
-def _pta(pta, rows: list[dict], pupils: dict) -> dict:
-    """Parents' association income and spending per school year, summed over its charities."""
+def _pta_totals(pta, rows: list[dict]) -> dict:
+    """Unrounded school-year totals, retaining the contributors and comparison flags."""
     totals: dict[str, dict] = {}
     for record in pta or []:
         if not isinstance(record, dict) or record.get("review"):
@@ -301,8 +301,20 @@ def _pta(pta, rows: list[dict], pupils: dict) -> dict:
                 slot["spend"] = (slot["spend"] or 0) + spend
             number = record.get("charity_number")
             slot["by_charity"][number] = slot["by_charity"].get(number, 0) + (income or 0)
+            if income is None:
+                slot["incomplete"] = True
+            if entry.get("unusual") or set(entry.get("suspect") or []) & {"income", "pta_income"}:
+                slot["unusual"] = True
+            if entry.get("still_filing"):
+                slot["still_filing"] = True
             if confidence:
                 slot["confidence"].append(confidence)
+    return totals
+
+
+def _pta(pta, rows: list[dict], pupils: dict) -> dict:
+    """Parents' association income and spending per school year, summed over its charities."""
+    totals = _pta_totals(pta, rows)
     out = {}
     for label in sorted(totals):
         slot = totals[label]
@@ -315,6 +327,66 @@ def _pta(pta, rows: list[dict], pupils: dict) -> dict:
                 "confidence": min(slot["confidence"], key=CONFIDENCE_ORDER.index) if slot["confidence"] else None}
         out[label] = item
     return out
+
+
+# Compact reason codes shared with fundraising.json and app.js. Zero means a comparison is available.
+PTA_CHANGE_REASONS = ("", "only one year filed", "previous school year missing", "unusual year",
+                      "latest year still being filed", "different charities filed", "income unavailable")
+
+
+def previous_school_year(year):
+    start = int(year[:4]) - 1
+    return f"{start}-{(start + 1) % 100:02d}"
+
+
+def pta_changes(pta, rows, pupils, by_year=None, *, latest_complete=None):
+    """Compare adjacent school years for the same set of charities at this school only.
+
+    Use the same deduplication, equal shares and sums as _pta, before rounding. A zero
+    baseline permits a cash change but no percentage. Pupil counts must be reliable in
+    BOTH years. latest_complete uses areas.pta_window's existing national filing rule.
+    Existing income/spending figures are never removed or adjusted by these checks.
+    """
+    totals = _pta_totals(pta, rows)
+    by_year = by_year if by_year is not None else _pta(pta, rows, pupils)
+    out = {}
+    for year, current in by_year.items():
+        previous = previous_school_year(year)
+        earlier = by_year.get(previous)
+        now, before = totals.get(year, {}), totals.get(previous, {})
+        reason = 0
+        if (latest_complete and year > latest_complete) or now.get("still_filing") or current.get("still_filing"):
+            reason = 4
+        elif now.get("unusual") or before.get("unusual") or current.get("unusual") or (earlier or {}).get("unusual"):
+            reason = 3
+        elif earlier is None:
+            reason = 1 if len(by_year) == 1 else 2
+        elif (not now.get("by_charity") or None in now["by_charity"]
+              or set(map(str, now["by_charity"])) != set(map(str, before.get("by_charity", {})))):
+            reason = 5
+        elif (now.get("incomplete") or before.get("incomplete") or now.get("income") is None
+              or before.get("income") is None or current.get("income") is None or earlier.get("income") is None):
+            reason = 6
+        change = {"year": previous, "value": None, "pct": None, "pp": None, "reason": reason}
+        if not reason:
+            income, old = now["income"], before["income"]
+            change["value"] = _pounds(income - old)
+            change["pct"] = round(100 * (income - old) / old, 1) if old > 0 else None
+            count, old_count = pupils.get(year), pupils.get(previous)
+            if count and count > 0 and old_count and old_count > 0:
+                change["pp"] = _pounds(income / count - old / old_count)
+        out[year] = change
+    return out
+
+
+def pta_pupils(rows):
+    """Reliable same-year pupil counts for association comparisons, including explicit source flags."""
+    full = _one_per_year(status.full_years(rows))
+    odd = suspect_pupils(rows)
+    excluded = set(federation_years(rows)) | {
+        year_label(r) for r in rows if "pupils" in (r.get("suspect") or []) or r.get("period_end") in odd}
+    counts = {**_pupils_any_year(rows), **{year_label(r): r.get("pupils") for r in full}}
+    return {y: n for y, n in counts.items() if n and n > 0 and y not in excluded}
 
 
 def _pupils_any_year(rows: list[dict]) -> dict:

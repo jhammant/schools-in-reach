@@ -115,6 +115,8 @@
   .sp-years td[data-label]::before, .sp-pta td[data-label]::before { content: attr(data-label); }
   .sp-pta td:nth-child(2)::before { content: "Raised"; }
   .sp-pta td:nth-child(3)::before { content: "Spent"; }
+  /* Income changes need the full phone row for the comparison and its reason. */
+  .sp-pta td[data-label="Change"] { grid-column: 1 / -1; }
   .sp-years .mf small, .sp-pta .mf small { display: block; white-space: normal; }
   .sp-rows td:nth-last-child(2)::before { content: "Change per pupil"; }
   .sp-rows td:last-child::before { content: "Similar schools"; }
