@@ -276,6 +276,7 @@ def coverage(facts: dict) -> float | None:
 # ---------------------------------------------------------------- run
 
 RECHECK_DAYS = 14          # an association with no accounts online yet is looked at again after this long
+LOAD_CEILING = 60          # 1-minute load average above which no new association is started
 LOCK = CACHE / "run.lock"
 DONE = CACHE / "complete.json"
 
@@ -395,6 +396,12 @@ def run(n: int, *, workers: int = 4, stop_at: datetime | None = None, log=print)
 
     def job(i_t):
         i, t = i_t
+        # Back off while the Mac is busy: on 15 Nov it reached a load average of 400-560 with this reader, builds and
+        # other agents together, and crashed (hardware watchdog, then a launchd panic). Wait for the load to fall.
+        while os.getloadavg()[0] > LOAD_CEILING:
+            if stop_at and datetime.now() >= stop_at:
+                return "stopped"
+            time.sleep(30)
         if stop_at and datetime.now() >= stop_at:
             return "stopped"
         read_one(t, orgs.get(str(t["charity_number"])), records, save, log, f"{i}/{len(todo)}")
