@@ -950,6 +950,75 @@ test("per pupil comes from the return's own total and its year's pupils, not a p
   assert.equal(Math.round(e.incomePp), Math.round(48547 / 437.5));
 });
 
+test("shared charity totals are apportioned before the PTFA pack divides by the school's pupils", () => {
+  // Arrange: a £20,000 charity shared by two schools, each with 100 pupils.
+  const { s, sx, council } = livePatten();
+  s.years.forEach((r) => { r.pupils = 100; });
+  sx.pupils = Object.fromEntries(sx.years.map((y) => [y, 100]));
+  s.pta[0].shared_with = ["100002"];
+  s.pta[0].history = [{ period_end: "2025-08", income: 20000, expenditure: 16000 }];
+  sx.pta = { "2024-25": { income: 10000, spend: 8000, income_pp: 100, spend_pp: 80, charity_number: 1103834 } };
+  for (const producer of [sx, null]) {
+    // Act: also cover a pack whose series document is unavailable.
+    const m = D.adapt(s, producer, council, ENGLAND);
+    const deck = D.ptfaDeck(m, CTXT);
+    const e = m.pta[0].years[0];
+    // Assert: whole-charity cash totals stay intact, but per pupil uses this school's share.
+    assert.equal(e.income, 20000);
+    assert.equal(e.spend, 16000);
+    assert.equal(e.incomePp, 100);
+    assert.equal(e.spendPp, 80);
+    assert.match(findSlide(deck, "summary").messages[0], /£100 per pupil/);
+  }
+});
+
+test("shared charity per-pupil fallback recognises apportioned series figures without apportioning twice", () => {
+  // Arrange: only the producer knows the per-pupil figures for this charity year.
+  const { s, sx, council } = livePatten();
+  s.years = [];
+  sx.years = [];
+  sx.pupils = {};
+  sx.m = {};
+  s.pta[0].shared_with = ["100002"];
+  s.pta[0].history = [{ period_end: "2025-08", income: 20000, expenditure: 16000 }];
+  sx.pta = { "2024-25": { income: 10000, spend: 8000, income_pp: 100, spend_pp: 80, charity_number: 1103834 } };
+  // Act
+  const withHistory = D.adapt(s, sx, council, ENGLAND).pta[0].years[0];
+  s.pta[0].history = [];
+  const withoutHistory = D.adapt(s, sx, council, ENGLAND).pta[0].years[0];
+  // Assert
+  for (const e of [withHistory, withoutHistory]) {
+    assert.equal(e.incomePp, 100);
+    assert.equal(e.spendPp, 80);
+  }
+});
+
+test("generated school documents retain sharing for the PTFA pack", () => {
+  // Arrange: use the actual Python producer, including its compact /data/s representation.
+  const payload = JSON.parse(execFileSync("python3", ["-c", `
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from pipeline.money import build_money
+from pipeline.money.test_build_money import full_rows, make_site, school
+with TemporaryDirectory() as tmp:
+    pta = {"100001": [{"charity_number": 123, "name": "Shared Friends", "shared_with": ["100002"],
+                      "history": [{"period_end": "2025-08", "income": 20000, "expenditure": 16000}]}]}
+    args = make_site(Path(tmp), [("204", "Hackney")], {"204": [school(100001, "Primary")]},
+                     full_rows("100001", pupils=100), pta)
+    _, items, _ = build_money.build_model(*args)
+    print(json.dumps({"s": build_money.school_json(items[0]), "sx": build_money.school_series(items[0])}))
+`], { cwd: repo, encoding: "utf8" }));
+  // Act
+  const m = D.adapt(payload.s, payload.sx, null, null);
+  const deck = D.ptfaDeck(m, CTXT);
+  // Assert
+  assert.equal(m.pta[0].years[0].income, 20000);
+  assert.equal(m.pta[0].years[0].incomePp, 100);
+  assert.equal(m.pta[0].years[0].spendPp, 80);
+  assert.match(findSlide(deck, "summary").messages[0], /£100 per pupil/);
+});
+
 test("sources are read per year: an academy cites AAR, a converter cites CFR then AAR (persona fix 7)", () => {
   // Arrange
   const { s, sx, council } = livePatten();
