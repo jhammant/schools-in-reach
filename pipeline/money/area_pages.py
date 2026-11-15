@@ -23,7 +23,7 @@ import re
 from collections import Counter
 
 from pipeline.money import areas as agg
-from pipeline.money import charts
+from pipeline.money import charts, pta_accounts_view
 from pipeline.money import status as health
 from pipeline.money.charts import STATUS_ORDER, badge, esc, money
 from pipeline.money.site import money_figure, pin_button, slug
@@ -1356,6 +1356,26 @@ def deficit_cell(s, year):
 PTFA_HEADERS = ["Council", "Schools", "With a registered parents' association", "Median income per pupil", "Total raised"]
 
 
+def pta_accounts_summary(records):
+    """Method mentions in the gated sample, not national rates or amounts raised."""
+    if not records:
+        return ""
+    counts = pta_accounts_view.method_counts(records)
+    if not counts:
+        return ""
+    n = len(records)
+    rows = "".join(f'<li>{esc(method)}: {count} of {n} associations</li>'
+                   for method, count in sorted(counts.items(), key=lambda pair: (-pair[1], pair[0])))
+    return ('<section id="fundraising-methods"><h2>How the biggest fundraisers raise money</h2>'
+            f'<p>Common methods mentioned in accounts read automatically for {n} of the largest registered '
+            'parents\' associations. This is a selected sample, not all associations. Accounts may cover different years.</p>'
+            f'<ul>{rows}</ul><p>Each association counts once per method, even if it serves several schools. '
+            'The reading may miss a method or make a mistake; a missing mention does not mean it was not used. '
+            'These counts do not show which methods raised the most money. '
+            'Check the original accounts linked on school pages before relying on a figure.</p>'
+            '<p><a href="/guides/ptfa/">Ideas for your association: read the PTFA guide</a></p></section>')
+
+
 def render_ptfa(areas_doc_, items, ctx):
     """/ptfa/: parents' associations nationally, by intake band and tag, the biggest fundraisers,
     councils compared, and the charities held back for review."""
@@ -1440,6 +1460,7 @@ def render_ptfa(areas_doc_, items, ctx):
                      + "".join(entry(t) for t in by_pp) + "</ol></div></div>"
                      f'<p class="muted small">Each school\'s latest return in {esc(span)}; a shared association counts its '
                      'share for each school.</p>')
+    parts.append(pta_accounts_summary(ctx.get("pta_accounts") or {}))
     held = pta.get("held") or []
     if held:
         names = ", ".join(f'<a href="{esc(charity_url(c.get("charity_number")))}" rel="noopener">{esc(c.get("name"))}</a>'
