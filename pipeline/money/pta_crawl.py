@@ -55,6 +55,9 @@ MAX_CRAWL_DELAY = 30.0   # a robots.txt Crawl-delay is honoured up to this in th
 TIMEOUT = 10
 RETRY_TIMEOUT = 20       # one more try, after the main pass, for homepages that timed out
 MAX_PAGES = 6            # HTML pages per school; robots.txt and redirect hops are requests, not pages
+SLOW_MAX_PAGES = 3       # in the slow lane (Crawl-delay above MAX_CRAWL_DELAY): homepage, PTA page and one more
+SLOW_WORKERS = 96        # slow-lane threads spend nearly all their time waiting out a Crawl-delay, so every slow
+                         # site gets its own and they wait in parallel; each host still sees one request per delay
 MAX_REDIRECTS = 5
 MAX_BYTES = 2_000_000
 MAX_SCRIPT = 500_000     # script text kept per page, for Wix-style JSON and JSON-LD
@@ -1272,7 +1275,8 @@ def crawl_group(group, fetcher, registry, shared=None, *, lane="main", timeout=N
         return all(classify(candidates, registry, s, shared=on_shared_site, domains=domains).accepted for s in group)
 
     tally = Counter()
-    site = crawl_site(url, fetcher, enough, timeout=timeout, slow=lane == "slow", tally=tally)
+    site = crawl_site(url, fetcher, enough, SLOW_MAX_PAGES if lane == "slow" else MAX_PAGES, timeout=timeout,
+                      slow=lane == "slow", tally=tally)
     verdicts = [classify(site.candidates, registry, s, shared=on_shared_site, domains=site.domains) for s in group]
     sibling = {h["charity_number"] for v in verdicts for h in v.accepted}   # a federation partner's own PTA
     home_err = next((p["err"] for p in reversed(site.trail) if p["kind"].startswith("home")), None)
@@ -1428,9 +1432,11 @@ def write_outputs(out, latest) -> dict:
 # --------------------------------------------------------------------- run
 
 def _pool_sizes(workers) -> tuple[int, int]:
-    """(main, slow lane) threads: a sixth for the slow lane, never more than MAX_WORKERS in all."""
+    """(main, slow lane) threads: five sixths of workers (at most MAX_WORKERS) fetch at full pace; the slow lane,
+    present from six workers up, gets SLOW_WORKERS threads that mostly sleep through Crawl-delays, so slow sites
+    wait in parallel instead of four at a time (76 sites asking 12,000 s between requests took weeks that way)."""
     workers = max(1, min(int(workers), MAX_WORKERS))
-    return workers - workers // 6, workers // 6
+    return workers - workers // 6, SLOW_WORKERS if workers // 6 else 0
 
 
 def _on_signals(stop, log):

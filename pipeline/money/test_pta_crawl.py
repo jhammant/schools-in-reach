@@ -975,6 +975,25 @@ class MainTest(NoNetworkTest):
         self.assertEqual([c["timeout"] for c in web.calls if c["url"] == "https://williampatten.example/"], [10, 20])
         self.assertEqual(list(found), ["130932"])
 
+    def test_slow_lane_reads_at_most_slow_max_pages_per_school(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # Arrange: a slow site whose homepage links to a PTA page with four sub-pages
+            root = Path(tmp)
+            write_fixture(root, SCHOOLS)
+            clock = FakeClock()
+            subs = "".join(f'<a href="/pta/{n}/">PTA news {n}</a>' for n in range(4))
+            web = FakeWeb(dict(WEB, **{"https://hollypark.example/robots.txt": "User-agent: *\nCrawl-delay: 120\n",
+                                       "https://hollypark.example/": page('<a href="/pta/">PTA</a>'),
+                                       "https://hollypark.example/pta/": page(subs),
+                                       **{f"https://hollypark.example/pta/{n}/": page("<p>Cake sale</p>") for n in range(4)}}),
+                          clock)
+            # Act
+            self.run_main(root, "--workers", "6", web=web, crawler=fetcher(web, clock))
+        # Assert: the main pass only read robots.txt and deferred the site; the slow lane read SLOW_MAX_PAGES pages
+        pages = [u for u in web.page_urls() if pta_crawl.host_key(u) == "hollypark.example"]
+        self.assertEqual(len(pages), pta_crawl.SLOW_MAX_PAGES, pages)
+        self.assertEqual(pages[:2], ["https://hollypark.example/", "https://hollypark.example/pta/"])
+
     def test_long_crawl_delay_schools_finish_in_the_slow_lane(self):
         with tempfile.TemporaryDirectory() as tmp:
             # Arrange
@@ -1001,8 +1020,9 @@ class MainTest(NoNetworkTest):
         self.assertEqual(once, again)
         self.assertNotEqual(once, schools)
         self.assertEqual(sorted(s["urn"] for s in once), list(range(30)))
-        self.assertEqual([sum(pta_crawl._pool_sizes(w)) for w in (1, 6, 24, 100)], [1, 6, 24, 24])
-        self.assertEqual(pta_crawl._pool_sizes(24), (20, 4))
+        self.assertEqual([pta_crawl._pool_sizes(w)[0] for w in (1, 6, 24, 100)], [1, 5, 20, 20])
+        self.assertEqual(pta_crawl._pool_sizes(24), (20, pta_crawl.SLOW_WORKERS))
+        self.assertEqual(pta_crawl._pool_sizes(5), (5, 0))   # too few workers for a slow lane: no sleeping threads
 
 
 class WidespreadTest(unittest.TestCase):
