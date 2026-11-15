@@ -575,7 +575,8 @@ class SizeBudgetTest(unittest.TestCase):
 
         # Assert
         # 2 KB up on the first budget: the C9 register link, the corrections link and the academy check wording.
-        self.assertLessEqual(len(page["body"].encode("utf-8")), 34_000)
+        # 2 KB more for the launch: the At a glance summary and what parents raise at schools nearby.
+        self.assertLessEqual(len(page["body"].encode("utf-8")), 36_000)
         self.assertLess(len(html.encode("utf-8")), 42_000)
 
     def test_eight_years_three_ptas_and_39_similar_schools(self):

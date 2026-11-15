@@ -129,7 +129,10 @@ TOP_N = 10
 PAGE_BUDGET = 48_000
 # 80 KB (~15 KB gzipped), up from 64 KB: the nearby-schools section and the charts' per-year readout data pushed
 # most pages to the old limit, where the nearby section fell back to a cut-down table or none.
-SCHOOL_PAGE_BUDGET = 80_000
+# 96 KB (~18 KB gzipped) for the November 2026 launch: the At a glance summary and what parents raise at schools
+# nearby pushed 247 of the biggest pages back onto the cut-down nearby section. The real ceiling is the deploy
+# archive (deploy/money/deploy.sh refuses one above 140 MB), so check its size when raising this again.
+SCHOOL_PAGE_BUDGET = 96_000
 AREA_PAGE_TARGET = 40_000  # paged tables are cut so each page, shell included, stays under this when it can
 # A council or constituency page opens with its charts, so at 40 KB its first page held only about five schools
 # (Hackney: 5 of 60). Its school table gets its own allowance on top: AREA_TABLE_ROWS rows of up to 2.5 KB each
