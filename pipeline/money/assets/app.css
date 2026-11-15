@@ -142,7 +142,7 @@ form.search button { flex: none; white-space: nowrap; min-height: var(--tap); pa
 .listbox[hidden] { display: none; }
 .listbox li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; min-height: var(--tap); border-radius: var(--radius-s); cursor: pointer; }
 .listbox li[aria-selected="true"], .listbox li:hover { background: var(--accent-soft); }
-.listbox .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); flex: none; width: 5.6em; }
+.listbox .kind { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); flex: none; width: 9em; white-space: nowrap; }  /* wide enough for CONSTITUENCY on one line */
 .listbox .sub { color: var(--ink-2); font-size: .85rem; margin-left: auto; text-align: right; }
 .listbox .empty { color: var(--ink-2); cursor: default; }
 .listbox .note { display: block; min-height: 0; padding: 4px 10px; color: var(--ink-2); font-size: .875rem; cursor: default; }
