@@ -147,6 +147,13 @@ form.search button { flex: none; white-space: nowrap; min-height: var(--tap); pa
 .listbox .empty { color: var(--ink-2); cursor: default; }
 .listbox .note { display: block; min-height: 0; padding: 4px 10px; color: var(--ink-2); font-size: .875rem; cursor: default; }
 .listbox .note:hover { background: none; }
+/* Phones: the kind label (wide enough for CONSTITUENCY) and the place each take their own line, so a school's name
+   keeps the full width instead of breaking mid-word. */
+@media (max-width: 560px) {
+  .listbox li { flex-wrap: wrap; row-gap: 2px; }
+  .listbox .kind { width: auto; flex-basis: 100%; }
+  .listbox .sub { flex-basis: 100%; margin-left: 0; text-align: left; }
+}
 .listbox .note strong { color: var(--ink); }
 nav.main-nav { grid-area: nav; display: flex; flex-wrap: wrap; gap: 2px 4px; justify-content: flex-end; }
 nav.main-nav a { display: inline-flex; align-items: center; min-height: 36px; padding: 0 10px; border-radius: 999px; color: var(--ink); text-decoration: none; font-weight: 500; font-size: .95rem; }
