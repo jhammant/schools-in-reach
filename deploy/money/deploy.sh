@@ -10,6 +10,9 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 # finance_history.jsonl comes from pipeline/dfe/finance_history.py (cached DfE workbooks);
 # pta.json from pipeline/money/pta.py. Both are read from pipeline/.cache by default.
+# The live site counts page views with the owner's cookieless loader (no cookies, no recording); a build without
+# this variable has no analytics at all. Set MONEY_ANALYTICS_SCRIPT= (empty) to deploy without it.
+export MONEY_ANALYTICS_SCRIPT="${MONEY_ANALYTICS_SCRIPT-https://hammantlabs.com/a.js}"
 if ! (cd "$REPO" && python3 -m pipeline.money.build_money); then
   echo "Deploy aborted: School Money generation failed." >&2
   exit 1

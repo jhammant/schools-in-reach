@@ -684,3 +684,38 @@ class AudienceLinksResolveTest(unittest.TestCase):
 
 if __name__ == "__main__":
     sys.exit(unittest.main())
+
+
+class AnalyticsTagTest(unittest.TestCase):
+    """The page-view loader is opt-in: only a build given MONEY_ANALYTICS_SCRIPT carries it."""
+
+    def render(self, value):
+        from unittest import mock
+        env = {} if value is None else {"MONEY_ANALYTICS_SCRIPT": value}
+        with mock.patch.dict("os.environ", env, clear=False):
+            if value is None:
+                import os
+                os.environ.pop("MONEY_ANALYTICS_SCRIPT", None)
+            return site.page("A school", "Its money", "/school/1-a/", "<p>Body</p>", [("School Money", "/")])
+
+    def test_no_setting_means_no_analytics(self):
+        # Arrange / Act
+        html = self.render(None)
+        # Assert
+        self.assertNotIn("a.js", html)
+        self.assertNotIn("posthog", html)
+
+    def test_the_setting_adds_one_deferred_loader(self):
+        # Arrange / Act
+        html = self.render("https://hammantlabs.com/a.js")
+        # Assert
+        self.assertEqual(html.count('<script defer src="https://hammantlabs.com/a.js"></script>'), 1)
+        self.assertLess(html.index("/assets/app.js"), html.index("hammantlabs.com/a.js"))
+
+    def test_anything_but_a_plain_https_url_is_ignored(self):
+        # Arrange
+        bad = ["http://hammantlabs.com/a.js", "https://x.example/a.js\"><script>alert(1)</script>", "javascript:alert(1)", " "]
+        # Act / Assert
+        for value in bad:
+            with self.subTest(value=value):
+                self.assertNotIn("<script defer src=", self.render(value))

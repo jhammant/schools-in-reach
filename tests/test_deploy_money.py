@@ -318,6 +318,17 @@ class ContentSecurityPolicyTest(unittest.TestCase):
             with self.subTest(directive=directive, url=url):
                 self.assertTrue(allows(self.csp[directive], url))
 
+    def test_the_optional_analytics_loader_and_posthog_are_allowed(self):
+        # Arrange
+        loader = "https://hammantlabs.com/a.js"
+        posthog_script = "https://eu-assets.i.posthog.com/static/array.js"
+        posthog_events = "https://eu.i.posthog.com/e/"
+        # Act / Assert
+        self.assertTrue(allows(self.csp["script-src"], loader))
+        self.assertTrue(allows(self.csp["script-src"], posthog_script))
+        self.assertTrue(allows(self.csp["connect-src"], posthog_events))
+        self.assertTrue(allows(self.csp["connect-src"], loader))
+
     def test_every_library_and_service_the_scripts_load_is_allowed(self):
         # Arrange: script URL constants (loaded on demand as <script>) and fetches to other hosts
         checks = []

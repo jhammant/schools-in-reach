@@ -8,6 +8,7 @@ assets/app.js turns into tooltips, drill-downs and pins; the HTML works without 
 from __future__ import annotations
 
 import json
+import os
 import re
 import unicodedata
 from html import escape
@@ -210,6 +211,16 @@ def _footer():
             f'conversation with your school, not a verdict on it.</p></div></footer>')
 
 
+def analytics_tag() -> str:
+    """The page-view loader, only when the build is given one: MONEY_ANALYTICS_SCRIPT=https://... (deploy/money/deploy.sh
+    sets the owner's cookieless loader). A copy of this site built without it loads no analytics and reports to no one.
+    Anything but a plain https URL is ignored."""
+    url = os.environ.get("MONEY_ANALYTICS_SCRIPT", "").strip()
+    if not re.fullmatch(r"https://[A-Za-z0-9.-]+(?::\d+)?/[A-Za-z0-9._~/-]*", url):
+        return ""
+    return f'<script defer src="{esc(url)}"></script>'
+
+
 def page(title, description, path, body, crumbs, *, og_image=None, indexable=True, extra_head="") -> str:
     """A complete HTML document. title/description are plain text; body is trusted, already-escaped HTML;
     path is the clean absolute path of the page; crumbs = [(name, path), ...] ending with this page."""
@@ -238,6 +249,7 @@ def page(title, description, path, body, crumbs, *, og_image=None, indexable=Tru
     head.append(AUDIENCE_BOOT)
     head.append('<link rel="stylesheet" href="/assets/app.css"><script src="/assets/app.js" defer></script>'
                 '<link rel="stylesheet" href="/assets/audience.css">')
+    head.append(analytics_tag())
     head.append(f'<script type="application/ld+json">{ld}</script>')
     if extra_head:
         head.append(extra_head)
