@@ -32,6 +32,21 @@ server {
   location ~ ^/wrapped/?$ { return 301 /video/$is_args$args; }
   location ~ ^/school/([^/]+)/wrapped/?$ { return 301 /school/$1/video/$is_args$args; }
 
+  # Long council, constituency and trust lists continue on numbered pages (/council/hackney/3/, /trust/44/). How many
+  # there are depends on how much fits on a page, so a rebuild can drop the last one: send a visitor (or a search
+  # engine) holding a page that no longer exists to the list's first page instead of a 404. Only `return` inside
+  # `if`, which is the safe use of it.
+  location ~ ^/(council|constituency|trust)/(\d+)/?$ {
+    add_header Cache-Control "no-cache, must-revalidate"; include /etc/nginx/snippets/security-headers.conf;
+    if (!-e $request_filename) { return 301 /$1/$is_args$args; }
+    try_files $uri $uri/ =404;
+  }
+  location ~ ^/(council|constituency|trust)/([^/]+)/(\d+)/?$ {
+    add_header Cache-Control "no-cache, must-revalidate"; include /etc/nginx/snippets/security-headers.conf;
+    if (!-e $request_filename) { return 301 /$1/$2/$is_args$args; }
+    try_files $uri $uri/ =404;
+  }
+
   # Dotfiles (macOS '._*' AppleDouble forks, editor files) never ship; refuse one if it does. A regex location, so it
   # is checked before the prefix locations below; /.well-known/ stays open.
   location ^~ /.well-known/ { try_files $uri =404; }

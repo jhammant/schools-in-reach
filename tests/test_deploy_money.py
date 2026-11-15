@@ -226,6 +226,20 @@ class NginxHeadersTest(unittest.TestCase):
         self.assertIn('~^/embed/ "";', maps["money_frame_options"])  # an empty value: nginx leaves the header out
         self.assertEqual(parse_csp(self.headers["Content-Security-Policy"])["frame-ancestors"], ["$money_frame_ancestors"])
 
+    def test_a_list_page_that_no_longer_exists_redirects_to_the_first_page(self):
+        # Arrange
+        blocks = re.findall(r"location ~ (\^/\(council\|constituency\|trust\)/[^ ]+) \{(.*?)\n  \}", self.template, re.S)
+        rules = {pattern: body for pattern, body in blocks}
+        # Act
+        index_rule = rules.get("^/(council|constituency|trust)/(\\d+)/?$", "")
+        area_rule = rules.get("^/(council|constituency|trust)/([^/]+)/(\\d+)/?$", "")
+        # Assert: a missing numbered page goes to its list's first page, an existing one is served, headers still sent
+        self.assertIn("if (!-e $request_filename) { return 301 /$1/$is_args$args; }", index_rule)
+        self.assertIn("if (!-e $request_filename) { return 301 /$1/$2/$is_args$args; }", area_rule)
+        for body in (index_rule, area_rule):
+            self.assertIn("try_files $uri $uri/ =404;", body)
+            self.assertIn("include /etc/nginx/snippets/security-headers.conf;", body)
+
     def test_dotfiles_are_refused(self):
         self.assertIn("location ~ /\\. { deny all; }", self.template)
         self.assertLess(self.template.index("location ~ /\\."), self.template.index("location ~* \\.geojson$"))
