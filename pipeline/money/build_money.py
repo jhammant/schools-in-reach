@@ -1841,8 +1841,10 @@ def school_json(item, data_root=None, profile=None, line=None):
            "similar_meta": similar_meta(item),
            "income_lines": {g: round(latest[k]) for k, g, _ in INCOME_LINES if latest.get(k) is not None},
            "lines": {k: v for k, v in (latest.get("lines") or {}).items() if v is not None},
+           # History holds the whole charity's totals; the deck needs its sharing count for per-pupil figures.
            "pta": [{"charity_number": c.get("charity_number"), "name": c.get("name"), "status": c.get("status"),
-                    "latest_income": c.get("latest_income"), "history": c.get("history") or []} for c in item["pta"]],
+                    "latest_income": c.get("latest_income"), "history": c.get("history") or [],
+                    **({"shared_with": c["shared_with"]} if c.get("shared_with") else {})} for c in item["pta"]],
            "check": fbit_school(item)}
     if profile:
         out.update({"tags": profile.get("tags"), "band": profile.get("band"), "area": profile.get("area")})
@@ -2211,7 +2213,8 @@ def versioned(html, versions):
                                     if m.group(2) in versions else m.group(0)), html)
 
 
-POSTCODE_NEAREST = 30  # schools listed per postcode district, nearest to the district's centre first
+POSTCODE_NEAREST = 30  # nearest schools to retain for EVERY point in a postcode district
+POSTCODE_BOUNDS = ROOT / "pipeline/money/data/postcode_district_bounds.json"
 
 
 def outcode(postcode):
@@ -2228,13 +2231,38 @@ def _miles(lat1, lon1, lat2, lon2):
     return 3958.8 * 2 * math.asin(math.sqrt(min(1.0, a)))
 
 
+def _postcode_candidates(schools, bounds, nearest):
+    """All nearest-n candidates for a rectangle; subdivide wide rectangles to keep files small."""
+    if not schools:
+        return []
+    south, west, north, east = bounds
+    lat, lon = (south + north) / 2, (west + east) / 2
+    extent = max(_miles(lat, lon, y, x) for y in (south, north) for x in (west, east))
+    distances = sorted((_miles(lat, lon, i["lat"], i["lon"]), i["name"], i["urn"], i) for i in schools)
+    # Any point in the rectangle has n schools within d + R, so its nearest n are within d + 2R of the centre.
+    # The allowance covers coordinates rounded to five decimal places in the browser's document.
+    radius = 2 * extent + distances[min(nearest, len(distances)) - 1][0] + 0.01
+    candidates = [i for distance, _, _, i in distances if distance <= radius]
+    if extent <= 2 or len(candidates) <= nearest:
+        return candidates
+    if _miles(south, lon, north, lon) >= _miles(lat, west, lat, east):
+        halves = [(south, west, lat, east), (lat, west, north, east)]
+    else:
+        halves = [(south, west, north, lon), (south, lon, north, east)]
+    # The parent's set already contains the nearest n at every child centre, so pruning is safe recursively.
+    return list({i["urn"]: i for half in halves for i in _postcode_candidates(candidates, half, nearest)}.values())
+
+
 def postcode_index(schools, nearest=POSTCODE_NEAREST):
     """{district: {"district", "lat", "lon", "schools": [...]}} for /data/postcodes/<district>.json.
 
-    A district's centre is the mean position of its own schools; its list is the `nearest` schools to that centre from
-    anywhere, so a district on a council border still finds the school over the road. Only state-funded schools are
-    listed (independents publish no accounts here, and in N16 they filled two-thirds of the list). Each row carries
-    lat/lon so the page can re-sort by distance from the exact postcode when it can look that up."""
+    Keep enough candidates for the nearest `nearest` schools anywhere inside the district's ONS postcode bounds,
+    including across council borders. If the bounds fit within R miles of a centre and its nth school is d miles
+    away, every point inside has n schools within d + R miles. None of its nearest n can be beyond d + 2R from
+    the centre (triangle inequality). The browser can therefore re-sort without a premature candidate limit.
+    Districts newer than the ONS snapshot use their schools' extent. Only state-funded schools are listed;
+    the district-only search still starts at the mean position of its own schools, as before."""
+    district_bounds = json.loads(POSTCODE_BOUNDS.read_text(encoding="utf-8"))["districts"]
     located = [i for i in schools if isinstance(i.get("lat"), (int, float)) and isinstance(i.get("lon"), (int, float))]
     listed = [i for i in located if not i.get("independent")]
     groups = defaultdict(list)
@@ -2246,12 +2274,15 @@ def postcode_index(schools, nearest=POSTCODE_NEAREST):
     for district, members in groups.items():
         lat = sum(i["lat"] for i in members) / len(members)
         lon = sum(i["lon"] for i in members) / len(members)
-        # A box first (a degree of latitude is ~69 miles), widening until it holds enough schools.
-        for box in (0.05, 0.12, 0.3, 1.0, 180.0):
-            near = [i for i in listed if abs(i["lat"] - lat) <= box and abs(i["lon"] - lon) <= box * 1.6]
-            if len(near) >= nearest:
-                break
-        ranked = sorted(near, key=lambda i: (_miles(lat, lon, i["lat"], i["lon"]), i["name"]))[:nearest]
+        bounds = district_bounds.get(district, (
+            min(i["lat"] for i in members), min(i["lon"] for i in members),
+            max(i["lat"] for i in members), max(i["lon"] for i in members)))
+        ranked = _postcode_candidates(listed, bounds, nearest)
+        if not (bounds[0] <= lat <= bounds[2] and bounds[1] <= lon <= bounds[3]):
+            # An outlying school coordinate can put the old district-only origin outside the postcode bounds.
+            centre_nearest = sorted(listed, key=lambda i: (_miles(lat, lon, i["lat"], i["lon"]), i["name"]))[:nearest]
+            ranked = list({i["urn"]: i for i in ranked + centre_nearest}.values())
+        ranked.sort(key=lambda i: (_miles(lat, lon, i["lat"], i["lon"]), i["name"]))
         out[district] = {"district": district, "lat": round(lat, 5), "lon": round(lon, 5), "schools": [
             {"t": "school", "id": i["urn"], "name": i["name"],
              "sub": " ".join(x for x in (i["school"].get("town"), i["school"].get("postcode")) if x),

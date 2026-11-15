@@ -1764,6 +1764,30 @@ class RealNearbyTest(unittest.TestCase):
 
 
 class PostcodeIndexTest(unittest.TestCase):
+    def test_exact_postcode_at_district_edge_keeps_its_nearest_schools(self):
+        # Arrange: a long rural district with more than 30 schools near its eastern centre,
+        # a school at its western edge, and a neighbour across the district boundary.
+        def item(urn, lat, lon, postcode="DL8 1AA", **extra):
+            return {"urn": str(urn), "name": f"School {urn}", "school": {"postcode": postcode},
+                    "lat": lat, "lon": lon, "status": None, "path": f"/school/{urn}/", **extra}
+
+        schools = [item(n, 54.30 + n * 0.0001, -1.55) for n in range(40)]
+        schools += [item(100, 54.30, -2.20, "DL8 3RQ"), item(101, 54.30, -2.21, "LA10 5AA"),
+                    item(102, 54.30, -2.22, "LA10 5AB", independent=True),
+                    item(103, 51.55, -0.06, "E8 1AA")]
+        # Act: the same candidate document is re-sorted for an exact postcode by the browser.
+        doc = build_money.postcode_index(schools)["DL8"]
+        # Assert: compare with an exhaustive search at the school and at school-free district edges.
+        listed = [s for s in schools if not s.get("independent")]
+        for lat, lon in [(54.30, -2.20), (54.21, -2.29), (54.35, -1.48), (54.28, -1.90)]:
+            with self.subTest(point=(lat, lon)):
+                distance = lambda s: (build_money._miles(lat, lon, s["lat"], s["lon"]), s["name"])
+                expected = [s["urn"] for s in sorted(listed, key=distance)[:30]]
+                actual = [s["id"] for s in sorted(doc["schools"], key=distance)[:30]]
+                self.assertEqual(actual, expected)
+        self.assertNotIn("102", [s["id"] for s in doc["schools"]])
+        self.assertNotIn("103", [s["id"] for s in doc["schools"]])
+
     def test_each_district_lists_its_nearest_schools_from_anywhere(self):
         # Arrange: two N16 schools and one just over the border in E8; one far away in Leeds
         def item(urn, name, postcode, lat, lon, status=None):

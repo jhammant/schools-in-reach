@@ -360,6 +360,7 @@
     var charities = (Array.isArray(s.pta) ? s.pta : []).filter(function (p) { return isObj(p) && !p.review; });
     m.pta = charities.map(function (p) {
       var num = str(p.charity_number);
+      var share = 1 / (1 + (Array.isArray(p.shared_with) ? p.shared_with.length : 0));
       // One entry per school year, as series._pta and the area medians count it: a return listed twice counts once,
       // and distinct returns ending in the same school year (an association moving its year end files two) are added.
       var returns = {}, slots = {};
@@ -385,6 +386,7 @@
       });
       var fye = years.length ? years[years.length - 1].fye : null;
       if (!years.length) {
+        share = 1; // sx.pta totals already describe this school's share.
         Object.keys(sxPta).sort().forEach(function (y) {
           var e = sxPta[y];
           if (isObj(e) && (!e.charity_number || String(e.charity_number) === num || charities.length === 1)) {
@@ -395,14 +397,14 @@
       var confidence = isObj(p.match) && (p.match.method === "llm" || p.match.confidence === "medium") ? "medium" : null;
       years.forEach(function (e) {
         var x = sxPta[e.y];
-        // sx.pta is the producer's row for the same school year; it describes this return when charity and income agree.
-        var same = isObj(x) && (!x.charity_number || String(x.charity_number) === num) && (n(x.income) == null || e.income == null || Math.abs(n(x.income) - e.income) < 1);
+        // sx.pta describes this school's share; compare like-for-like before using its per-pupil fallback.
+        var same = isObj(x) && (!x.charity_number || String(x.charity_number) === num) && (n(x.income) == null || e.income == null || Math.abs(n(x.income) - e.income * share) < 1);
         // A school year marked as unusual may have a wrong pupil count, so no per-pupil figure is made from it.
         e.pupilsMarked = !!rowMarked[e.y];
         e.pupils = isNum(rowPupils[e.y]) && rowPupils[e.y] > 0 ? rowPupils[e.y] : null;
-        // Per pupil is this return's own total over the SAME school year's pupils; the producer's same-year figure
+        // Per pupil is this school's equal share (series._pta) over the SAME school year's pupils; the producer's same-year figure
         // stands in only when that year's pupils aren't in the documents.
-        function pp(total, given) { return e.pupilsMarked ? null : e.pupils ? perPupil(total, e.pupils) : same && n(given) != null ? n(given) : null; }
+        function pp(total, given) { return e.pupilsMarked ? null : e.pupils ? perPupil(total == null ? null : total * share, e.pupils) : same && n(given) != null ? n(given) : null; }
         e.incomePp = pp(e.income, x && x.income_pp);
         e.spendPp = pp(e.spend, x && (x.spend_pp != null ? x.spend_pp : x.expenditure_pp));
         if (same && x.confidence === "medium") confidence = "medium";

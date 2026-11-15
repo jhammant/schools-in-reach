@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import unittest.mock
 
-from pipeline.money import areas
+from pipeline.money import areas, series
 
 REAL_HISTORY = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea/pipeline/.cache/dfe/finance_history.jsonl")
 REAL_SITE_DATA = Path("/Users/jhammant/dev/personal/SchoolCatchmentArea/site/data")
@@ -480,6 +480,27 @@ class PtaTest(unittest.TestCase):
         self.assertEqual(academic_year["ptas"], 9)            # the shared charity once
         self.assertEqual(academic_year["income"], 30_000 + sum(10_000 * (i + 1) for i in range(2, 10)))
         self.assertEqual(self.result["held"], [{"charity_number": 4000, "name": "Big Foundation", "income": 900_000}])
+
+    def test_changed_charity_year_end_sums_distinct_returns_like_the_school_series(self):
+        # Arrange: URN 101046's two period ends both fall in academic year 2025-26.
+        years = [row("101046", "2026-03", 1_000_000, 990_000, 50_000, pupils=100)]
+        for ends in [("2025-09", "2026-08"), ("2026-08-01", "2026-08-31")]:
+            with self.subTest(ends=ends):
+                charities = [{"charity_number": 123, "name": "Friends", "shared_with": ["101047"],
+                              "history": [{"period_end": ends[1], "income": 18_000, "expenditure": 16_000},
+                                          {"period_end": ends[0], "income": 1, "expenditure": 1},
+                                          {"period_end": ends[0], "income": 37_524, "expenditure": 30_000}]}]
+                # Act: a repeated period end counts once, using the last entry as series._pta does.
+                school_series = series.school_series(years, charities)["pta"]["2025-26"]
+                area_slot = areas.school_pta(years, charities)[("2025-26", "CFR")]
+                school_entry = areas.school_years(years, charities)[0]
+                # Assert: split the combined returns equally between the two schools.
+                self.assertEqual(area_slot["income"], (37_524 + 18_000) / 2)
+                self.assertEqual(area_slot["spend"], (30_000 + 16_000) / 2)
+                self.assertEqual(area_slot["by_charity"], {123: area_slot["income"]})
+                self.assertEqual(area_slot["income"], school_series["income"])
+                self.assertEqual(area_slot["spend"], school_series["spend"])
+                self.assertEqual(school_entry["pta_pp"], area_slot["income"] / 100)
 
     def test_per_pupil_uses_that_years_pupils(self):
         # Assert: both sources use 2023-24's 100 pupils, not the latest finance year's 200.

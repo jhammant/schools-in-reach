@@ -636,23 +636,24 @@ def held_back(charity):
 def school_pta(years, charities):
     """{(year label, source): {"income", "spend", "by_charity": {number: income}, "names": {number: name},
     "confidence"}} for one school's PTAs, by the school-year rule (module docstring). Shared
-    charities count 1 / (1 + len(shared_with)) here. Held-back charities are skipped."""
+    charities count 1 / (1 + len(shared_with)) here. Distinct period ends in one school year
+    are summed, with repeated period ends counted once, as in series._pta. Held-back charities are skipped."""
     out = {}
     for charity in charities or []:
         if held_back(charity):
             continue
         share = 1 + len(charity.get("shared_with") or [])
         number = charity.get("charity_number")
-        seen = set()
+        returns = {}
         for h in charity.get("history") or []:
-            end = str(h.get("period_end") or "")[:7]
-            if h.get("income") is None or not end:
-                continue
+            end = str(h.get("period_end") or "")
+            if h.get("income") is not None and end:
+                returns[end] = h  # the last entry for an actual period end wins, as in series._pta
+        for end, h in returns.items():
             source = return_source(end, years)
             label = pta_year(end, source)
-            if not label or label in seen:  # two returns in one school year: keep the first listed (newest)
+            if not label:
                 continue
-            seen.add(label)
             slot = out.setdefault((label, source), {"income": 0.0, "spend": None, "by_charity": {}, "names": {},
                                                     "confidence": "high"})
             slot["income"] += h["income"] / share
