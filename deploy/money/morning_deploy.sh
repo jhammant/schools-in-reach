@@ -3,7 +3,7 @@
 # data (pta.json, pta_accounts.json) changed since the last deploy, only when the money tests pass, and never at the
 # same time as another deploy (the shared lock directory).
 set -uo pipefail
-export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.asdf/shims:$HOME/.asdf/bin:$HOME/.local/bin:/usr/bin:/bin:/usr/sbin:/sbin"   # asdf: the railway CLI
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 CACHE="$REPO/pipeline/.cache/money"
 MARK="$CACHE/last_deploy"
