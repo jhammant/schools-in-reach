@@ -141,9 +141,24 @@ def fetch(url: str) -> bytes:
             _last[0] = time.time()
 
 
-def newest_accounts_url(org: int) -> tuple[str | None, str | None]:
-    """(PDF URL, reporting year end text) of the newest 'Accounts and TAR' with a download link, or (None, None)."""
-    page = fetch(f"{SITE}/en/charity-search/-/charity-details/{org}/accounts-and-annual-returns").decode("utf-8", "replace")
+class RegisterUnavailable(Exception):
+    """The register sent a page without the accounts table (its "Sorry, there was an issue displaying this content"
+    page, a block or a timeout): try again later, never record it as 'no accounts online'."""
+
+
+def newest_accounts_url(org: int, retries: int = 1) -> tuple[str | None, str | None]:
+    """(PDF URL, reporting year end text) of the newest 'Accounts and TAR' with a download link, or (None, None) when
+    the register's accounts table is there and lists none to download. On the night of 15-16 Nov the register sent
+    error pages for hours and 674 associations were wrongly recorded as having no accounts, so a page without the
+    table raises RegisterUnavailable after a pause and one retry."""
+    for attempt in range(retries + 1):
+        page = fetch(f"{SITE}/en/charity-search/-/charity-details/{org}/accounts-and-annual-returns").decode("utf-8", "replace")
+        if "Accounts and TAR" in page or "Annual return" in page:
+            break
+        if attempt < retries:
+            time.sleep(60)
+    else:
+        raise RegisterUnavailable(f"organisation {org}: no accounts table on the register page")
     for row in re.findall(r"<tr[^>]*>(.*?)</tr>", page, re.S):
         if "Accounts and TAR" not in row:
             continue

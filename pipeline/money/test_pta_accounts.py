@@ -87,3 +87,22 @@ def test_newest_accounts_without_download():
         result = pta_accounts.newest_accounts_url(12345)
     # Assert
     assert result == (None, None)
+
+
+def test_register_error_page_is_retried_not_recorded_as_no_accounts():
+    # Arrange: the register's error page, as it was sent for hours on the night of 15-16 Nov
+    error_page = (b"<html><body>Search the register of charities Sorry, there was an issue displaying this content. "
+                  b"Please visit again later.</body></html>")
+    table = FIXTURE.read_text(encoding="utf-8").encode()
+    # Act / Assert: an error page every time raises; an error then the table recovers on the retry
+    with patch.object(pta_accounts, "fetch", return_value=error_page), patch.object(pta_accounts.time, "sleep"):
+        try:
+            pta_accounts.newest_accounts_url(12345)
+            raised = False
+        except pta_accounts.RegisterUnavailable:
+            raised = True
+    assert raised
+    with patch.object(pta_accounts, "fetch", side_effect=[error_page, table]), patch.object(pta_accounts.time, "sleep") as sleep:
+        url, year = pta_accounts.newest_accounts_url(12345)
+    assert url and year
+    sleep.assert_called_once_with(60)
