@@ -173,8 +173,9 @@ a missing council register or malformed input fails the build. A school page abo
 Generated school and council pages optionally link to TermMinder using
 `pipeline/seo/crosslinks.json`. The map is read once per build; missing or invalid
 exports omit contextual links without affecting the school quality gate.
-Generated pages and `/agents/` share a small Hammant Labs footer and initialise
-cookieless pageview analytics through `site/js/page-analytics.js`. The agents page
+Generated pages and `/agents/` share a small Hammant Labs footer and, like the
+about, apply and FAQ pages, initialise cookieless pageview analytics through
+`site/js/page-analytics.js`. The agents page
 also records trial CTA and copy-button clicks without snippet or postcode data.
 The map homepage keeps its existing layout; embeds never initialise analytics
 because their URLs carry postcodes.

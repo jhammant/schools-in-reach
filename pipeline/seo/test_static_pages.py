@@ -10,7 +10,8 @@ BASE = "https://www.schoolsinreach.com"
 PAGES = {"index.html": "/", "about.html": "/about.html", "apply.html": "/apply.html", "faq.html": "/faq.html",
          "privacy.html": "/privacy.html", "agents/index.html": "/agents/"}
 # js/app.js starts analytics on the map; js/page-analytics.js on pages without map state.
-MEASURED = {"index.html": "js/app.js", "agents/index.html": "/js/page-analytics.js"}
+MEASURED = {"index.html": "js/app.js", "about.html": "js/page-analytics.js", "apply.html": "js/page-analytics.js",
+            "faq.html": "js/page-analytics.js", "agents/index.html": "/js/page-analytics.js"}
 
 
 class Head(HTMLParser):
