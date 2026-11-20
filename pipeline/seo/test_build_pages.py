@@ -127,7 +127,7 @@ class BuildTest(unittest.TestCase):
             "base": "https://www.termminder.com",
             "schools": {"100001": "/uk/schools/test-school/", "100005": "/uk/schools/metadata-only/"},
             "councils": {"999": "/uk/term-dates/test-vale/"}}})
-        (self.site / "index.html").write_text('<meta name="google-adsense-account" content="ca-pub-test">')
+        (self.site / "index.html").write_text('<meta name="google-adsense-account" content="ca-pub-test"><meta property="og:image" content="/og.png">')
         self.source = {"title": "Register & census", "url": "https://example.org/data?a=1&b=2", "licence": "Open Government Licence v3.0"}
         self.base = {"generated": "2026-09-17", "sources": [self.source]}
         self.school = {"urn": 100001, "name": "St Ŵyn & Mary's <School>", "phase": "Secondary", "type": "Academy converter", "age_low": 11, "age_high": 18, "lat": 51.5, "lon": -0.1, "town": "Test Town", "postcode": "TE1 1ST"}
@@ -221,6 +221,31 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(page.meta["google-adsense-account"], "ca-pub-test")
         self.assertNotIn("run by Test", text)
 
+    def test_share_image_and_favicon_on_every_generated_page(self):
+        # Arrange
+        paths = [self.path(100001), self.path(100002), self.site / "council/test-and-vale/index.html", self.site / "council/index.html"]
+        for path in paths:
+            with self.subTest(path=path):
+                # Act
+                page = Page(path)
+                # Assert
+                self.assertEqual(page.meta["og:image"], seo.BASE + "/og.png")
+                self.assertEqual(page.meta["twitter:image"], seo.BASE + "/og.png")
+                self.assertEqual(page.meta["twitter:card"], "summary_large_image")
+                self.assertEqual(page.meta["og:url"], page.canonical)
+                self.assertIn('<link rel="icon" href="/favicon.svg" type="image/svg+xml">', path.read_text())
+
+    def test_no_share_image_keeps_the_small_card(self):
+        # Arrange
+        (self.site / "index.html").write_text('<meta name="google-adsense-account" content="ca-pub-test">')
+        # Act
+        seo.build(self.site)
+        page = Page(self.path(100001))
+        # Assert
+        self.assertNotIn("og:image", page.meta)
+        self.assertNotIn("twitter:image", page.meta)
+        self.assertEqual(page.meta["twitter:card"], "summary")
+
     def test_json_ld_parses_and_types_match(self):
         page = Page(self.path(100001))
         self.assertEqual([s["@type"] for s in page.schemas], ["BreadcrumbList", "HighSchool"])
@@ -248,7 +273,9 @@ class BuildTest(unittest.TestCase):
             self.assertTrue(all(n.text == "2026-09-17" for n in root.findall("{*}url/{*}lastmod")))
             if "schools-" in url:
                 self.assertEqual(len(root), 1)
-        self.assertEqual(len(urls), 9)
+        self.assertEqual(len(urls), 10)
+        for page in ("/", "/about.html", "/apply.html", "/faq.html", "/privacy.html", "/council/", "/agents/"):
+            self.assertIn(seo.BASE + page, urls)
         self.assertTrue(any("100001-" in u for u in urls))
         self.assertFalse(any("100002-" in u or "100005-" in u for u in urls))
 

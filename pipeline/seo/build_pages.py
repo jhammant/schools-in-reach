@@ -401,13 +401,15 @@ def document(title, description, path, body, crumbs, metadata, structured=None, 
     # HTML entities must not be used inside JSON. Escape '<' instead, preventing </script> injection.
     ld = json.dumps(schemas, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c").replace("&", "\\u0026")
     head = f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(description)}">\n<link rel="canonical" href="{esc(BASE + path)}">'
+    head += '\n<link rel="icon" href="/favicon.svg" type="image/svg+xml">'
     if metadata.adsense:
         head += f'\n<meta name="google-adsense-account" content="{esc(metadata.adsense)}">'
     if not indexable:
         head += '\n<meta name="robots" content="noindex,follow">'
     for key, value in (("og:type", "website"), ("og:site_name", "Schools in Reach"), ("og:title", title), ("og:description", description), ("og:url", BASE + path)):
         head += f'\n<meta property="{key}" content="{esc(value)}">'
-    for key, value in (("twitter:card", "summary"), ("twitter:title", title), ("twitter:description", description)):
+    # The share image is the one index.html names in og:image; without one the card stays small.
+    for key, value in (("twitter:card", "summary_large_image" if metadata.image else "summary"), ("twitter:title", title), ("twitter:description", description)):
         head += f'\n<meta name="{key}" content="{esc(value)}">'
     if metadata.image:
         head += f'\n<meta property="og:image" content="{esc(metadata.image)}"><meta name="twitter:image" content="{esc(metadata.image)}">'
@@ -693,7 +695,7 @@ def build(site, sitemap_limit=SITEMAP_LIMIT, crosslinks_path=None):
                 body += f'<h2>{nation}</h2><ul class="nearby">' + "".join(f'<li><a href="{esc(c["path"])}">{esc(c["name"])}</a></li>' for c in members) + "</ul>"
         body += sources_footer(indices, latest)
         (stage / "council/index.html").write_text(document("UK schools by council | Schools in Reach", "Browse UK schools by council: school admissions, catchments, available Ofsted reports, results and pupil numbers in England, Scotland, Wales and Northern Ireland.", "/council/", body, [("Home", "/"), ("Councils", "/council/")], metadata), encoding="utf-8")
-        page_urls += [(p, latest) for p in ("/", "/about.html", "/apply.html", "/faq.html", "/council/", "/agents/")]
+        page_urls += [(p, latest) for p in ("/", "/about.html", "/apply.html", "/faq.html", "/privacy.html", "/council/", "/agents/")]
         write_sitemap(stage / "sitemaps/pages.xml", page_urls)
         maps = [("/sitemaps/pages.xml", latest)]
         for start in range(0, len(school_urls), sitemap_limit):
