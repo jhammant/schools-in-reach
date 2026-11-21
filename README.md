@@ -202,8 +202,15 @@ served with the existing no-cache policy; sitemap XML is cached for one hour.
 
 `/agents/` describes the £29 per branch/month widget, the 30-day free trial and the founding offer (code FOUNDING: £19 per branch for 12 months, first 20 agencies).
 Set `CONFIG.agents.checkoutUrl` in `site/js/config.js` to your HTTPS checkout URL
-when ready (`contactEmail` is reserved for operator contact). Until then, sign-up
-buttons show “Coming soon”; the page and installation instructions work without JS.
+when ready. The same URL is written into the two trial buttons in
+`site/agents/index.html`, so checkout works without JavaScript;
+`pipeline/seo/test_widget.py` fails if the two drift apart. Emptying `checkoutUrl`
+makes the script show “Coming soon” instead.
+`CONFIG.agents.contactEmail` is empty by default, and the page then shows no contact
+line. Set it to a mailbox you read and “Questions before you start? Email …” appears
+under the pricing button. The page also tells buyers that their card statement will
+read ROLOZOLO LTD (the Stripe account's statement name); change that wording if the
+statement name changes.
 After checkout, email the branch its ID and snippet within one working day.
 
 To enable a branch, add an entry to `site/agents.json`: a unique lowercase slug

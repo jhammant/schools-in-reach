@@ -17,7 +17,18 @@ for (const link of document.querySelectorAll(".trial-cta")) {
     link.removeAttribute("href");
   }
 }
-if (checkout) document.querySelector("#checkout-status").textContent = "Start your 30-day free trial. We'll email your widget code within one working day.";
+// The page ships with the live checkout link so it works without this script;
+// if checkout is ever switched off in config.js, say so instead.
+if (!checkout) document.querySelector("#checkout-status").textContent = "Trial registration is coming soon.";
+// A contact address is shown only once CONFIG.agents.contactEmail is set; none ships by default.
+const contactEmail = String(CONFIG.agents.contactEmail || "").trim();
+const contact = document.querySelector("#agents-contact");
+const contactLink = document.querySelector("#agents-contact-link");
+if (contact && contactLink && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(contactEmail)) {
+  contactLink.href = `mailto:${contactEmail}`;
+  contactLink.textContent = contactEmail;
+  contact.hidden = false;
+}
 const copy = document.querySelector("#copy-code");
 copy.hidden = false;
 copy.addEventListener("click", async () => {

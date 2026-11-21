@@ -76,7 +76,33 @@ class WidgetTest(unittest.TestCase):
         self.assertEqual(offer["price"], "29.00")
         self.assertEqual(offer["priceCurrency"], "GBP")
         self.assertEqual(offer["priceSpecification"]["unitText"], "branch per month")
-        self.assertIn('href="#pricing"', path.read_text())
+        # Checkout is live, so the offer must not be marked as a pre-order.
+        self.assertEqual(offer["availability"], "https://schema.org/InStock")
+
+    def test_trial_buttons_reach_checkout_without_javascript(self):
+        # Arrange
+        html = (SITE / "agents/index.html").read_text()
+        config = (SITE / "js/config.js").read_text()
+        checkout = re.search(r'checkoutUrl: "(https://[^"]+)"', config).group(1)
+        # Act
+        buttons = re.findall(r'<a class="cta trial-cta" href="([^"]*)">', html)
+        # Assert: the static page carries the same link config.js names, on both buttons.
+        self.assertEqual(buttons, [checkout, checkout])
+        self.assertNotIn("coming soon", html.lower())
+        self.assertIn("https://billing.stripe.com/p/login/", html)
+
+    def test_statement_name_is_stated_and_contact_address_comes_only_from_config(self):
+        # Arrange
+        path = SITE / "agents/index.html"
+        # Act
+        html = path.read_text()
+        # Assert: buyers are told the name their bank will show.
+        self.assertIn("card statement as ROLOZOLO LTD", html)
+        self.assertIn("What will appear on our card statement?", html)
+        # The contact line ships hidden and empty; agents.js fills it from CONFIG.agents.contactEmail.
+        self.assertIn('<p id="agents-contact" hidden>', html)
+        self.assertIn('<a id="agents-contact-link"></a>', html)
+        self.assertNotIn("mailto:", html)
 
     def test_agents_footer_and_static_analytics_excludes_embed(self):
         html = (SITE / "agents/index.html").read_text()

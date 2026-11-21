@@ -156,20 +156,43 @@ test("missing generated map fails gracefully without broken school links", () =>
 });
 const { CONFIG } = await import("./config.js");
 const ctas = [new Element("a"), new Element("a")];
-const sales = Object.fromEntries(["#checkout-status", "#copy-code", "#copy-status", "#embed-code"].map((id) => [id, new Element()]));
+const sales = Object.fromEntries(["#checkout-status", "#copy-code", "#copy-status", "#embed-code", "#agents-contact", "#agents-contact-link"].map((id) => [id, new Element()]));
+sales["#checkout-status"].textContent = "Secure checkout by Stripe.";
+sales["#agents-contact"].hidden = true;
 sales["#embed-code"].textContent = '<div data-schools-in-reach data-postcode="E8 1DY"></div>';
 globalThis.document = { querySelectorAll: () => ctas, querySelector: (id) => sales[id] };
 // Test both states regardless of what the committed config ships with.
 const shippedCheckoutUrl = CONFIG.agents.checkoutUrl;
+const shippedContactEmail = CONFIG.agents.contactEmail;
 CONFIG.agents.checkoutUrl = "";
+CONFIG.agents.contactEmail = "";
 await import("./agents.js?empty");
 test("empty checkout disables every sales CTA", () => {
   assert.ok(ctas.every((link) => link.textContent === "Coming soon" && link.attributes["aria-disabled"] === "true" && !link.href));
+  assert.equal(sales["#checkout-status"].textContent, "Trial registration is coming soon.");
 });
+test("no contact address configured keeps the contact line hidden", () => {
+  assert.equal(sales["#agents-contact"].hidden, true);
+  assert.equal(sales["#agents-contact-link"].href, undefined);
+});
+CONFIG.agents.contactEmail = "not an address";
+await import("./agents.js?bad-contact");
+test("a malformed contact address keeps the contact line hidden", () => assert.equal(sales["#agents-contact"].hidden, true));
 CONFIG.agents.checkoutUrl = "https://checkout.example/trial";
+CONFIG.agents.contactEmail = " agents@example.test ";
+sales["#checkout-status"].textContent = "Secure checkout by Stripe.";
 await import("./agents.js?configured");
-test("configured checkout replaces pricing anchors", () => assert.ok(ctas.every((link) => link.href === "https://checkout.example/trial")));
+test("configured checkout replaces pricing anchors", () => {
+  assert.ok(ctas.every((link) => link.href === "https://checkout.example/trial"));
+  assert.equal(sales["#checkout-status"].textContent, "Secure checkout by Stripe.");
+});
+test("a configured contact address is shown as a mail link", () => {
+  assert.equal(sales["#agents-contact"].hidden, false);
+  assert.equal(sales["#agents-contact-link"].href, "mailto:agents@example.test");
+  assert.equal(sales["#agents-contact-link"].textContent, "agents@example.test");
+});
 CONFIG.agents.checkoutUrl = shippedCheckoutUrl;
+CONFIG.agents.contactEmail = shippedContactEmail;
 let copied;
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async (text) => { copied = text; } } } });
 await sales["#copy-code"].click();
