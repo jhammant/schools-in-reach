@@ -17,7 +17,8 @@
   line-height: 1.4;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  /* seo.css (generated pages) has no --text-muted token. */
+  color: var(--text-muted, var(--text-secondary));
 }
 
 .ad-slot .adsbygoogle {
@@ -28,4 +29,9 @@
 #ad-list-footer .ad-slot {
   max-height: 120px;
   overflow: hidden;
+}
+
+/* Placeholders on generated school pages. Hidden (and zero-height) until ads.js fills one. */
+.ad-host:not([hidden]) {
+  margin: 24px 0;
 }
