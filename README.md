@@ -173,14 +173,22 @@ a missing council register or malformed input fails the build. A school page abo
 Generated school and council pages optionally link to TermMinder using
 `pipeline/seo/crosslinks.json`. The map is read once per build; missing or invalid
 exports omit contextual links without affecting the school quality gate.
-Generated pages and `/agents/` share a small Hammant Labs footer and initialise
-cookieless pageview analytics through `site/js/page-analytics.js`. The agents page
+Generated pages and `/agents/` share a small Hammant Labs footer and, like the
+about, apply and FAQ pages, initialise cookieless pageview analytics through
+`site/js/page-analytics.js`. The agents page
 also records trial CTA and copy-button clicks without snippet or postcode data.
 The map homepage keeps its existing layout; embeds never initialise analytics
 because their URLs carry postcodes.
 
+Every indexable page carries Open Graph and Twitter tags that point at one share image,
+`site/og.png` (1200×630). The generator copies the `og:image` it finds in
+`site/index.html` onto school and council pages, so changing it there changes it
+everywhere. `site/favicon.svg` and `site/favicon.ico` are the icons. The home page
+also describes the site as schema.org `WebSite` and `Organization`.
+
 ```bash
 python3 -m unittest pipeline/seo/test_build_pages.py -v
+python3 -m unittest pipeline/seo/test_static_pages.py -v   # the hand-written pages in site/
 python3 pipeline/seo/build_pages.py
 ```
 
