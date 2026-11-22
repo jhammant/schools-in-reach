@@ -237,7 +237,26 @@ function onSchoolsLoaded(codes) {
   if (/Zoom in or search/.test($("#search-status").textContent)) status("");
 }
 
+/**
+ * The search form still works before this script is ready: the browser submits it itself and
+ * loads /?postcode=…. Take the postcode out of the address bar, so it is never part of a
+ * recorded page address or a history entry, and hand it back to be searched once data loads.
+ */
+function takePostcodeFromAddress() {
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has("postcode")) return "";
+    const postcode = url.searchParams.get("postcode").trim();
+    url.searchParams.delete("postcode");
+    history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    return postcode;
+  } catch {
+    return "";
+  }
+}
+
 async function main() {
+  const typedEarly = takePostcodeFromAddress(); // before analytics starts
   $$("[data-site-name]").forEach((el) => { el.textContent = SITE.name; });
   $$("[data-site-area]").forEach((el) => { el.textContent = `${SITE.area} beta`; });
 
@@ -381,7 +400,11 @@ async function main() {
 
   const params = new URLSearchParams(location.hash.slice(1));
   const saved = store.get("home", null);
-  if (saved?.lat) {
+  if (typedEarly) {
+    // A search submitted before the page was ready (see takePostcodeFromAddress).
+    $("#postcode").value = typedEarly;
+    if (!(await applyPostcode(typedEarly))) loadForView();
+  } else if (saved?.lat) {
     $("#postcode").value = saved.precision === "postcode" ? saved.postcode : "";
     await applyHome(saved, { pan: !params.get("school") });
   } else if (!params.get("school") && !store.get("welcomed")) {

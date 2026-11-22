@@ -88,4 +88,80 @@ await test("analytics failure leaves CTA and clipboard behaviour working", async
   await nodes["#copy-code"].events.click();
   assert.equal(nodes["#copy-status"].textContent, "Code copied");
 });
+await test("page addresses reach PostHog without their query string or fragment", () => {
+  // Arrange
+  const { context } = setup();
+  const beforeSend = context.window.posthog._i[0][1].before_send;
+  const event = {
+    event: "$pageview",
+    properties: {
+      $current_url: "https://www.schoolsinreach.com/?postcode=E8+1DY#school=100000&la=204",
+      $session_entry_url: "https://www.schoolsinreach.com/?postcode=E8+1DY",
+      $referrer: "https://money.schoolsinreach.com/money/compare/?q=E8%201DY",
+      $pathname: "/",
+      $referring_domain: "money.schoolsinreach.com",
+      utm_source: "newsletter",
+      council_code: "E09000012",
+      title: "Schools in Reach",
+    },
+    $set_once: { $initial_person_info: { u: "https://www.schoolsinreach.com/?lat=51.5&lon=-0.05", r: "$direct" } },
+  };
+  // Act
+  const sent = beforeSend(event);
+  // Assert
+  assert.equal(sent.properties.$current_url, "https://www.schoolsinreach.com/");
+  assert.equal(sent.properties.$session_entry_url, "https://www.schoolsinreach.com/");
+  assert.equal(sent.properties.$referrer, "https://money.schoolsinreach.com/money/compare/");
+  assert.equal(sent.$set_once.$initial_person_info.u, "https://www.schoolsinreach.com/");
+  assert.equal(sent.properties.$pathname, "/");
+  assert.equal(sent.properties.utm_source, "newsletter");
+  assert.equal(sent.properties.council_code, "E09000012");
+  assert.equal(sent.$set_once.$initial_person_info.r, "$direct");
+  assert.ok(!JSON.stringify(sent).includes("E8"));
+});
+await test("an event that cannot be scrubbed is dropped, not sent", () => {
+  // Arrange
+  const { context } = setup();
+  const beforeSend = context.window.posthog._i[0][1].before_send;
+  const properties = {};
+  Object.defineProperty(properties, "$current_url", { enumerable: true, get() { throw new Error("unreadable"); } });
+  // Act
+  const sent = beforeSend({ event: "$pageview", properties });
+  // Assert
+  assert.equal(sent, null);
+});
+await test("the map takes a postcode out of the address bar before analytics starts", async () => {
+  // Arrange: the function exactly as app.js defines it, with a stub browser.
+  const app = await readFile(new URL("app.js", import.meta.url), "utf8");
+  const fn = app.match(/function takePostcodeFromAddress\(\) \{[\s\S]*?\n\}\n/)[0];
+  const replaced = [];
+  const ctx = vm.createContext({
+    URL,
+    location: { href: "https://www.schoolsinreach.com/?postcode=+E8+1DY+&utm_source=x#school=1" },
+    history: { state: null, replaceState: (_s, _t, url) => replaced.push(url) },
+  });
+  vm.runInContext(fn, ctx);
+  // Act
+  const postcode = vm.runInContext("takePostcodeFromAddress()", ctx);
+  // Assert
+  assert.equal(postcode, "E8 1DY");
+  assert.deepEqual(replaced, ["/?utm_source=x#school=1"]);
+  assert.ok(app.indexOf("const typedEarly = takePostcodeFromAddress()") < app.indexOf("  initAnalytics();"));
+});
+await test("the map leaves an address without a postcode alone", async () => {
+  // Arrange
+  const app = await readFile(new URL("app.js", import.meta.url), "utf8");
+  const replaced = [];
+  const ctx = vm.createContext({
+    URL,
+    location: { href: "https://www.schoolsinreach.com/#league" },
+    history: { state: null, replaceState: (_s, _t, url) => replaced.push(url) },
+  });
+  vm.runInContext(app.match(/function takePostcodeFromAddress\(\) \{[\s\S]*?\n\}\n/)[0], ctx);
+  // Act
+  const postcode = vm.runInContext("takePostcodeFromAddress()", ctx);
+  // Assert
+  assert.equal(postcode, "");
+  assert.equal(replaced.length, 0);
+});
 console.log(`${count} page analytics tests passed`);
