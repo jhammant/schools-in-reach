@@ -1,5 +1,5 @@
 import { $, esc, fmt, cssVar } from "./util.js";
-import { state, matchesPhase, GROUP_META, admissionsFor, hasAdmissionsData, laName, isSelectiveSchool } from "./state.js";
+import { state, emit, matchesPhase, GROUP_META, admissionsFor, hasAdmissionsData, laName, isSelectiveSchool } from "./state.js";
 import { reachPill, reachStatus } from "./admissions.js";
 import { highlightCatchment, setCatchmentPhase } from "./catchments.js";
 import { filterMarkers, getMap } from "./map.js";
@@ -115,4 +115,7 @@ export function renderList(onSelect) {
         })
         .join("")
     : `<li class="empty">${state.schools.length ? "No schools match these filters here." : "Zoom in or search a postcode to load schools."}</li>`;
+
+  // Anything that sits with the results (the report offer) redraws with them.
+  emit("results", { awayFromHome, phase: filters.phase });
 }
