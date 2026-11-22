@@ -4,6 +4,40 @@ import { CONFIG } from "./config.js";
 // key, no script tags are created and no network requests are made.
 let started = false;
 
+/** A page address without its query string or fragment: "https://host/path/?postcode=E8#x" -> "https://host/path/". */
+function withoutQuery(value) {
+  return /^https?:\/\//i.test(value) ? value.replace(/[?#].*$/s, "") : value;
+}
+
+/** Every URL anywhere in an event's properties, cut back to its page. */
+function scrubUrls(value) {
+  if (typeof value === "string") return withoutQuery(value);
+  if (Array.isArray(value)) return value.map(scrubUrls);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, scrubUrls(v)]));
+  }
+  return value;
+}
+
+/**
+ * PostHog's before_send hook. A query string or fragment can carry a postcode (the map's
+ * search form falls back to /?postcode=… if it is submitted before the script is ready),
+ * so only the page itself is ever sent. Campaign tags (utm_*) are read by PostHog into
+ * their own properties before this runs, so they survive. If anything goes wrong the
+ * event is dropped rather than sent unscrubbed.
+ */
+export function stripUrlDetail(event) {
+  try {
+    if (!event) return event;
+    for (const key of ["properties", "$set", "$set_once"]) {
+      if (event[key]) event[key] = scrubUrls(event[key]);
+    }
+    return event;
+  } catch {
+    return null;
+  }
+}
+
 /** Load the official PostHog array-queue loader (EU) and initialise it cookieless. */
 function loadPostHog() {
   if (started || !CONFIG.posthog.key) return;
@@ -41,6 +75,7 @@ function loadPostHog() {
     disable_session_recording: true,
     ip: false,
     respect_dnt: true,
+    before_send: stripUrlDetail,
   });
 
   // Tags every event, including pageviews, so this site's data is separable from
