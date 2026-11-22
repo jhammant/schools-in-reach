@@ -105,6 +105,21 @@ class StaticPagesTest(unittest.TestCase):
         self.assertNotIn("page-analytics.js", embed)
         self.assertNotIn("analytics.js", (SITE / "js/embed.js").read_text(encoding="utf-8"))
 
+    def test_privacy_page_describes_the_analytics_that_run(self):
+        # Arrange
+        measured = any((SITE / name).is_file() and script in Head(SITE / name).scripts
+                       for name, script in MEASURED.items())
+        # Act
+        privacy = (SITE / "privacy.html").read_text(encoding="utf-8")
+        about = (SITE / "about.html").read_text(encoding="utf-8")
+        # Assert: pages are measured, so the privacy page must say so and never promise otherwise.
+        self.assertTrue(measured)
+        self.assertIn("counts page views with PostHog", privacy)
+        self.assertIn("without cookies and without storing anything on your device", privacy)
+        self.assertNotIn("runs no analytics", privacy)
+        self.assertNotIn("only if enabled", privacy)
+        self.assertNotIn("only if enabled", about)
+
     def test_robots_allows_crawling_and_names_the_sitemap(self):
         # Arrange / Act
         robots = (SITE / "robots.txt").read_text(encoding="utf-8")
