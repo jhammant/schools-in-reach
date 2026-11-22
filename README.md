@@ -186,8 +186,15 @@ Every indexable page carries Open Graph and Twitter tags that point at one share
 everywhere. `site/favicon.svg` and `site/favicon.ico` are the icons. The home page
 also describes the site as schema.org `WebSite` and `Organization`.
 
+Indexable school pages carry two empty, hidden ad placeholders (after the admissions
+section and above the sources footer) and load `site/js/ads.js`. Nothing is requested
+from Google and nothing is shown until `CONFIG.adsense.client` and the matching slot
+IDs (`schoolAfterAdmissions`, `schoolFooter`) are set in `site/js/config.js`; setting
+them needs no rebuild of the pages. Noindexed school pages and council pages carry none.
+
 ```bash
 python3 -m unittest pipeline/seo/test_build_pages.py -v
+node site/js/ads.test.mjs
 python3 -m unittest pipeline/seo/test_static_pages.py -v   # the hand-written pages in site/
 python3 pipeline/seo/build_pages.py
 ```

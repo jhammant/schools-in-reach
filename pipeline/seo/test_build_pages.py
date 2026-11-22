@@ -181,6 +181,48 @@ class BuildTest(unittest.TestCase):
                     self.assertIn(url, Page(path).links)
                 self.assertNotIn("nofollow", text)
 
+    def test_indexable_school_pages_carry_two_ad_placeholders(self):
+        # Arrange
+        after_admissions = seo.ad_slot("schoolAfterAdmissions")
+        footer = seo.ad_slot("schoolFooter")
+        # Act
+        text = self.path(100001).read_text()
+        # Assert
+        self.assertEqual(text.count('class="ad-host"'), 2)
+        self.assertIn(" hidden></div>", after_admissions)
+        self.assertLess(text.index("Published admissions history"), text.index(after_admissions))
+        self.assertLess(text.index(after_admissions), text.index("<h2>Ofsted"))
+        self.assertLess(text.index("<h2>Nearby schools"), text.index(footer))
+        self.assertLess(text.index(footer), text.index("<footer>"))
+        self.assertEqual(text.count('<script type="module" src="/js/ads.js"></script>'), 1)
+        # The page itself never loads Google: ads.js decides, and only once a publisher ID is set.
+        self.assertNotIn("googlesyndication", text)
+        self.assertNotIn("adsbygoogle", text)
+
+    def test_noindex_school_pages_and_council_pages_have_no_ad_placeholders(self):
+        # Arrange
+        paths = [self.path(100002), self.path(100005), self.site / "council/test-and-vale/index.html",
+                 self.site / "council/index.html"]
+        for path in paths:
+            with self.subTest(path=path):
+                # Act
+                text = path.read_text()
+                # Assert
+                self.assertNotIn("data-ad-slot", text)
+                self.assertNotIn("/js/ads.js", text)
+
+    def test_ad_placeholder_names_match_the_configured_slots(self):
+        # Arrange
+        config = (Path(seo.__file__).resolve().parents[2] / "site/js/config.js").read_text(encoding="utf-8")
+        text = self.path(100001).read_text()
+        # Act
+        names = set(seo.re.findall(r'data-ad-slot="([^"]+)"', text))
+        # Assert
+        self.assertEqual(names, {"schoolAfterAdmissions", "schoolFooter"})
+        for name in names:
+            with self.subTest(slot=name):
+                self.assertRegex(config, rf'\b{name}: "')
+
     def test_missing_crosslinks_degrades_gracefully(self):
         self.crosslinks_path.unlink()
         summary = seo.build(self.site)

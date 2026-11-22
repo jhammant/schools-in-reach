@@ -31,13 +31,14 @@ function consentConfig() {
   });
 }
 
-/** Inject css/ads.css from JS so index.html doesn't need a link tag. */
+/** Inject css/ads.css from JS so pages don't need a link tag. */
 function injectStyles() {
   if (document.getElementById("ads-css")) return;
   const link = document.createElement("link");
   link.id = "ads-css";
   link.rel = "stylesheet";
-  link.href = "css/ads.css";
+  // Resolved from this module, so it also works on nested pages such as /school/<slug>/.
+  link.href = new URL("../css/ads.css", import.meta.url).href;
   document.head.appendChild(link);
 }
 
@@ -141,4 +142,28 @@ function initAboutPage() {
   if (buildSlot(container, CONFIG.adsense.slots.aboutPage)) pushSlot(CONFIG.adsense.slots.aboutPage);
 }
 
+/**
+ * Generated pages (pipeline/seo/build_pages.py) carry empty, hidden placeholders:
+ * <div class="ad-host" data-ad-slot="schoolFooter" hidden>. Each names a key of
+ * CONFIG.adsense.slots. A placeholder with no slot ID configured stays hidden.
+ */
+function initPlaceholders() {
+  if (!client) return;
+  const slots = CONFIG.adsense.slots;
+  const slotFor = (host) => (Object.hasOwn(slots, host.dataset.adSlot) ? slots[host.dataset.adSlot] : "");
+  // .ad-host only: the <ins> elements AdSense renders into also carry data-ad-slot.
+  const hosts = [...document.querySelectorAll(".ad-host[data-ad-slot]")].filter(slotFor);
+  if (!hosts.length) return;
+  injectStyles();
+  consentConfig();
+  ensureScript();
+  for (const host of hosts) {
+    const slotId = slotFor(host);
+    if (!buildSlot(host, slotId)) continue;
+    host.hidden = false;
+    pushSlot(slotId);
+  }
+}
+
 if (/about\.html\/?$/.test(location.pathname)) initAboutPage();
+initPlaceholders();

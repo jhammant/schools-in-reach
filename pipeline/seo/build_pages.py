@@ -390,13 +390,22 @@ class HeadMetadata(HTMLParser):
             self.image = safe_url(urljoin(BASE, a.get("content", "")))
 
 
+def ad_slot(name):
+    """An empty, hidden placeholder that site/js/ads.js fills when CONFIG.adsense is set.
+
+    `name` is a key of CONFIG.adsense.slots. With no publisher ID or slot ID the
+    placeholder stays hidden and takes no space, so pages look the same until ads are on.
+    """
+    return f'<div class="ad-host" data-ad-slot="{esc(name)}" hidden></div>'
+
+
 def breadcrumbs(items):
     return {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [
         {"@type": "ListItem", "position": i, "name": name, "item": BASE + path}
         for i, (name, path) in enumerate(items, 1)]}
 
 
-def document(title, description, path, body, crumbs, metadata, structured=None, indexable=True):
+def document(title, description, path, body, crumbs, metadata, structured=None, indexable=True, ads=False):
     schemas = [breadcrumbs(crumbs)] + ([structured] if structured else [])
     # HTML entities must not be used inside JSON. Escape '<' instead, preventing </script> injection.
     ld = json.dumps(schemas, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c").replace("&", "\\u0026")
@@ -413,13 +422,14 @@ def document(title, description, path, body, crumbs, metadata, structured=None, 
         head += f'\n<meta name="{key}" content="{esc(value)}">'
     if metadata.image:
         head += f'\n<meta property="og:image" content="{esc(metadata.image)}"><meta name="twitter:image" content="{esc(metadata.image)}">'
+    ads_script = '<script type="module" src="/js/ads.js"></script>' if ads else ""
     trail = ' <span aria-hidden="true">›</span> '.join(f'<a href="{esc(url)}">{esc(name)}</a>' if i < len(crumbs) - 1 else f'<span aria-current="page">{esc(name)}</span>' for i, (name, url) in enumerate(crumbs))
     return f'''<!doctype html>
 <html lang="en-GB"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 {head}
 <link rel="stylesheet" href="/css/seo.css"><script type="application/ld+json">{ld}</script>
 </head><body><header class="topbar"><a class="brand" href="/"><svg class="logo" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="14" fill="currentColor"/></svg><span>Schools in Reach</span></a><nav class="toplinks" aria-label="Main"><a href="/council/">Browse councils</a><a href="/apply.html">How to apply</a><a href="/faq.html">Questions</a><a href="/about.html">About &amp; data</a><a href="https://money.schoolsinreach.com/">School money</a><a href="/agents/">For estate agents</a></nav></header>
-<main><nav class="breadcrumb" aria-label="Breadcrumb">{trail}</nav>{body}</main><script type="module" src="/js/page-analytics.js"></script></body></html>
+<main><nav class="breadcrumb" aria-label="Breadcrumb">{trail}</nav>{body}</main><script type="module" src="/js/page-analytics.js"></script>{ads_script}</body></html>
 '''
 
 
@@ -497,6 +507,10 @@ def render_school(item, council, peers, metadata, crosslinks=None):
     route = "/#" + urlencode({"school": s["urn"], "la": council["la_code"], "tab": "admissions"})
     body += f'<p><a class="cta" href="{esc(route)}">{cta}</a></p>'
     body += admissions_html(rec, council, doc, s)
+    # Ads go only on pages good enough to be indexed; thin noindex pages stay ad-free.
+    ads = bool(item["indexable"])
+    if ads:
+        body += ad_slot("schoolAfterAdmissions")
     if headline or findings:
         body += "<h2>Ofsted</h2>"
         body += f"<p>{esc(headline or 'Published judgements')}" + (f" — inspected {esc(inspection_date)}" if inspection_date else "") + ".</p>"
@@ -521,6 +535,8 @@ def render_school(item, council, peers, metadata, crosslinks=None):
     if nearby:
         body += '<h2>Nearby schools</h2><p class="note">Other schools in the same council and phase. Ordered by distance where coordinates are available, then by name; locations may be postcode centres.</p><ul class="nearby">'
         body += "".join(f'<li><a href="{esc(p["path"])}">{esc(p["school"]["name"])}</a></li>' for p in nearby[:8]) + "</ul>"
+    if ads:
+        body += ad_slot("schoolFooter")
     body += sources_footer(item["documents"], item["date"])
     address = {"@type": "PostalAddress", "addressCountry": "GB"}
     for key, value in (("streetAddress", s.get("street")), ("addressLocality", s.get("town") or s.get("locality")), ("postalCode", s.get("postcode")), ("addressRegion", council["name"])):
@@ -539,7 +555,7 @@ def render_school(item, council, peers, metadata, crosslinks=None):
         facts.append(f"{fmt(item['pupils'])} pupils.")
     facts.append(f"Explore {group.lower()} admissions, catchment information, published school facts and nearby schools on Schools in Reach.")
     description = shorten(" ".join(facts), 160)
-    return document(school_title(name), description, path, body, [("Home", "/"), (council["name"], cpath), (name, path)], metadata, schema, item["indexable"])
+    return document(school_title(name), description, path, body, [("Home", "/"), (council["name"], cpath), (name, path)], metadata, schema, item["indexable"], ads=ads)
 
 
 def render_council(council, items, docs, metadata, crosslinks=None):
