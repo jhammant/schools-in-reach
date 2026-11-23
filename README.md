@@ -265,3 +265,46 @@ python3 -m unittest discover -s pipeline/seo -p 'test_*.py'
 node site/js/embed-core.test.mjs
 node site/js/embed.integration.test.mjs
 ```
+
+## The "Your chances" report: demand test
+
+Before building a paid report, the map measures whether parents want one. After a postcode
+search, when the Primary switch (or all phases) is on and the home's council has published
+Reception cut-offs (23 London councils today), the results list shows "Get the full report,
+£9.99" under its summary. The button opens a short panel: the report is coming in early
+December, nothing is charged, and an email box asks to be told when it is ready. The offer
+switches itself off on 15 January 2027, the Reception closing date. Settings are
+`CONFIG.parentsReport` in `site/js/config.js`; the code is `site/js/report-offer.js`.
+
+Three PostHog events, through the site's existing cookieless setup, carry only `council_code`
+(the DfE council code) and `phase` (`primary` or `all`): `report_cta_shown` (once per council
+and phase per page load, the denominator), `report_cta_clicked` and `report_email_signup`.
+`report_email_signup_failed` adds a `reason`. No event carries a postcode, coordinates, the
+email address or anything about a child.
+
+Email addresses go to a small endpoint in `deploy/report-signups/`, hosted with
+hammantlabs-sites as its own Lambda and DynamoDB table in eu-west-2 (London). It stores the
+address and the time, nothing else; each row expires (DynamoDB TTL) on 20 January 2027 so all
+are gone by the end of January, as `site/privacy.html` says. It only accepts posts from the
+site's origin, limits each connection to five sign-ups in ten minutes, ignores bots that fill a
+hidden field and closes after 15 January 2027. `deploy/railway/deploy.sh` refuses to ship the
+site while `notifyUrl` is set and the endpoint isn't answering; empty `notifyUrl` to show the
+offer without the email box.
+
+```bash
+# Deploy (or update) the endpoint, then check it
+hlsite deploy deploy/report-signups --slug sir-report --kind pages
+python3 pipeline/seo/report_offer.py
+# Count and read the sign-ups (admin AWS profile)
+aws dynamodb query --region eu-west-2 --table-name hl-pages-sir-report \
+  --key-condition-expression "pk = :p" --expression-attribute-values '{":p":{"S":"chances-report"}}' --select COUNT
+aws dynamodb query --region eu-west-2 --table-name hl-pages-sir-report \
+  --key-condition-expression "pk = :p" --expression-attribute-values '{":p":{"S":"chances-report"}}' \
+  --projection-expression sk --output text
+# Tests
+node site/js/report-offer.test.mjs
+npm test --prefix deploy/report-signups
+python3 -m unittest pipeline/seo/test_report_offer.py -v
+```
+
+When the test is over, `hlsite rm sir-report --kind pages` deletes the endpoint and its table.

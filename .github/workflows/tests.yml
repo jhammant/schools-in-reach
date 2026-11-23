@@ -1,0 +1,31 @@
+# The fast, data-free checks: the hand-written and generated page tests (fixture data), the
+# browser modules, and the report sign-up endpoint. The open-data pipelines need gigabytes of
+# downloads and are not run here.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Page, widget and report-offer tests (Python)
+        run: python3 -m unittest discover -s pipeline/seo -p 'test_*.py'
+      - name: Browser module tests (Node)
+        run: for f in site/js/*.test.mjs; do echo "== $f"; node "$f" || exit 1; done
+      - name: Report sign-up endpoint tests (Node)
+        run: npm test --prefix deploy/report-signups

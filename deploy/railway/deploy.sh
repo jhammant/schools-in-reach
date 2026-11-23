@@ -35,5 +35,11 @@ if count < 10_000 or not valid:
     sys.exit(f"Deploy aborted: SEO payload incomplete ({count:,} school pages; valid sitemap: {valid}). Need at least 10,000 school pages and a sitemap with existing child files.")
 print(f"SEO deploy check passed: {count:,} school pages and sitemap present.")
 PY_CHECK
+# The "Your chances" report offer posts emails to its own endpoint (deploy/report-signups). Never ship a
+# form that can't save: deploy the endpoint first, or empty CONFIG.parentsReport.notifyUrl.
+if ! python3 "$HERE/../../pipeline/seo/report_offer.py"; then
+  echo "Deploy aborted: the report sign-up endpoint is not ready." >&2
+  exit 1
+fi
 rsync -a --delete --exclude fleet.app.yaml "$HERE/../../site/" "$HERE/site/"
 cd "$HERE" && railway up --detach --no-gitignore --service schools-in-reach "$@"
