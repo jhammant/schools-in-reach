@@ -1,0 +1,8 @@
+{
+  "name": "schools-in-reach-report-signups",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}
