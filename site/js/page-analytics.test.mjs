@@ -12,7 +12,7 @@ const agents = await source("agents.js");
 let count = 0;
 async function test(name, run) { await run(); count++; console.log(`PASS ${name}`); }
 
-function setup(key = CONFIG.posthog.key, checkoutUrl = CONFIG.agents.checkoutUrl) {
+function setup(key = CONFIG.posthog.key, checkoutUrl = CONFIG.agents.checkoutUrl, contactEmail = "") {
   const scripts = [];
   const element = () => ({
     textContent: "", hidden: true, events: {},
@@ -20,11 +20,12 @@ function setup(key = CONFIG.posthog.key, checkoutUrl = CONFIG.agents.checkoutUrl
     setAttribute() {}, removeAttribute(name) { delete this[name]; },
   });
   const links = [element(), element()];
-  const nodes = Object.fromEntries(["#copy-code", "#copy-status", "#checkout-status", "#embed-code"].map(id => [id, element()]));
+  const nodes = Object.fromEntries(["#copy-code", "#copy-status", "#checkout-status", "#embed-code",
+    "#agents-contact", "#agents-contact-link"].map(id => [id, element()]));
   nodes["#embed-code"].textContent = '<div data-postcode="E8 1DY"></div>';
   const copied = [];
   const context = vm.createContext({
-    CONFIG: { ...CONFIG, posthog: { ...CONFIG.posthog, key }, agents: { checkoutUrl } },
+    CONFIG: { ...CONFIG, posthog: { ...CONFIG.posthog, key }, agents: { checkoutUrl, contactEmail } },
     URL, window: {},
     navigator: { clipboard: { async writeText(text) { copied.push(text); } } },
     document: {
@@ -67,8 +68,45 @@ await test("both trial CTAs capture clicks and preserve checkout navigation", ()
     link.events.click();
   }
   const events = context.window.posthog.filter(call => call[0] === "capture");
-  assert.equal(events.length, 2);
-  assert.ok(events.every(call => call[1] === "agents_cta_click" && Object.keys(call[2]).length === 0));
+  const legacy = events.filter(call => call[1] === "agents_cta_click");
+  assert.equal(legacy.length, 2);
+  assert.ok(legacy.every(call => Object.keys(call[2]).length === 0));
+});
+await test("each trial CTA click is also a shared-funnel checkout with fixed values only", () => {
+  // Arrange
+  const { context, links } = setup();
+  vm.runInContext(agents, context);
+  // Act
+  for (const link of links) link.events.click();
+  // Assert
+  const checkouts = context.window.posthog.filter(call => call[0] === "capture" && call[1] === "checkout");
+  assert.equal(checkouts.length, 2);
+  for (const call of checkouts) {
+    assert.deepEqual({ ...call[2] }, { product: "schoolsinreach-agents", page_type: "agents", plan: "branch-monthly" });
+  }
+  assert.equal(context.window.posthog.filter(call => call[0] === "capture").length, 4);
+});
+await test("the contact link, once a mailbox is configured, sends one cta_click without the address", () => {
+  // Arrange
+  const { context, nodes } = setup(CONFIG.posthog.key, CONFIG.agents.checkoutUrl, "agents@example.com");
+  vm.runInContext(agents, context);
+  // Act
+  nodes["#agents-contact-link"].events.click();
+  // Assert
+  assert.equal(nodes["#agents-contact"].hidden, false);
+  assert.equal(nodes["#agents-contact-link"].href, "mailto:agents@example.com");
+  const clicks = context.window.posthog.filter(call => call[0] === "capture" && call[1] === "cta_click");
+  assert.equal(clicks.length, 1);
+  assert.deepEqual({ ...clicks[0][2] }, { product: "schoolsinreach-agents", page_type: "agents", offer: "agents-contact" });
+  assert.ok(!JSON.stringify(context.window.posthog).includes("example.com"));
+});
+await test("with no mailbox configured the contact line stays hidden and nothing listens on it", () => {
+  // Arrange / Act
+  const { context, nodes } = setup();
+  vm.runInContext(agents, context);
+  // Assert
+  assert.equal(nodes["#agents-contact"].hidden, true);
+  assert.equal(nodes["#agents-contact-link"].events.click, undefined);
 });
 await test("copy button captures click without snippet data and copies the snippet", async () => {
   const { context, nodes, copied } = setup();

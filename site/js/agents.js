@@ -1,6 +1,11 @@
 import { CONFIG } from "./config.js";
 import { track } from "./analytics.js";
 
+// Funnel events shared by all of Jon's sites (signup, checkout, paid, promo_click, cta_click),
+// so the side-projects tracker counts each step per site in the same way. Only these fixed
+// values are ever sent with them: nothing a visitor typed, and no address or postcode.
+const FUNNEL = { product: "schoolsinreach-agents", page_type: "agents" };
+
 let checkout = null;
 try {
   const url = new URL(CONFIG.agents.checkoutUrl);
@@ -9,7 +14,10 @@ try {
 for (const link of document.querySelectorAll(".trial-cta")) {
   if (checkout) {
     link.href = checkout;
-    link.addEventListener("click", () => track("agents_cta_click"));
+    link.addEventListener("click", () => {
+      track("agents_cta_click");                       // kept so the existing series continues
+      track("checkout", { ...FUNNEL, plan: "branch-monthly" });
+    });
   }
   else {
     link.textContent = "Coming soon";
@@ -28,6 +36,7 @@ if (contact && contactLink && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(contact
   contactLink.href = `mailto:${contactEmail}`;
   contactLink.textContent = contactEmail;
   contact.hidden = false;
+  contactLink.addEventListener("click", () => track("cta_click", { ...FUNNEL, offer: "agents-contact" }));
 }
 const copy = document.querySelector("#copy-code");
 copy.hidden = false;

@@ -116,6 +116,7 @@ class StaticPagesTest(unittest.TestCase):
         self.assertTrue(measured)
         self.assertIn("counts page views with PostHog", privacy)
         self.assertIn("without cookies and without storing anything on your device", privacy)
+        self.assertIn("which of a few buttons you pressed", privacy)        # agents.js sends button clicks
         self.assertNotIn("runs no analytics", privacy)
         self.assertNotIn("only if enabled", privacy)
         self.assertNotIn("only if enabled", about)

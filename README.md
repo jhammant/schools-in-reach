@@ -220,6 +220,14 @@ read ROLOZOLO LTD (the Stripe account's statement name); change that wording if 
 statement name changes.
 After checkout, email the branch its ID and snippet within one working day.
 
+For the side-projects tracker, `site/js/agents.js` also sends the funnel event names shared
+by all Hammant Labs sites: each trial button click sends `checkout` (as well as the older
+`agents_cta_click`), and the contact link, once a mailbox is set, sends `cta_click` with
+`offer: "agents-contact"`. They carry fixed values only (`product`, `page_type`, `plan`,
+`offer`), never the address or anything typed; `node site/js/page-analytics.test.mjs`
+checks this. A payment itself is not counted here: the Stripe payment link has no success
+page on this site.
+
 To enable a branch, add an entry to `site/agents.json`: a unique lowercase slug
 `id`, a `name`, bare hostnames in `domains` (no scheme, port or path), and `status`
 `trial` or `active`. Then deploy through the normal pipeline. Subdomains of listed
