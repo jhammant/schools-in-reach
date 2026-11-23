@@ -192,8 +192,22 @@ from Google and nothing is shown until `CONFIG.adsense.client` and the matching 
 IDs (`schoolAfterAdmissions`, `schoolFooter`) are set in `site/js/config.js`; setting
 them needs no rebuild of the pages. Noindexed school pages and council pages carry none.
 
+Indexable school pages, and council pages listing at least 10 schools, also carry one
+house offer for another product by the same maker (TermMinder's term dates, or BinMinder's
+bin-day reminders), after the page's own facts and before the nearby-school links. It is
+plain static HTML: no script, no cookie, nothing sent anywhere, and it says who it is from
+rather than looking like an advert. A page that already links to TermMinder is offered
+BinMinder instead. The offers come from the shared feed at
+`https://hammantlabs.com/promo/offers.json` (jhammant/hammantlabs-sites, `promo/`):
+`deploy/railway/deploy.sh` saves the live feed to `pipeline/.cache/house_offers.json` with
+`pipeline/seo/refresh_house_offers.py`, and the build falls back to the committed
+`pipeline/seo/house_offers.json` when the refresh fails. `pipeline/seo/house_promo.py` is
+an unchanged copy of the feed's own picker. Clicks are counted by the links' UTM tags
+(`utm_source=schoolsinreach`) on the site the visitor arrives at.
+
 ```bash
 python3 -m unittest pipeline/seo/test_build_pages.py -v
+python3 -m unittest pipeline/seo/test_house_promo.py -v
 node site/js/ads.test.mjs
 python3 -m unittest pipeline/seo/test_static_pages.py -v   # the hand-written pages in site/
 python3 pipeline/seo/build_pages.py

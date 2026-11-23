@@ -8,6 +8,9 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # School Money is a separate service: build and deploy it with deploy/money/deploy.sh. build_pages
 # reads site_money/data/status.json (when present) to link school pages to it.
+# House offers (TermMinder, BinMinder reminders) come from the shared feed on hammantlabs.com and are
+# built into the pages; a failed refresh keeps the saved copy, so the deploy never depends on it.
+python3 "$HERE/../../pipeline/seo/refresh_house_offers.py" || true
 if ! python3 "$HERE/../../pipeline/seo/build_pages.py"; then
   echo "Deploy aborted: static school page generation failed." >&2
   exit 1

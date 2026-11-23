@@ -123,6 +123,11 @@ class BuildTest(unittest.TestCase):
         patcher = patch.object(seo, "CROSSLINKS_PATH", self.crosslinks_path)
         patcher.start()
         self.addCleanup(patcher.stop)
+        # The committed house-offers snapshot only, never a deploy's cached copy.
+        self.offers_snapshot = Path(seo.__file__).with_name("house_offers.json")
+        offers = patch.object(seo, "HOUSE_OFFERS_PATHS", (self.offers_snapshot,))
+        offers.start()
+        self.addCleanup(offers.stop)
         self.write("crosslinks.json", {"termminder": {
             "base": "https://www.termminder.com",
             "schools": {"100001": "/uk/schools/test-school/", "100005": "/uk/schools/metadata-only/"},
@@ -222,6 +227,92 @@ class BuildTest(unittest.TestCase):
         for name in names:
             with self.subTest(slot=name):
                 self.assertRegex(config, rf'\b{name}: "')
+
+    def promo(self, text):
+        start = text.index('<aside class="house-promo"')
+        return text[start:text.index("</aside>", start) + len("</aside>")]
+
+    def test_indexable_school_pages_carry_one_house_offer_after_the_school_facts(self):
+        # Arrange: 100001 links its TermMinder page already, so it is offered BinMinder.
+        text = self.path(100001).read_text()
+
+        # Act
+        block = self.promo(text)
+
+        # Assert
+        self.assertEqual(text.count('class="house-promo"'), 1)
+        self.assertIn('data-offer="binminder-reminders"', block)
+        self.assertIn("Also from the maker of Schools in Reach", block)
+        self.assertIn("https://www.binminder.co.uk/?utm_source=schoolsinreach&amp;utm_medium=house-promo"
+                      "&amp;utm_campaign=binminder-reminders&amp;utm_content=school-page", block)
+        self.assertLess(text.index('id="term-dates"'), text.index(block))
+        self.assertLess(text.index(block), text.index("<h2>Nearby schools"))
+        self.assertLess(text.index(seo.ad_slot("schoolAfterAdmissions")), text.index(block))
+        self.assertLess(text.index(block), text.index(seo.ad_slot("schoolFooter")))
+
+    def test_a_school_page_without_a_termminder_link_can_be_offered_termminder(self):
+        # Arrange
+        page_path = "/" + self.path(100004).parent.relative_to(self.site).as_posix() + "/"
+        feed = seo.load_house_offers()
+
+        # Act
+        block = self.promo(self.path(100004).read_text())
+
+        # Assert: TermMinder and BinMinder tie here, and the page path settles it the same way every build.
+        expected = seo.house_promo.pick(feed, "schoolsinreach", seo.PROMO_TAGS, page_path)["id"]
+        self.assertIn(expected, ("termminder-term-dates", "binminder-reminders"))
+        self.assertIn(f'data-offer="{expected}"', block)
+        self.assertIn("utm_source=schoolsinreach", block)
+
+    def test_the_house_offer_is_not_an_advert_and_runs_nothing(self):
+        # Act
+        block = self.promo(self.path(100001).read_text()).lower()
+
+        # Assert
+        for word in ("advert", "sponsored", "data-ad-slot", "ad-host", "<script", "<img", "<iframe", "hammantlabs.com"):
+            self.assertNotIn(word, block)
+        self.assertEqual(block.count("<a "), 1)
+
+    def test_thin_pages_get_no_house_offer(self):
+        # Arrange: two noindex school pages, a four-school council page and the council index.
+        paths = [self.path(100002), self.path(100005), self.site / "council/test-and-vale/index.html",
+                 self.site / "council/index.html"]
+        for path in paths:
+            with self.subTest(path=path):
+                # Act / Assert
+                self.assertNotIn("house-promo", path.read_text())
+
+    def test_a_council_page_with_enough_schools_carries_one_after_its_tables(self):
+        # Arrange
+        with patch.object(seo, "PROMO_MIN_COUNCIL_SCHOOLS", 4):
+            seo.build(self.site, sitemap_limit=1)
+
+        # Act
+        text = (self.site / "council/test-and-vale/index.html").read_text()
+        block = self.promo(text)
+
+        # Assert: the council page links its TermMinder page already, so BinMinder.
+        self.assertIn('data-offer="binminder-reminders"', block)
+        self.assertIn("utm_content=council-page", block)
+        self.assertLess(text.rindex("</table>"), text.index(block))
+        self.assertLess(text.index(block), text.index('<a href="/council/">Browse all councils</a>'))
+
+    def test_missing_or_bad_house_offers_never_block_the_build(self):
+        for content in (None, "invalid json", "[]", '{"version": 1}', self.offers_snapshot.read_text().replace("https://www.binminder.co.uk/?", "javascript:alert(1)?")):
+            with self.subTest(content=content and content[:20]):
+                # Arrange
+                bad = self.site / "bad_offers.json"
+                if content is None:
+                    bad.unlink(missing_ok=True)
+                else:
+                    bad.write_text(content)
+
+                # Act
+                summary = seo.build(self.site, house_offers_paths=(bad,))
+
+                # Assert
+                self.assertEqual(summary["pages"], self.summary["pages"])
+                self.assertNotIn("house-promo", self.path(100001).read_text())
 
     def test_missing_crosslinks_degrades_gracefully(self):
         self.crosslinks_path.unlink()

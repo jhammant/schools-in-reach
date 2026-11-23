@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "about": "House offers: Jon Hammant's own sites cross-selling his other products. Edit this file; promo/build.py validates it and writes the public feed (https://hammantlabs.com/promo/offers.json) and the loader (https://hammantlabs.com/promo/slot.js). See promo/README.md.",
+  "utm_medium": "house-promo",
+  "audiences": {
+    "uk-households": "People who run a home in the UK",
+    "parents": "Parents and carers of school-age children",
+    "london-drivers": "People who drive and park in London",
+    "developers": "Developers and product teams who build software"
+  },
+  "sites": {
+    "binminder": {
+      "name": "BinMinder",
+      "product": "binminder",
+      "kicker": "Also from the maker of BinMinder",
+      "delivery": "loader"
+    },
+    "schoolsinreach": {
+      "name": "Schools in Reach",
+      "product": "schoolsinreach",
+      "kicker": "Also from the maker of Schools in Reach",
+      "delivery": "static"
+    },
+    "termminder": {
+      "name": "TermMinder",
+      "product": "termminder",
+      "kicker": "Also from the maker of TermMinder",
+      "delivery": "none",
+      "note": "TermMinder promises no third-party scripts, so it may only ever show a static, server-rendered offer. Not placed yet."
+    },
+    "gambit": {
+      "name": "Gambit",
+      "product": "gambit",
+      "kicker": "Also from the maker of Gambit",
+      "delivery": "none",
+      "note": "Gambit promises no third-party scripts, and its business audience does not match these household offers. Not placed."
+    }
+  },
+  "offers": [
+    {
+      "id": "parkingminder-london",
+      "product": "parkingminder",
+      "audiences": [
+        "london-drivers"
+      ],
+      "show_on": [
+        "binminder"
+      ],
+      "priority": 20,
+      "headline": "Can I park here?",
+      "text": "Pick a time and how long you are staying, and ParkingMinder maps where you can park in parts of London, from council and TfL open data. Always check the signs.",
+      "cta": "Check where you can park",
+      "url": "https://parkingminder.com/",
+      "links": {
+        "binminder": "https://parkingminder.com/?utm_source=binminder&utm_medium=house-promo&utm_campaign=parkingminder-london"
+      }
+    },
+    {
+      "id": "termminder-term-dates",
+      "product": "termminder",
+      "audiences": [
+        "parents",
+        "uk-households"
+      ],
+      "show_on": [
+        "binminder",
+        "schoolsinreach"
+      ],
+      "priority": 10,
+      "headline": "When is your child off school?",
+      "text": "TermMinder finds school holidays, term dates and the next day back, taken from the authority that sets them, with the source on every page.",
+      "cta": "Find school term dates",
+      "url": "https://www.termminder.com/",
+      "links": {
+        "binminder": "https://www.termminder.com/?utm_source=binminder&utm_medium=house-promo&utm_campaign=termminder-term-dates",
+        "schoolsinreach": "https://www.termminder.com/?utm_source=schoolsinreach&utm_medium=house-promo&utm_campaign=termminder-term-dates"
+      }
+    },
+    {
+      "id": "binminder-reminders",
+      "product": "binminder",
+      "audiences": [
+        "uk-households"
+      ],
+      "show_on": [
+        "schoolsinreach"
+      ],
+      "priority": 10,
+      "headline": "Never miss bin day",
+      "text": "BinMinder looks up your bin collection dates with most UK councils and sends a free email reminder before each bin day.",
+      "cta": "Get bin day reminders",
+      "url": "https://www.binminder.co.uk/",
+      "links": {
+        "schoolsinreach": "https://www.binminder.co.uk/?utm_source=schoolsinreach&utm_medium=house-promo&utm_campaign=binminder-reminders"
+      }
+    },
+    {
+      "id": "schoolsinreach-chances",
+      "product": "schoolsinreach",
+      "audiences": [
+        "parents"
+      ],
+      "show_on": [],
+      "priority": 10,
+      "headline": "How far do school places reach?",
+      "text": "Schools in Reach shows how far places reached at schools near your postcode in past years, and estimates your chances. Free, with no sign-up.",
+      "cta": "Check schools near you",
+      "url": "https://www.schoolsinreach.com/",
+      "links": {}
+    },
+    {
+      "id": "termminder-data-api",
+      "product": "termminder",
+      "audiences": [
+        "developers"
+      ],
+      "show_on": [],
+      "priority": 10,
+      "headline": "School term dates as an API",
+      "text": "TermMinder's Data API serves school term dates and holidays with their sources, for booking, childcare and family software.",
+      "cta": "Read the Data API docs",
+      "url": "https://www.termminder.com/developers/",
+      "links": {}
+    }
+  ]
+}
