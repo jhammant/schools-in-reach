@@ -1,5 +1,5 @@
 import { SITE, $, $$, esc, store } from "./util.js";
-import { state, setHome, on, loadLaIndex, ensureLas, lasAtPoints, ringPoints, laForDistrict, admissionsFor } from "./state.js";
+import { state, setHome, on, loadLaIndex, ensureLas, lasAtPoints, ringPoints, laForDistrict, admissionsFor, nearestLoadedLa } from "./state.js";
 import * as mapApi from "./map.js";
 import { initList, renderList } from "./list.js";
 import { renderSchool, preferredTab } from "./school.js";
@@ -13,6 +13,8 @@ import { initAds } from "./ads.js";
 import { initAnalytics, track } from "./analytics.js";
 import { initWelcome } from "./welcome.js";
 import { initHelpMe } from "./helpme.js";
+import { CONFIG } from "./config.js";
+import { createReportOffer } from "./report-offer.js";
 
 let activeView = "schools";
 let planner = null;
@@ -44,6 +46,8 @@ function showView(view, { push = true } = {}) {
     if (view === "schools" && listScroll) requestAnimationFrame(() => { window.scrollTo({ top: listScroll, behavior: "instant" }); listScroll = 0; });
     else if (view !== "schools") scrollPanelIntoView();
   }
+  // After the address bar has moved off the school, so the list counts as on screen again.
+  if (view === "schools") refreshReportOffer();
 }
 
 /** The big Primary / Secondary switch: it drives the list filter, which drives the map. */
@@ -127,6 +131,42 @@ function selectSchool(urn, tab, { push = true } = {}) {
   renderSchool(urn, { tab: initialTab, onBack: () => history.back() });
   try { track("school_opened", { council_code: s?._la ?? null, phase: s?._class?.group ?? null, type_group: s?.type_group ?? null }); } catch { /* analytics must never break the site */ }
   try { track("tab_viewed", { tab: initialTab }); } catch { /* analytics must never break the site */ }
+}
+
+/** The council the home sits in (from its postcode), else the council of the nearest loaded school. */
+function homeCouncilCode() {
+  if (!state.home) return null;
+  const la = state.home.districtCode ? laForDistrict(state.home.districtCode) : null;
+  return la ? String(la.la_code) : nearestLoadedLa(state.home);
+}
+
+/** The "Your chances" report offer under the results summary (see report-offer.js). */
+let reportOffer = null;
+let lastResults = { awayFromHome: false, phase: "" };
+
+function refreshReportOffer() {
+  if (!reportOffer) return;
+  try {
+    const councilCode = homeCouncilCode();
+    reportOffer.update({
+      ...lastResults,
+      hasHome: Boolean(state.home),
+      councilCode,
+      admissions: councilCode ? state.laData.get(councilCode)?.admissions : null,
+      // A link straight to a school opens it over the list once the data is in; not a view of the list.
+      inView: activeView === "schools" && !/(^|[#&])school=/.test(location.hash),
+    });
+  } catch { /* the offer must never break the results list */ }
+}
+
+function initReportOffer() {
+  const root = $("#report-offer");
+  if (!root || !CONFIG.parentsReport) return;
+  reportOffer = createReportOffer({ root, config: CONFIG.parentsReport, track, fetchImpl: (...args) => fetch(...args) });
+  on("results", ({ awayFromHome, phase }) => {
+    lastResults = { awayFromHome, phase };
+    refreshReportOffer();
+  });
 }
 
 async function lookupPostcode(raw) {
@@ -278,6 +318,7 @@ async function main() {
     const phase = catchCtrl.querySelector('[data-catch][aria-pressed="true"]')?.dataset.catch || "off";
     try { track("heatmap_mode_changed", { phase, view: heatView }); } catch { /* analytics must never break the site */ }
   });
+  initReportOffer();
   initList(selectSchool);
   planner = initPlanner({ selectSchool });
   $("#shortlist-count").textContent = state.shortlist.size || "";

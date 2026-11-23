@@ -1,0 +1,9 @@
+{
+  "title": "Schools in Reach report sign-ups",
+  "description": "Takes \"email me when the Your chances report is ready\" sign-ups from www.schoolsinreach.com",
+  "static": "public",
+  "server": "lambda.mjs",
+  "analytics": false,
+  "concurrency": 5,
+  "env": { "ALLOWED_ORIGINS": "https://www.schoolsinreach.com,https://schoolsinreach.hammantlabs.com" }
+}
