@@ -426,6 +426,10 @@ class BuildTest(unittest.TestCase):
         self.assertIn("A: 0.84 mi", text)
         self.assertIn("B: 1.26 mi", text)
         self.assertIn("0.84 to 1.26 miles", text)
+        # Schools with cut-offs take the visitor's postcode straight to the map's results.
+        self.assertIn('<form class="chance-form" action="/" method="get"', text)
+        self.assertIn('name="postcode"', text)
+        self.assertIn("A guide, not a promise.", text)
         results = self.path(100004).read_text()
         self.assertIn("2023/24", results)
         self.assertIn("2024/25", results)
