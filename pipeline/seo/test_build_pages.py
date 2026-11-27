@@ -430,6 +430,8 @@ class BuildTest(unittest.TestCase):
         self.assertIn('<form class="chance-form" action="/" method="get"', text)
         self.assertIn('name="postcode"', text)
         self.assertIn("A guide, not a promise.", text)
+        # It also says which list to open (this fixture school is a secondary).
+        self.assertIn('<input type="hidden" name="phase" value="secondary">', text)
         results = self.path(100004).read_text()
         self.assertIn("2023/24", results)
         self.assertIn("2024/25", results)

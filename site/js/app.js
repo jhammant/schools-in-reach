@@ -287,7 +287,12 @@ function takePostcodeFromAddress() {
     const url = new URL(location.href);
     if (!url.searchParams.has("postcode")) return "";
     const postcode = url.searchParams.get("postcode").trim();
+    // A school page's form also says which list to open (primary or secondary), so a family coming
+    // from a primary school sees primary results. It becomes the remembered choice, as a click would.
+    const phase = url.searchParams.get("phase");
+    if (phase === "primary" || phase === "secondary") store.set("phase", phase);
     url.searchParams.delete("postcode");
+    url.searchParams.delete("phase");
     history.replaceState(history.state, "", url.pathname + url.search + url.hash);
     return postcode;
   } catch {

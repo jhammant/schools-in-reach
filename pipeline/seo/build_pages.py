@@ -542,7 +542,12 @@ def render_school(item, council, peers, metadata, crosslinks=None, promo_feed=No
         # A plain GET form to the map: the browser loads /?postcode=…, and the map takes the postcode
         # out of the address before analytics starts (takePostcodeFromAddress in site/js/app.js), so
         # the visitor lands on the results for their home without typing it twice.
+        # The map opens on Secondary unless told otherwise, and the parents' report offer only shows
+        # on Primary results, so a primary or secondary school's form says which list to open.
+        start_phase = {"Primary": "primary", "Secondary": "secondary"}.get(phase(s), "")
+        phase_field = f'<input type="hidden" name="phase" value="{start_phase}">' if start_phase else ""
         body += ('<form class="chance-form" action="/" method="get" role="search">'
+                 f'{phase_field}'
                  '<label for="chance-postcode">Could you get a place here? Check your chances from your home postcode</label>'
                  '<span class="chance-row"><input id="chance-postcode" name="postcode" inputmode="text" autocomplete="postal-code" autocapitalize="characters" required maxlength="10" placeholder="For example E8 1DY">'
                  '<button class="cta" type="submit">Check my chances</button></span></form>'
